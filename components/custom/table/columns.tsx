@@ -60,6 +60,11 @@ export const columns: ColumnDef<ITable>[] = [
         cell: ({ row }) => <div>{row.getValue('brand')}</div>,
     },
     {
+        accessorKey: 'product',
+        header: 'Product',
+        cell: ({ row }) => <div>{row.getValue('product')}</div>,
+    },
+    {
         accessorKey: 'size',
         header: 'Size',
         cell: ({ row }) => <div>{row.getValue('size')}</div>,
