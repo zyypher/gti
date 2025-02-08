@@ -17,16 +17,17 @@ import Image from 'next/image'
 
 export type ITable = {
     id: string
-    receptionist: {
-        image: string
-        name: string
-    }
-    sales_id: string
-    category: string
-    location: string
-    date: string
-    status: 'done' | 'pending' | 'cancelled'
+    brand: string
+    size: string
+    tar: string
+    nicotine: string
+    co: string
+    flavor: string
+    fsp: string
+    corners: string
+    capsules: string
 }
+
 
 export const columns: ColumnDef<ITable>[] = [
     {
@@ -54,189 +55,56 @@ export const columns: ColumnDef<ITable>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: 'name',
-        accessorFn: (row) => row.receptionist.name,
-        header: ({ column }) => {
-            return (
-                <button
-                    type="button"
-                    className="flex items-center gap-1.5"
-                    onClick={() =>
-                        column.toggleSorting(column.getIsSorted() === 'asc')
-                    }
-                >
-                    <span className="inline-flex items-center -space-x-[5px]">
-                        <MoveDown
-                            className={`size-2.5 shrink-0 text-black ${column.getIsSorted() === 'asc' && 'text-gray-500'}`}
-                        />
-                        <MoveUp
-                            className={`size-2.5 shrink-0 text-gray-500 ${column.getIsSorted() === 'asc' && '!text-black'}`}
-                        />
-                    </span>
-                    Sales Receptionist
-                </button>
-            )
-        },
-        cell: ({ row }) => {
-            const image = row.original.receptionist
-
-            return (
-                <div className="flex items-center gap-2">
-                    <div className="size-6 overflow-hidden">
-                        <Image
-                            src={image.image}
-                            alt={image.name}
-                            className="size-full object-cover"
-                            width={24}
-                            height={24}
-                        />
-                    </div>
-                    <span>{image.name}</span>
-                </div>
-            )
-        },
+        accessorKey: 'brand',
+        header: 'Brand',
+        cell: ({ row }) => <div>{row.getValue('brand')}</div>,
     },
     {
-        accessorKey: 'sales_id',
-        header: ({ column }) => {
-            return (
-                <button
-                    type="button"
-                    className="flex items-center gap-1.5"
-                    onClick={() =>
-                        column.toggleSorting(column.getIsSorted() === 'asc')
-                    }
-                >
-                    <span className="inline-flex items-center -space-x-[5px]">
-                        <MoveDown
-                            className={`size-2.5 shrink-0 text-black ${column.getIsSorted() === 'asc' && 'text-gray-500'}`}
-                        />
-                        <MoveUp
-                            className={`size-2.5 shrink-0 text-gray-500 ${column.getIsSorted() === 'asc' && '!text-black'}`}
-                        />
-                    </span>
-                    ID
-                </button>
-            )
-        },
-        cell: ({ row }) => (
-            <Badge className="bg-gray-400 text-black">
-                {row.getValue('sales_id')}
-            </Badge>
-        ),
-    },
-
-    {
-        accessorKey: 'category',
-        header: ({ column }) => {
-            return (
-                <button
-                    type="button"
-                    className="flex items-center gap-1.5"
-                    onClick={() =>
-                        column.toggleSorting(column.getIsSorted() === 'asc')
-                    }
-                >
-                    <span className="inline-flex items-center -space-x-[5px]">
-                        <MoveDown
-                            className={`size-2.5 shrink-0 text-black ${column.getIsSorted() === 'asc' && 'text-gray-500'}`}
-                        />
-                        <MoveUp
-                            className={`size-2.5 shrink-0 text-gray-500 ${column.getIsSorted() === 'asc' && '!text-black'}`}
-                        />
-                    </span>
-                    Category
-                </button>
-            )
-        },
-        cell: ({ row }) => <div>{row.getValue('category')}</div>,
+        accessorKey: 'size',
+        header: 'Size',
+        cell: ({ row }) => <div>{row.getValue('size')}</div>,
     },
     {
-        accessorKey: 'location',
-        header: ({ column }) => {
-            return (
-                <button
-                    type="button"
-                    className="flex items-center gap-1.5"
-                    onClick={() =>
-                        column.toggleSorting(column.getIsSorted() === 'asc')
-                    }
-                >
-                    <span className="inline-flex items-center -space-x-[5px]">
-                        <MoveDown
-                            className={`size-2.5 shrink-0 text-black ${column.getIsSorted() === 'asc' && 'text-gray-500'}`}
-                        />
-                        <MoveUp
-                            className={`size-2.5 shrink-0 text-gray-500 ${column.getIsSorted() === 'asc' && '!text-black'}`}
-                        />
-                    </span>
-                    Location
-                </button>
-            )
-        },
-        cell: ({ row }) => <div>{row.getValue('location')}</div>,
+        accessorKey: 'tar',
+        header: 'Tar (mg)',
+        cell: ({ row }) => <div>{row.getValue('tar')}</div>,
     },
     {
-        accessorKey: 'date',
-        header: ({ column }) => {
-            return (
-                <button
-                    type="button"
-                    className="flex items-center gap-1.5"
-                    onClick={() =>
-                        column.toggleSorting(column.getIsSorted() === 'asc')
-                    }
-                >
-                    <span className="inline-flex items-center -space-x-[5px]">
-                        <MoveDown
-                            className={`size-2.5 shrink-0 text-black ${column.getIsSorted() === 'asc' && 'text-gray-500'}`}
-                        />
-                        <MoveUp
-                            className={`size-2.5 shrink-0 text-gray-500 ${column.getIsSorted() === 'asc' && '!text-black'}`}
-                        />
-                    </span>
-                    Date
-                </button>
-            )
-        },
-        cell: ({ row }) => <div>{row.getValue('date')}</div>,
+        accessorKey: 'nicotine',
+        header: 'Nicotine (mg)',
+        cell: ({ row }) => <div>{row.getValue('nicotine')}</div>,
     },
     {
-        accessorKey: 'status',
-        header: ({ column }) => {
-            return (
-                <button
-                    type="button"
-                    className="flex items-center gap-1.5"
-                    onClick={() =>
-                        column.toggleSorting(column.getIsSorted() === 'asc')
-                    }
-                >
-                    <span className="inline-flex items-center -space-x-[5px]">
-                        <MoveDown
-                            className={`size-2.5 shrink-0 text-black ${column.getIsSorted() === 'asc' && 'text-gray-500'}`}
-                        />
-                        <MoveUp
-                            className={`size-2.5 shrink-0 text-gray-500 ${column.getIsSorted() === 'asc' && '!text-black'}`}
-                        />
-                    </span>
-                    Status
-                </button>
-            )
-        },
+        accessorKey: 'co',
+        header: 'CO (mg)',
+        cell: ({ row }) => <div>{row.getValue('co')}</div>,
+    },
+    {
+        accessorKey: 'flavor',
+        header: 'Flavor',
+        cell: ({ row }) => <div>{row.getValue('flavor')}</div>,
+    },
+    {
+        accessorKey: 'fsp',
+        header: 'FSP',
         cell: ({ row }) => (
             <Badge
-                variant={
-                    row.getValue('status') === 'done'
-                        ? 'green'
-                        : row.getValue('status') === 'pending'
-                          ? 'orange'
-                          : 'red'
-                }
+                variant={row.getValue('fsp') === 'Yes' ? 'green' : 'red'}
                 className="capitalize"
             >
-                {row.getValue('status')}
+                {row.getValue('fsp')}
             </Badge>
         ),
     },
+    {
+        accessorKey: 'corners',
+        header: 'Corners',
+        cell: ({ row }) => <div>{row.getValue('corners')}</div>,
+    },
+    {
+        accessorKey: 'capsules',
+        header: 'Capsules',
+        cell: ({ row }) => <div>{row.getValue('capsules')}</div>,
+    },
 ]
+
