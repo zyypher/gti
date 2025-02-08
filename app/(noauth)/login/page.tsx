@@ -12,7 +12,7 @@ export default function Login() {
         <div className="grid h-screen w-full gap-5 p-4 md:grid-cols-2">
             <div className="relative hidden overflow-hidden rounded-[20px] bg-[#3B06D2] p-4 md:block md:h-full">
                 <Image
-                    src="/images/logo-white.svg"
+                    src="/images/gulbahar-logodark.svg"
                     width={145}
                     height={34}
                     alt="Logo"
@@ -34,11 +34,10 @@ export default function Login() {
                 />
                 <div className="absolute left-1/2 top-1/4 w-full max-w-md -translate-x-1/2 space-y-3 px-3 text-center text-white">
                     <h2 className="text-lg font-bold sm:text-2xl lg:text-[30px]/9">
-                        Turn your ideas into reality.
+                    Drive your sales. Power your business.
                     </h2>
                     <p className="text-sm lg:text-xl/[30px]">
-                        Encourages making dreams tangible through effort and
-                        creativity.
+                    Track performance, optimize sales, and achieve excellence.
                     </p>
                 </div>
             </div>
@@ -53,7 +52,7 @@ export default function Login() {
                         </p>
                     </CardHeader>
                     <CardContent className="space-y-[30px]">
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* <div className="grid grid-cols-2 gap-4">
                             <Link href="#">
                                 <Button
                                     variant={'outline-general'}
@@ -81,9 +80,9 @@ export default function Login() {
                                 or login with email
                             </p>
                             <span className="h-px w-full bg-[#E2E4E9]"></span>
-                        </div>
+                        </div> */}
                         <form className="space-y-[30px]">
-                            <div className="relative space-y-3">
+                            {/* <div className="relative space-y-3">
                                 <label className="block font-semibold leading-none text-black">
                                     Username
                                 </label>
@@ -93,7 +92,7 @@ export default function Login() {
                                     placeholder="Victoria Gillham"
                                     iconRight={<User className="size-[18px]" />}
                                 />
-                            </div>
+                            </div> */}
                             <div className="relative space-y-3">
                                 <label className="block font-semibold leading-none text-black">
                                     Email address
@@ -107,7 +106,7 @@ export default function Login() {
                                     }
                                 />
                             </div>
-                            <div className="!mt-2.5 flex items-center gap-2">
+                            {/* <div className="!mt-2.5 flex items-center gap-2">
                                 <TriangleAlert className="size-[18px] shrink-0 text-danger" />
                                 <p className="text-xs/tight font-medium text-danger">
                                     Please enter an email address in the format{' '}
@@ -115,7 +114,7 @@ export default function Login() {
                                         username@gmail.com
                                     </span>
                                 </p>
-                            </div>
+                            </div> */}
                             <div className="relative space-y-3">
                                 <label className="block font-semibold leading-none text-black">
                                     Password
@@ -126,12 +125,12 @@ export default function Login() {
                                     placeholder="Abc*********"
                                 />
                             </div>
-                            <Link
+                            {/* <Link
                                 href="/forgot"
                                 className="!mt-4 block text-right text-xs/4 font-semibold text-black underline underline-offset-[3px] hover:text-[#3C3C3D]"
                             >
                                 Forgot password?
-                            </Link>
+                            </Link> */}
                             <Button
                                 type="submit"
                                 variant={'black'}
@@ -140,7 +139,7 @@ export default function Login() {
                             >
                                 Login
                             </Button>
-                            <div className="text-center text-xs/4 font-semibold text-black">
+                            {/* <div className="text-center text-xs/4 font-semibold text-black">
                                 Don’t have an account?
                                 <Link
                                     href="/register"
@@ -148,7 +147,7 @@ export default function Login() {
                                 >
                                     Register
                                 </Link>
-                            </div>
+                            </div> */}
                         </form>
                     </CardContent>
                 </Card>

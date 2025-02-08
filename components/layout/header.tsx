@@ -91,13 +91,13 @@ const Header = () => {
                 </Link>
 
                 <div className="inline-flex items-center gap-3 sm:gap-5">
-                    <Link
+                    {/* <Link
                         href="/"
                         target="_blank"
                         className="hidden duration-300 hover:opacity-80 lg:block"
                     >
                         <MessageSquareText className="h-5 w-5" />
-                    </Link>
+                    </Link> */}
                     <div className="order-2 lg:order-none">
                         <Popover>
                             <PopoverTrigger asChild>
@@ -198,7 +198,7 @@ const Header = () => {
                             </PopoverContent>
                         </Popover>
                     </div>
-                    <div className="order-1 lg:order-none">
+                    {/* <div className="order-1 lg:order-none">
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
@@ -224,7 +224,7 @@ const Header = () => {
                                 />
                             </PopoverContent>
                         </Popover>
-                    </div>
+                    </div> */}
                     <div className="hidden lg:block">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
