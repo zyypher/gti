@@ -22,7 +22,7 @@ import { CalendarCheck, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
-const Table = () => {
+const Products = () => {
     const [date, setDate] = useState<Date>()
     const [mainDate, setMainDate] = useState<Date>()
 
@@ -163,7 +163,7 @@ const Table = () => {
 
     return (
         <div className="space-y-4">
-            <PageHeading heading={'Table'} />
+            <PageHeading heading={'Products'} />
 
             <div className="min-h-[calc(100vh_-_160px)] w-full">
                 <div className="flex items-center justify-between gap-4 overflow-x-auto rounded-t-lg bg-white px-5 py-[17px]">
@@ -271,4 +271,4 @@ const Table = () => {
     )
 }
 
-export default Table
+export default Products

@@ -29,7 +29,10 @@ import {
     Sheet,
     SquareKanban,
     TableProperties,
+    Home,
     X,
+    Cigarette,
+    Package
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
@@ -163,7 +166,13 @@ const Sidebar = () => {
                     className="sidemenu grow overflow-y-auto overflow-x-hidden px-2.5 pb-10 pt-2.5 transition-all"
                     key={pathName}
                 >
-                    <AccordionItem value="item-1" className="p-0 shadow-none">
+                    <NavLink href="/" className={`nav-link`}>
+                        <Home className="size-[18px] shrink-0" />
+                        <span>Dashboard</span>
+                    </NavLink>
+
+                    
+                    {/* <AccordionItem value="item-1" className="p-0 shadow-none">
                         <AccordionTrigger className="nav-link">
                             <Gauge className="size-[18px] shrink-0" />
                             <span>Dashboard</span>
@@ -278,14 +287,14 @@ const Sidebar = () => {
                                 </li>
                             </ul>
                         </AccordionContent>
-                    </AccordionItem>
+                    </AccordionItem> */}
 
-                    <h3 className="mt-2.5 whitespace-nowrap rounded-lg bg-gray-400 px-5 py-2.5 text-xs/tight font-semibold uppercase text-black">
+                    {/* <h3 className="mt-2.5 whitespace-nowrap rounded-lg bg-gray-400 px-5 py-2.5 text-xs/tight font-semibold uppercase text-black">
                         <span>Apps</span>
                         <Minus className="hidden h-4 w-5 text-gray" />
-                    </h3>
+                    </h3> */}
 
-                    <NavLink
+                    {/* <NavLink
                         href="/chat"
                         target="_blank"
                         className={`nav-link ${pathName === '/chat' && '!text-black'}`}
@@ -396,9 +405,9 @@ const Sidebar = () => {
                                 </li>
                             </ul>
                         </AccordionContent>
-                    </AccordionItem>
+                    </AccordionItem> */}
 
-                    <h3 className="mt-2.5 whitespace-nowrap rounded-lg bg-gray-400 px-5 py-2.5 text-xs/tight font-semibold uppercase text-black">
+                    {/* <h3 className="mt-2.5 whitespace-nowrap rounded-lg bg-gray-400 px-5 py-2.5 text-xs/tight font-semibold uppercase text-black">
                         <span>User Interface</span>
                         <Minus className="hidden h-4 w-5 text-gray" />
                     </h3>
@@ -666,19 +675,22 @@ const Sidebar = () => {
                     >
                         <Gem className="size-[18px] shrink-0" />
                         <span>Pricing</span>
-                    </NavLink>
+                    </NavLink> */}
 
                     <h3 className="mt-2.5 whitespace-nowrap rounded-lg bg-gray-400 px-5 py-2.5 text-xs/tight font-semibold uppercase text-black">
-                        <span>Tables and Forms</span>
+                        <span>Catalog</span>
                         <Minus className="hidden h-4 w-5 text-gray" />
                     </h3>
-
-                    <NavLink href="/table" className={`nav-link`}>
-                        <TableProperties className="size-[18px] shrink-0" />
-                        <span>Table</span>
+                    <NavLink href="/brands" className={`nav-link`}>
+                        <Package className="size-[18px] shrink-0" />
+                        <span>Brands</span>
+                    </NavLink>
+                    <NavLink href="/products" className={`nav-link`}>
+                        <Cigarette className="size-[18px] shrink-0" />
+                        <span>Products</span>
                     </NavLink>
 
-                    <AccordionItem value="item-5" className="p-0 shadow-none">
+                    {/* <AccordionItem value="item-5" className="p-0 shadow-none">
                         <AccordionTrigger className="nav-link">
                             <ClipboardType className="size-[18px] shrink-0" />
                             <span>Forms</span>
@@ -742,7 +754,7 @@ const Sidebar = () => {
                                 </li>
                             </ul>
                         </AccordionContent>
-                    </AccordionItem>
+                    </AccordionItem> */}
 
                     <h3 className="mt-2.5 whitespace-nowrap rounded-lg bg-gray-400 px-5 py-2.5 text-xs/tight font-semibold uppercase text-black">
                         <span>Pages</span>
@@ -812,7 +824,7 @@ const Sidebar = () => {
                         <span>Contact Us</span>
                     </NavLink>
                 </Accordion>
-                <div className="upgrade-menu sticky bottom-0 rounded-[10px] bg-light-theme p-4 transition-all">
+                {/* <div className="upgrade-menu sticky bottom-0 rounded-[10px] bg-light-theme p-4 transition-all">
                     <span className="absolute -right-0 left-0 top-0 -z-[1]">
                         <Image
                             src="/images/rectangle-gird.png"
@@ -836,7 +848,7 @@ const Sidebar = () => {
                             Upgrade Now
                         </Button>
                     </Link>
-                </div>
+                </div> */}
             </Card>
         </>
     )
