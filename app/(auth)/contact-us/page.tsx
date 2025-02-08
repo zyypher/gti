@@ -37,10 +37,10 @@ const ContactUs = () => {
                                         Speak to our friendly team.
                                     </p>
                                     <Link
-                                        href="mailto:sales@nexadash.com"
+                                        href="mailto:sales@gti.com"
                                         className="block leading-none underline underline-offset-[3px] transition hover:text-primary"
                                     >
-                                        sales@nexadash.com
+                                        sales@gti.com
                                     </Link>
                                 </div>
                             </Card>
@@ -54,10 +54,10 @@ const ContactUs = () => {
                                         We&apos;re here to help.
                                     </p>
                                     <Link
-                                        href="mailto:support@nexadash.com"
+                                        href="mailto:support@gti.com"
                                         className="block leading-none underline underline-offset-[3px] transition hover:text-primary"
                                     >
-                                        support@nexadash.com
+                                        support@gti.com
                                     </Link>
                                 </div>
                             </Card>

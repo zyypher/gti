@@ -82,11 +82,11 @@ const Header = () => {
             <div className="flex items-center justify-between gap-5">
                 <Link href="/" className="inline-block shrink-0 lg:ml-2.5">
                     <Image
-                        src="/images/logo.svg"
-                        width={145}
+                        src="/images/gulbahar-logodark.svg"
+                        width={60}
                         height={34}
                         alt="Logo"
-                        className="h-auto w-32 lg:w-[145px]"
+                        className="h-auto w-32 lg:w-[60px]"
                     />
                 </Link>
 

@@ -32,7 +32,8 @@ import {
     Home,
     X,
     Cigarette,
-    Package
+    Package,
+    CircleUserRound
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
@@ -757,7 +758,7 @@ const Sidebar = () => {
                     </AccordionItem> */}
 
                     <h3 className="mt-2.5 whitespace-nowrap rounded-lg bg-gray-400 px-5 py-2.5 text-xs/tight font-semibold uppercase text-black">
-                        <span>Pages</span>
+                        <span>Configuration</span>
                         <Minus className="hidden h-4 w-5 text-gray" />
                     </h3>
 
@@ -768,8 +769,15 @@ const Sidebar = () => {
                         <Settings className="size-[18px] shrink-0" />
                         <span>Settings</span>
                     </NavLink>
+                    <NavLink
+                        href="/users"
+                        className={`nav-link ${pathName === '/setting' && '!text-black'}`}
+                    >
+                        <CircleUserRound className="size-[18px] shrink-0" />
+                        <span>Users</span>
+                    </NavLink>
 
-                    <AccordionItem value="item-6" className="p-0 shadow-none">
+                    {/* <AccordionItem value="item-6" className="p-0 shadow-none">
                         <AccordionTrigger className="nav-link">
                             <Fingerprint className="size-[18px] shrink-0" />
                             <span>Authentication</span>
@@ -814,15 +822,15 @@ const Sidebar = () => {
                                 </li>
                             </ul>
                         </AccordionContent>
-                    </AccordionItem>
+                    </AccordionItem> */}
 
-                    <NavLink
+                    {/* <NavLink
                         href="/contact-us"
                         className={`nav-link ${pathName === '/contact-us' && '!text-black'}`}
                     >
                         <Phone className="size-[18px] shrink-0" />
                         <span>Contact Us</span>
-                    </NavLink>
+                    </NavLink> */}
                 </Accordion>
                 {/* <div className="upgrade-menu sticky bottom-0 rounded-[10px] bg-light-theme p-4 transition-all">
                     <span className="absolute -right-0 left-0 top-0 -z-[1]">
