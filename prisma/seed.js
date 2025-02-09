@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client')
+const bcrypt = require('bcrypt')
 
 const prisma = new PrismaClient()
 
@@ -11,18 +12,18 @@ async function main() {
             { name: 'Mondal', description: 'Strong and bold' },
             { name: 'Momento', description: 'Smooth and relaxing' },
         ],
+        skipDuplicates: true, // Skip if already exists
     })
 
     console.log('Brands seeded')
 
-    // Retrieve brand IDs
+    // Seed products (only if brands are available)
     const brandRecords = await prisma.brand.findMany()
     const brandMap = {}
     brandRecords.forEach((brand) => {
         brandMap[brand.name] = brand.id
     })
 
-    // Seed products
     await prisma.product.createMany({
         data: [
             {
@@ -206,13 +207,35 @@ async function main() {
                 capsules: '1',
             },
         ],
+        skipDuplicates: true,
     })
 
     console.log('Products seeded')
+
+    // Seed admin user
+    const password = 'Gulb@h4r_Adm1n#888!'
+    const hashedPassword = await bcrypt.hash(password, 12)
+
+    await prisma.user.upsert({
+        where: { email: 'admin@gulbahartobacco.com' },
+        update: {}, // Update if exists
+        create: {
+            email: 'admin@gulbahartobacco.com',
+            password: hashedPassword,
+            role: 'ADMIN',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        },
+    })
+
+    console.log('Admin user seeded')
 }
 
 main()
-    .catch((e) => console.error(e))
+    .catch((e) => {
+        console.error(e)
+        process.exit(1)
+    })
     .finally(async () => {
         await prisma.$disconnect()
     })
