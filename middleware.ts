@@ -1,20 +1,21 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { jwtVerify } from 'jose'
 
-export function middleware(request: NextRequest) {
-    const publicPaths = ['/login', '/register', '/forgot', '/password']
+// Define the secret key as a Uint8Array
+const secret = new TextEncoder().encode(process.env.JWT_SECRET)
 
-    // Skip static file paths (_next, images, favicon, etc.)
-    if (
-        request.nextUrl.pathname.startsWith('/_next') ||
-        request.nextUrl.pathname.startsWith('/images')
-    ) {
-        return NextResponse.next()
+export async function middleware(request: NextRequest) {
+    const token = request.cookies.get('token')?.value
+
+    if (!token) {
+        return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    // Handle authentication redirects here (if necessary)
-    const isLoggedIn = request.cookies.get('isLoggedIn')
-    if (!isLoggedIn && !publicPaths.includes(request.nextUrl.pathname)) {
+    try {
+        // Verify the token
+        const { payload } = await jwtVerify(token, secret)
+    } catch (err) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
@@ -22,5 +23,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/((?!api|_next|favicon.ico).*)'],
+    matcher: ['/((?!api|_next|static|images|favicon.ico|login|register).*)'],
 }

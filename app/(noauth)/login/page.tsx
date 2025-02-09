@@ -1,13 +1,55 @@
-import IconFacebook from '@/components/icons/icon-facebook'
-import IconGoogle from '@/components/icons/icon-google'
+'use client'
+
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { AtSign, TriangleAlert, User } from 'lucide-react'
+import { AtSign } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import Link from 'next/link'
+import { useState } from 'react'
+
+const loginSchema = z.object({
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(6, 'Password must be at least 6 characters long'),
+})
+
+type LoginFormData = z.infer<typeof loginSchema>
 
 export default function Login() {
+    const router = useRouter()
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<LoginFormData>({
+        resolver: zodResolver(loginSchema),
+    })
+
+    const [loading, setLoading] = useState(false)
+
+    const onSubmit = async (data: LoginFormData) => {
+        setLoading(true)
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            })
+
+            if (response.ok) {
+                router.push('/')
+            } else {
+                const errorData = await response.json()
+            }
+        } catch (error) {
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
         <div className="grid h-screen w-full gap-5 p-4 md:grid-cols-2">
             <div className="relative hidden overflow-hidden rounded-[20px] bg-[#3B06D2] p-4 md:block md:h-full">
@@ -34,10 +76,11 @@ export default function Login() {
                 />
                 <div className="absolute left-1/2 top-1/4 w-full max-w-md -translate-x-1/2 space-y-3 px-3 text-center text-white">
                     <h2 className="text-lg font-bold sm:text-2xl lg:text-[30px]/9">
-                    Drive your sales. Power your business.
+                        Drive your sales. Power your business.
                     </h2>
                     <p className="text-sm lg:text-xl/[30px]">
-                    Track performance, optimize sales, and achieve excellence.
+                        Track performance, optimize sales, and achieve
+                        excellence.
                     </p>
                 </div>
             </div>
@@ -48,106 +91,62 @@ export default function Login() {
                             Sign In to your account
                         </h2>
                         <p className="font-medium leading-tight">
-                            Enter your details to proceed future
+                            Enter your details to proceed.
                         </p>
                     </CardHeader>
-                    <CardContent className="space-y-[30px]">
-                        {/* <div className="grid grid-cols-2 gap-4">
-                            <Link href="#">
-                                <Button
-                                    variant={'outline-general'}
-                                    size={'large'}
-                                    className="w-full"
-                                >
-                                    <IconGoogle className="!size-[18px]" />
-                                    Google
-                                </Button>
-                            </Link>
-                            <Link href="#">
-                                <Button
-                                    variant={'outline-general'}
-                                    size={'large'}
-                                    className="w-full"
-                                >
-                                    <IconFacebook className="!size-[18px] text-[#0866FF]" />
-                                    Facebook
-                                </Button>
-                            </Link>
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                            <span className="h-px w-full bg-[#E2E4E9]"></span>
-                            <p className="shrink-0 font-medium leading-tight">
-                                or login with email
-                            </p>
-                            <span className="h-px w-full bg-[#E2E4E9]"></span>
-                        </div> */}
-                        <form className="space-y-[30px]">
-                            {/* <div className="relative space-y-3">
-                                <label className="block font-semibold leading-none text-black">
-                                    Username
-                                </label>
-                                <Input
-                                    type="text"
-                                    variant={'input-form'}
-                                    placeholder="Victoria Gillham"
-                                    iconRight={<User className="size-[18px]" />}
-                                />
-                            </div> */}
-                            <div className="relative space-y-3">
-                                <label className="block font-semibold leading-none text-black">
+                    <CardContent>
+                        <form
+                            className="space-y-[20px]"
+                            onSubmit={handleSubmit(onSubmit)}
+                        >
+                            <div className="space-y-2">
+                                <label className="block font-semibold text-black">
                                     Email address
                                 </label>
                                 <Input
                                     type="email"
-                                    variant={'input-form'}
                                     placeholder="username@domain.com"
                                     iconRight={
                                         <AtSign className="size-[18px]" />
                                     }
+                                    {...register('email')}
                                 />
+                                {errors.email && (
+                                    <p className="text-red-500 text-sm">
+                                        {errors.email.message}
+                                    </p>
+                                )}
                             </div>
-                            {/* <div className="!mt-2.5 flex items-center gap-2">
-                                <TriangleAlert className="size-[18px] shrink-0 text-danger" />
-                                <p className="text-xs/tight font-medium text-danger">
-                                    Please enter an email address in the format{' '}
-                                    <span className="font-bold">
-                                        username@gmail.com
-                                    </span>
-                                </p>
-                            </div> */}
-                            <div className="relative space-y-3">
-                                <label className="block font-semibold leading-none text-black">
+
+                            <div className="space-y-2">
+                                <label className="block font-semibold text-black">
                                     Password
                                 </label>
                                 <Input
                                     type="password"
-                                    variant={'input-form'}
-                                    placeholder="Abc*********"
+                                    placeholder="********"
+                                    {...register('password')}
                                 />
+                                {errors.password && (
+                                    <p className="text-red-500 text-sm">
+                                        {errors.password.message}
+                                    </p>
+                                )}
                             </div>
-                            {/* <Link
-                                href="/forgot"
-                                className="!mt-4 block text-right text-xs/4 font-semibold text-black underline underline-offset-[3px] hover:text-[#3C3C3D]"
-                            >
-                                Forgot password?
-                            </Link> */}
+
                             <Button
                                 type="submit"
-                                variant={'black'}
-                                size={'large'}
+                                variant="black"
+                                size="large"
                                 className="w-full"
+                                disabled={loading}
                             >
-                                Login
+                                {loading ? (
+                                    <span className="loader" />
+                                ) : (
+                                    'Login'
+                                )}
                             </Button>
-                            {/* <div className="text-center text-xs/4 font-semibold text-black">
-                                Don’t have an account?
-                                <Link
-                                    href="/register"
-                                    className="pl-1.5 text-sm/tight underline underline-offset-4 hover:text-[#3C3C3D]"
-                                >
-                                    Register
-                                </Link>
-                            </div> */}
                         </form>
                     </CardContent>
                 </Card>
