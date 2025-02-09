@@ -22,7 +22,19 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     const body = await req.json()
-    const product = await prisma.product.create({ data: body })
+    const { brandId, ...productData } = body
+
+    const product = await prisma.product.create({
+        data: {
+            ...productData,
+            brand: {
+                connect: {
+                    id: brandId, // Use only the nested relation here
+                },
+            },
+        },
+    })
+
     return NextResponse.json(product, { status: 201 })
 }
 
