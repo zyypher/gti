@@ -12,15 +12,9 @@ model User {
   email       String       @unique
   password    String
   role        Role         @default(SALESPERSON)
-  dataRecords DataRecord[] // Relation to DataRecord model (opposite side of the relation)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-}
-
-enum Role {
-  ADMIN
-  SUPERVISOR
-  SALESPERSON
+  dataRecords DataRecord[]
 }
 
 model DataRecord {
@@ -28,8 +22,7 @@ model DataRecord {
   userId    String
   data      String
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade) // Relation to User model
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Brand {
@@ -43,7 +36,6 @@ model Brand {
 model Product {
   id        String   @id @default(uuid())
   name      String
-  brand     Brand    @relation(fields: [brandId], references: [id])
   brandId   String
   size      String
   tar       String
@@ -55,4 +47,11 @@ model Product {
   capsules  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  brand     Brand    @relation(fields: [brandId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  SUPERVISOR
+  SALESPERSON
 }
