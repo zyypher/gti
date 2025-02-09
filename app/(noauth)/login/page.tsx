@@ -38,7 +38,7 @@ export default function Login() {
         setLoading(true)
         try {
             const response = await api.post(routes.login, data)
-            toast.success('Login Successful! Redirecting to the dashboard...')
+            toast.success('Login Successful!')
             router.push('/')
         } catch (error: any) {
         } finally {

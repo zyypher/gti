@@ -149,7 +149,7 @@ const Sidebar = () => {
                 <div className="flex items-start justify-between border-b border-gray-300 px-4 py-5 lg:hidden">
                     <Link href="/" className="inline-block">
                         <Image
-                            src="/images/logo.svg"
+                            src="/images/gulbahar-logodark.svg" 
                             width={145}
                             height={34}
                             alt="Logo"
