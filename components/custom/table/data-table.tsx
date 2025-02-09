@@ -25,6 +25,7 @@ import React from 'react'
 import { InputSearch } from '@/components/ui/input-search'
 import { createPortal } from 'react-dom'
 import PaginationTable from '@/components/custom/pagination-table'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
@@ -34,6 +35,7 @@ interface DataTableProps<TData, TValue> {
     isRemovePagination?: boolean
     isFilterRow?: boolean
     isAllRowKey?: string
+    loading?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -44,6 +46,7 @@ export function DataTable<TData, TValue>({
     isFilterRowBasedOnValue,
     isRemovePagination = true,
     isAllRowKey,
+    loading = false,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] =
@@ -92,23 +95,21 @@ export function DataTable<TData, TValue>({
             <div className="w-full overflow-hidden rounded-b-lg bg-white shadow-sm">
                 <div>
                     {mounted &&
+                        document.getElementById('search-table') &&
                         createPortal(
-                            <>
-                                <InputSearch
-                                    placeholder={`Search ${filterField || ''}`}
-                                    value={
-                                        (table
-                                            .getColumn(filterField)
-
-                                            ?.getFilterValue() as string) ?? ''
-                                    }
-                                    onChange={(event) =>
-                                        table
-                                            .getColumn(filterField)
-                                            ?.setFilterValue(event.target.value)
-                                    }
-                                />
-                            </>,
+                            <InputSearch
+                                placeholder={`Search ${filterField || ''}`}
+                                value={
+                                    (table
+                                        .getColumn(filterField)
+                                        ?.getFilterValue() as string) ?? ''
+                                }
+                                onChange={(event) =>
+                                    table
+                                        .getColumn(filterField)
+                                        ?.setFilterValue(event.target.value)
+                                }
+                            />,
                             document.getElementById('search-table')!,
                         )}
                 </div>
@@ -136,7 +137,17 @@ export function DataTable<TData, TValue>({
                         ))}
                     </TableHeader>
                     <TableBody>
-                        {table.getRowModel().rows?.length ? (
+                        {loading ? (
+                            Array.from({ length: 5 }).map((_, index) => (
+                                <TableRow key={index}>
+                                    {columns.map((_, cellIndex) => (
+                                        <TableCell key={cellIndex}>
+                                            <Skeleton className="h-4 w-full" />
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))
+                        ) : table.getRowModel().rows?.length ? (
                             TableData.map((row) => {
                                 return (
                                     <TableRow

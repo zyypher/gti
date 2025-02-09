@@ -31,3 +31,28 @@ model DataRecord {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade) // Relation to User model
 }
+
+model Brand {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  image       String?
+  products    Product[]
+}
+
+model Product {
+  id        String   @id @default(uuid())
+  name      String
+  brand     Brand    @relation(fields: [brandId], references: [id])
+  brandId   String
+  size      String
+  tar       String
+  nicotine  String
+  co        String
+  flavor    String
+  fsp       String
+  corners   String
+  capsules  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

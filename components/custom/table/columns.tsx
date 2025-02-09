@@ -1,23 +1,18 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { ColumnDef } from '@tanstack/react-table'
-import { ArrowUpDown, MoreHorizontal, MoveDown, MoveUp } from 'lucide-react'
-import Image from 'next/image'
+import { Edit, Trash, FileText } from 'lucide-react'
 
 export type ITable = {
     id: string
-    brand: string
+    name: string
+    brand: {
+        name: string
+        description: string | null
+        image: string | null
+    }
     size: string
     tar: string
     nicotine: string
@@ -28,8 +23,10 @@ export type ITable = {
     capsules: string
 }
 
-
-export const columns: ColumnDef<ITable>[] = [
+export const columns = (
+    handleEdit: (item: ITable) => void,
+    handleDelete: (id: string) => void
+): ColumnDef<ITable>[] => [
     {
         id: 'select',
         header: ({ table }) => (
@@ -55,14 +52,14 @@ export const columns: ColumnDef<ITable>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: 'brand',
+        accessorKey: 'brand.name',
         header: 'Brand',
-        cell: ({ row }) => <div>{row.getValue('brand')}</div>,
+        cell: ({ row }) => <div>{row.original.brand.name}</div>, // Access the nested name property
     },
     {
-        accessorKey: 'product',
-        header: 'Product',
-        cell: ({ row }) => <div>{row.getValue('product')}</div>,
+        accessorKey: 'name',
+        header: 'Product Name',
+        cell: ({ row }) => <div>{row.getValue('name')}</div>,
     },
     {
         accessorKey: 'size',
@@ -111,5 +108,20 @@ export const columns: ColumnDef<ITable>[] = [
         header: 'Capsules',
         cell: ({ row }) => <div>{row.getValue('capsules')}</div>,
     },
+    {
+        header: 'Actions',
+        cell: ({ row }) => (
+            <div className="flex space-x-2">
+                <button onClick={() => handleEdit(row.original)}>
+                    <Edit className="h-5 w-5" />
+                </button>
+                <button onClick={() => handleDelete(row.original.id)}>
+                    <Trash className="h-5 w-5" />
+                </button>
+                <button>
+                    <FileText className="h-5 w-5" />
+                </button>
+            </div>
+        ),
+    },
 ]
-

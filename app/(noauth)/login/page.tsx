@@ -46,8 +46,6 @@ export default function Login() {
         }
     }
     
-    
-
     return (
         <div className="grid h-screen w-full gap-5 p-4 md:grid-cols-2">
             <div className="relative hidden overflow-hidden rounded-[20px] bg-[#3B06D2] p-4 md:block md:h-full">
