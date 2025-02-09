@@ -10,6 +10,8 @@ import { AtSign } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useState } from 'react'
+import routes from '@/lib/routes'
+import api from '@/lib/api'
 
 const loginSchema = z.object({
     email: z.string().email('Invalid email address'),
@@ -33,18 +35,10 @@ export default function Login() {
     const onSubmit = async (data: LoginFormData) => {
         setLoading(true)
         try {
-            const response = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            })
-
-            if (response.ok) {
-                router.push('/')
-            } else {
-                const errorData = await response.json()
-            }
+            const response = await api.post(routes.login, data)
+            router.push('/')
         } catch (error) {
+            console.error('Login error:', error)
         } finally {
             setLoading(false)
         }

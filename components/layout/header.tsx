@@ -29,16 +29,22 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { usePathname } from 'next/navigation'
+import { logout } from '@/lib/auth'
+import { usePathname, useRouter } from 'next/navigation'
 
 const Header = () => {
     const [date, setDate] = useState<Date>()
-
+    const router = useRouter()
     const pathName = usePathname()
 
     const toggleSidebar = () => {
         document.getElementById('sidebar')?.classList.toggle('open')
         document.getElementById('overlay')?.classList.toggle('open')
+    }
+
+    const handleLogout = async () => {
+        await logout()
+        router.push('/login') // Redirect to login page
     }
 
     const [notifications, setNotifications] = useState([
@@ -280,6 +286,7 @@ const Header = () => {
                                 <DropdownMenuItem className="p-0">
                                     <Link
                                         href="/login"
+                                        onClick={handleLogout}
                                         className={`flex items-center gap-1.5 rounded-lg px-3 py-2 ${pathName === '/login' && '!bg-gray-400 !text-black'}`}
                                     >
                                         <LogOut className="size-[18px] shrink-0" />

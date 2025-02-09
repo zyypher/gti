@@ -1,5 +1,7 @@
 const routes = {
-    login: '/login',
+    login: '/api/login',
+    logout: '/api/logout',
+    fetchUser: '/api/user',
 }
 
 export default routes
