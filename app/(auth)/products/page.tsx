@@ -24,6 +24,7 @@ const Products = () => {
     const [filters, setFilters] = useState({})
     const [loading, setLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [buttonLoading, setButtonLoading] = useState(false)
 
     const {
         register,
@@ -32,55 +33,57 @@ const Products = () => {
         formState: { errors },
     } = useForm()
 
+    // Function to fetch products
+    const fetchProducts = async () => {
+        setLoading(true)
+        try {
+            const queryParams = new URLSearchParams(filters).toString()
+            const response = await fetch(`/api/products?${queryParams}`)
+            const data = await response.json()
+            setProducts(data)
+        } catch (error) {
+            console.error('Failed to fetch products:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Function to fetch brands
+    const fetchBrands = async () => {
+        try {
+            const response = await fetch('/api/brands')
+            const data = await response.json()
+            setBrands(data)
+        } catch (error) {
+            console.error('Failed to fetch brands:', error)
+        }
+    }
+
     useEffect(() => {
-        async function fetchProducts() {
-            setLoading(true)
-            try {
-                const queryParams = new URLSearchParams(filters).toString()
-                const response = await fetch(`/api/products?${queryParams}`)
-                const data = await response.json()
-                setProducts(data)
-            } catch (error) {
-                console.error('Failed to fetch products:', error)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        async function fetchBrands() {
-            try {
-                const response = await fetch('/api/brands')
-                const data = await response.json()
-                setBrands(data)
-            } catch (error) {
-                console.error('Failed to fetch brands:', error)
-            }
-        }
-
         fetchProducts()
         fetchBrands()
     }, [filters])
 
     const handleAddProduct = async (data: any) => {
+        setButtonLoading(true)
         try {
-            const response = await api.post(routes.addProduct, {
-                ...data,
-            })
-    
+            const response = await api.post(routes.addProduct, data)
+
             if (response.status === 201 || response.status === 200) {
-                setProducts((prev) => [...prev, response.data])
                 toast.success('Product added successfully')
                 reset()
                 setIsDialogOpen(false)
+                fetchProducts() // Refetch products to rerender table
             } else {
                 toast.error('Failed to add product')
             }
         } catch (error) {
             toast.error('Error adding product')
             console.error('Error:', error)
+        } finally {
+            setButtonLoading(false)
         }
     }
-    
 
     const handleFilterChange = (newFilters: { [key: string]: string }) => {
         setFilters(newFilters)
@@ -116,6 +119,7 @@ const Products = () => {
                 onClose={() => setIsDialogOpen(false)}
                 title="Add New Product"
                 onSubmit={handleSubmit(handleAddProduct)}
+                buttonLoading={buttonLoading}
             >
                 <div className="space-y-4">
                     <div>
@@ -161,9 +165,9 @@ const Products = () => {
                     />
                     <Input placeholder="Enter CO (mg)" {...register('co')} />
                     <Input placeholder="Flavor" {...register('flavor')} />
-                    <Input placeholder="fsp" {...register('fsp')} />
-                    <Input placeholder="corners" {...register('corners')} />
-                    <Input placeholder="capsules" {...register('capsules')} />
+                    <Input placeholder="FSP" {...register('fsp')} />
+                    <Input placeholder="Corners" {...register('corners')} />
+                    <Input placeholder="Capsules" {...register('capsules')} />
                 </div>
             </Dialog>
         </div>
