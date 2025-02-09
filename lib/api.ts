@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios'
+import { toast } from 'react-hot-toast'
 
 // Create an Axios instance
 const api = axios.create({
@@ -17,22 +18,20 @@ api.interceptors.request.use(
         }
         return config
     },
-    (error) => Promise.reject(error)
+    (error) => Promise.reject(error),
 )
 
 // Add response interceptor to handle errors globally
 api.interceptors.response.use(
     (response) => response,
     (error: AxiosError) => {
-        if (error.response) {
-            console.error('error.response.data?.error')
-            // showToast('Error', error.response.data?.error || 'An error occurred', false)
+        if (error.response?.status === 401) {
+            toast.error('Invalid credentials. Please try again.')
         } else {
-            console.error('Network error. Please try again.')
-            // showToast('Error', 'Network error. Please try again.', false)
+            toast.error('An error occurred. Please try again.')
         }
         return Promise.reject(error)
-    }
+    },
 )
 
 export default api

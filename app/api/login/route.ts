@@ -9,7 +9,6 @@ export async function POST(req: Request) {
     try {
         // Read and parse the request body
         const body = await req.json()
-        console.log('##Received request body:', body)
 
         const { email, password } = body
 
@@ -17,8 +16,6 @@ export async function POST(req: Request) {
         const user = await prisma.user.findUnique({
             where: { email },
         })
-        console.log('##User from DB:', user)
-        console.log('##Stored password hash:', user?.password)
 
         if (!user) {
             return NextResponse.json(
@@ -29,7 +26,6 @@ export async function POST(req: Request) {
 
         // Verify the password
         const isPasswordValid = await bcrypt.compare(password, user.password)
-        console.log('##Password valid:', isPasswordValid)
         if (!isPasswordValid) {
             return NextResponse.json(
                 { error: 'Invalid email or password' },

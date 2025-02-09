@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import '@/app/globals.css'
+import { Toaster } from 'react-hot-toast'
+
 
 export const metadata: Metadata = {
     title: 'GTI Sales Dashboard',
@@ -16,6 +18,7 @@ export default async function RootLayout({
         <html lang="en" className="scroll-smooth">
             <body className="bg-gray-400 font-plus-jakarta text-sm/[22px] font-normal text-gray antialiased">
                 {children}
+                <Toaster position="top-center" reverseOrder={false} />
             </body>
         </html>
     )

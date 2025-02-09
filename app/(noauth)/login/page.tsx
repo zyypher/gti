@@ -12,6 +12,8 @@ import Image from 'next/image'
 import { useState } from 'react'
 import routes from '@/lib/routes'
 import api from '@/lib/api'
+import { toast } from 'react-hot-toast'
+
 
 const loginSchema = z.object({
     email: z.string().email('Invalid email address'),
@@ -36,13 +38,15 @@ export default function Login() {
         setLoading(true)
         try {
             const response = await api.post(routes.login, data)
+            toast.success('Login Successful! Redirecting to the dashboard...')
             router.push('/')
-        } catch (error) {
-            console.error('Login error:', error)
+        } catch (error: any) {
         } finally {
             setLoading(false)
         }
     }
+    
+    
 
     return (
         <div className="grid h-screen w-full gap-5 p-4 md:grid-cols-2">
