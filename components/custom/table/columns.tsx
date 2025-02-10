@@ -21,6 +21,17 @@ export type ITable = {
     fsp: string
     corners: string
     capsules: string
+    pdfContent: string
+}
+function displayPdf(base64Pdf: string | null) {
+    if (!base64Pdf) return <span>No PDF</span>
+
+    const pdfUrl = `data:application/pdf;base64,${base64Pdf}`
+    return (
+        <a href={pdfUrl} download="product.pdf">
+            Download PDF
+        </a>
+    )
 }
 
 export const columns = (
@@ -108,6 +119,26 @@ export const columns = (
         header: 'Capsules',
         cell: ({ row }) => <div>{row.getValue('capsules')}</div>,
     },
+    // {
+    //     accessorKey: 'pdfContent',
+    //     header: 'PDF',
+    //     cell: ({ row }) => {
+    //         const pdfPath = row.original.pdfContent
+    //         return pdfPath ? (
+    //             <a href={pdfPath} target="_blank" rel="noopener noreferrer">
+    //                 View PDF
+    //             </a>
+    //         ) : (
+    //             <span>No PDF</span>
+    //         )
+    //     },
+    // },
+    {
+        accessorKey: 'pdfContent',
+        header: 'PDF',
+        cell: ({ row }) => displayPdf(row.getValue('pdfContent')),
+    }
+,    
     {
         header: 'Actions',
         cell: ({ row }) => (

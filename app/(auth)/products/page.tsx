@@ -49,8 +49,8 @@ const Products = () => {
         }
     }
 
-     // Function to fetch brands
-     const fetchBrands = async () => {
+    // Function to fetch brands
+    const fetchBrands = async () => {
         try {
             const response = await fetch('/api/brands')
             const data = await response.json()
@@ -68,7 +68,29 @@ const Products = () => {
     const handleAddProduct = async (data: any) => {
         setButtonLoading(true)
         try {
-            const response = await api.post(routes.addProduct, data)
+            // Create FormData to handle file upload
+            const formData = new FormData()
+            formData.append('name', data.name)
+            formData.append('brandId', data.brandId)
+            formData.append('size', data.size || '')
+            formData.append('tar', data.tar || '')
+            formData.append('nicotine', data.nicotine || '')
+            formData.append('co', data.co || '')
+            formData.append('flavor', data.flavor || '')
+            formData.append('fsp', data.fsp || '')
+            formData.append('corners', data.corners || '')
+            formData.append('capsules', data.capsules || '')
+
+            // Attach the PDF file
+            if (data.pdf[0]) {
+                formData.append('pdf', data.pdf[0])
+            }
+
+            const response = await api.post(routes.addProduct, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            })
 
             if (response.status === 201 || response.status === 200) {
                 toast.success('Product added successfully')
@@ -128,7 +150,7 @@ const Products = () => {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between gap-4">
-                <ProductsFilters onFilterChange={handleFilterChange} /> 
+                <ProductsFilters onFilterChange={handleFilterChange} />
                 <div className="flex gap-4">
                     <Button
                         variant="black"
@@ -153,7 +175,6 @@ const Products = () => {
                 filterField="product"
                 loading={loading}
                 rowSelectionCallback={handleRowSelection} // Pass callback function
-
             />
 
             <Dialog
@@ -210,6 +231,11 @@ const Products = () => {
                     <Input placeholder="FSP" {...register('fsp')} />
                     <Input placeholder="Corners" {...register('corners')} />
                     <Input placeholder="Capsules" {...register('capsules')} />
+                    <Input
+                        type="file"
+                        accept="application/pdf"
+                        {...register('pdf')}
+                    />
                 </div>
             </Dialog>
         </div>
