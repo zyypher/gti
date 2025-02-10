@@ -25,6 +25,7 @@ const Products = () => {
     const [loading, setLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [buttonLoading, setButtonLoading] = useState(false)
+    const [selectedRows, setSelectedRows] = useState<string[]>([])
 
     const {
         register,
@@ -33,7 +34,7 @@ const Products = () => {
         formState: { errors },
     } = useForm()
 
-    // Function to fetch products
+    // Fetch products
     const fetchProducts = async () => {
         setLoading(true)
         try {
@@ -48,8 +49,8 @@ const Products = () => {
         }
     }
 
-    // Function to fetch brands
-    const fetchBrands = async () => {
+     // Function to fetch brands
+     const fetchBrands = async () => {
         try {
             const response = await fetch('/api/brands')
             const data = await response.json()
@@ -97,14 +98,53 @@ const Products = () => {
         console.log('Delete item with ID:', id)
     }
 
+    const handleRowSelection = (ids: string[]) => {
+        setSelectedRows(ids)
+        console.log('##Selected rows in Products page:', ids)
+    }
+
+    const handleCreatePDF = async () => {
+        if (selectedRows.length === 0) return
+
+        try {
+            const response = await api.post('/api/pdf/generate', {
+                productIds: selectedRows,
+            })
+
+            if (response.status === 200) {
+                toast.success('PDF generated successfully!')
+                // Handle the file download (assume response contains PDF URL)
+                const pdfUrl = response.data.url
+                window.open(pdfUrl, '_blank')
+            } else {
+                toast.error('Failed to generate PDF.')
+            }
+        } catch (error) {
+            toast.error('Error generating PDF.')
+            console.error('Error:', error)
+        }
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between gap-4">
-                <ProductsFilters onFilterChange={handleFilterChange} />
-                <Button variant="black" onClick={() => setIsDialogOpen(true)}>
-                    <Plus />
-                    New Product
-                </Button>
+                <ProductsFilters onFilterChange={handleFilterChange} /> 
+                <div className="flex gap-4">
+                    <Button
+                        variant="black"
+                        onClick={() => setIsDialogOpen(true)}
+                    >
+                        <Plus />
+                        New Product
+                    </Button>
+                    <Button
+                        variant="outline-black"
+                        // disabled={selectedRows.length === 0}
+                        onClick={handleCreatePDF}
+                    >
+                        Create PDF
+                    </Button>
+                </div>
             </div>
 
             <DataTable
@@ -112,6 +152,8 @@ const Products = () => {
                 data={products}
                 filterField="product"
                 loading={loading}
+                rowSelectionCallback={handleRowSelection} // Pass callback function
+
             />
 
             <Dialog

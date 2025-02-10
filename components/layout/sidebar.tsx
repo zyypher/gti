@@ -33,7 +33,8 @@ import {
     X,
     Cigarette,
     Package,
-    CircleUserRound
+    CircleUserRound,
+    FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
@@ -689,6 +690,10 @@ const Sidebar = () => {
                     <NavLink href="/products" className={`nav-link`}>
                         <Cigarette className="size-[18px] shrink-0" />
                         <span>Products</span>
+                    </NavLink>
+                    <NavLink href="/advertisements" className={`nav-link`}>
+                        <FileText className="size-[18px] shrink-0" />
+                        <span>Advertisements</span>
                     </NavLink>
 
                     {/* <AccordionItem value="item-5" className="p-0 shadow-none">
