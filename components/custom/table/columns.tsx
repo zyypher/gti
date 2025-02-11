@@ -42,6 +42,7 @@ export const columns = (
         id: 'select',
         header: ({ table }) => (
             <Checkbox
+            className="h-3 w-3 scale-150"
                 checked={
                     table.getIsAllPageRowsSelected() ||
                     (table.getIsSomePageRowsSelected() && 'indeterminate')
@@ -54,10 +55,11 @@ export const columns = (
         ),
         cell: ({ row }) => (
             <Checkbox
+                className="h-3 w-3 scale-150"
                 checked={row.getIsSelected()}
                 onCheckedChange={(value) => row.toggleSelected(!!value)}
                 aria-label="Select row"
-            />
+                />
         ),
         enableSorting: false,
         enableHiding: false,

@@ -126,33 +126,35 @@ const Products = () => {
     }
 
     const handleCreatePDF = async () => {
-        if (selectedRows.length === 0) return;
-    
+        if (selectedRows.length === 0) return
+
         try {
             const response = await api.post('/api/pdf/generate', {
                 productIds: selectedRows,
-            });
-    
+            })
+
             if (response.status === 200) {
-                toast.success('PDF generated successfully!');
-                const pdfUrl = response.data.url;
-    
-                // Create a temporary link to trigger the download
-                const downloadLink = document.createElement('a');
-                downloadLink.href = pdfUrl;
-                downloadLink.download = 'merged-document.pdf';
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
+                toast.success('PDF generated successfully!')
+                const pdfUrl = response.data.url
+
+                // Trigger PDF download
+                const downloadLink = document.createElement('a')
+                downloadLink.href = pdfUrl
+                downloadLink.download = 'merged-document.pdf'
+                document.body.appendChild(downloadLink)
+                downloadLink.click()
+                document.body.removeChild(downloadLink)
+
+                // Clear selected rows
+                setSelectedRows([])
             } else {
-                toast.error('Failed to generate PDF.');
+                toast.error('Failed to generate PDF.')
             }
         } catch (error) {
-            toast.error('Error generating PDF.');
-            console.error('Error:', error);
+            toast.error('Error generating PDF.')
+            console.error('Error:', error)
         }
-    };
-    
+    }
 
     return (
         <div className="space-y-4">
@@ -168,7 +170,7 @@ const Products = () => {
                     </Button>
                     <Button
                         variant="outline-black"
-                        // disabled={selectedRows.length === 0}
+                        disabled={selectedRows.length <= 1}
                         onClick={handleCreatePDF}
                     >
                         Create PDF
