@@ -126,26 +126,33 @@ const Products = () => {
     }
 
     const handleCreatePDF = async () => {
-        if (selectedRows.length === 0) return
-
+        if (selectedRows.length === 0) return;
+    
         try {
             const response = await api.post('/api/pdf/generate', {
                 productIds: selectedRows,
-            })
-
+            });
+    
             if (response.status === 200) {
-                toast.success('PDF generated successfully!')
-                // Handle the file download (assume response contains PDF URL)
-                const pdfUrl = response.data.url
-                window.open(pdfUrl, '_blank')
+                toast.success('PDF generated successfully!');
+                const pdfUrl = response.data.url;
+    
+                // Create a temporary link to trigger the download
+                const downloadLink = document.createElement('a');
+                downloadLink.href = pdfUrl;
+                downloadLink.download = 'merged-document.pdf';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
             } else {
-                toast.error('Failed to generate PDF.')
+                toast.error('Failed to generate PDF.');
             }
         } catch (error) {
-            toast.error('Error generating PDF.')
-            console.error('Error:', error)
+            toast.error('Error generating PDF.');
+            console.error('Error:', error);
         }
-    }
+    };
+    
 
     return (
         <div className="space-y-4">
