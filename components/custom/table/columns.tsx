@@ -5,6 +5,7 @@ import { ColumnDef } from '@tanstack/react-table'
 import { Edit, Trash, FileText } from 'lucide-react'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
+import PDFDownloadButton from '../PDFDownloadButton'
 
 export type ITable = {
     id: string
@@ -110,57 +111,9 @@ export const columns = (
     {
         accessorKey: 'pdfContent',
         header: 'PDF',
-        cell: ({ row }) => {
-            const [loading, setLoading] = useState(false)
-
-            const handleDownloadPDF = async () => {
-                setLoading(true);
-                try {
-                    const response = await api.get(`/api/products/${row.original.id}/pdf`, {
-                        responseType: 'blob', // Ensure we receive the file properly
-                    });
-            
-                    if (response.status === 200) {
-                        // Check if the response is empty (indicating no PDF exists)
-                        if (!response.data || response.data.size === 0) {
-                            toast.error('No PDF available for this product');
-                            return;
-                        }
-            
-                        const blob = new Blob([response.data], { type: 'application/pdf' });
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-            
-                        link.href = url;
-                        link.download = `${row.original.name}.pdf`; // Set default filename
-                        document.body.appendChild(link);
-                        link.click();
-            
-                        // Cleanup
-                        document.body.removeChild(link);
-                        window.URL.revokeObjectURL(url);
-                    } else {
-                        toast.error('No PDF available for this product');
-                    }
-                } catch (error) {
-                    if (error.response && error.response.status === 404) {
-                        toast.error('No PDF available for this product'); // Handle missing PDFs gracefully
-                    } else {
-                        toast.error('Error fetching PDF');
-                    }
-                } finally {
-                    setLoading(false);
-                }
-            };
-            
-            
-
-            return (
-                <button onClick={handleDownloadPDF} disabled={loading}>
-                    {loading ? 'Loading...' : <FileText className="h-5 w-5" />}
-                </button>
-            )
-        },
+        cell: ({ row }) => (
+            <PDFDownloadButton productId={row.original.id} productName={row.original.name} />
+        ),
     },
     {
         header: 'Actions',

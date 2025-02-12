@@ -8,18 +8,18 @@ export async function POST(req: Request) {
     const { productIds } = await req.json()
 
     try {
-        // Fetch products and get their PDF content
-        const products = await prisma.product.findMany({
+        // Fetch PDFs from the `ProductPDF` table using productIds
+        const products = await prisma.productPDF.findMany({
             where: {
-                id: { in: productIds },
+                productId: { in: productIds },
             },
             select: {
-                pdfContent: true,  // Select the binary PDF content
+                pdfContent: true,  // Select binary PDF content
             },
         })
 
         if (!products.length) {
-            return NextResponse.json({ error: 'No products found' }, { status: 404 })
+            return NextResponse.json({ error: 'No PDFs found for the selected products' }, { status: 404 })
         }
 
         const pdfDoc = await PDFDocument.create()
