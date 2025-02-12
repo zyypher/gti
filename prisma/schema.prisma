@@ -34,21 +34,21 @@ model Brand {
 }
 
 model Product {
-  id         String   @id @default(uuid())
-  name       String
-  size       String?
-  tar        String?
-  nicotine   String?
-  co         String?
-  flavor     String?
-  fsp        String?
-  corners    String?
-  capsules   String?
-  pdfContent Bytes?
-  brand      Brand    @relation(fields: [brandId], references: [id])
-  brandId    String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String      @id @default(uuid())
+  name      String
+  size      String?
+  tar       String?
+  nicotine  String?
+  co        String?
+  flavor    String?
+  fsp       String?
+  corners   String?
+  capsules  String?
+  brand     Brand       @relation(fields: [brandId], references: [id])
+  brandId   String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  pdf       ProductPDF?
 }
 
 enum Role {
@@ -64,4 +64,12 @@ model Advertisement {
   title     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ProductPDF {
+  id         String   @id @default(uuid())
+  productId  String   @unique // Links to a product
+  pdfContent Bytes? // Store the PDF as binary
+  createdAt  DateTime @default(now())
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }

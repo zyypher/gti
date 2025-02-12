@@ -1,18 +1,15 @@
-'use client'
-
+import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ColumnDef } from '@tanstack/react-table'
 import { Edit, Trash, FileText } from 'lucide-react'
+import api from '@/lib/api'
+import toast from 'react-hot-toast'
 
 export type ITable = {
     id: string
     name: string
-    brand: {
-        name: string
-        description: string | null
-        image: string | null
-    }
+    brand: { name: string; description: string | null; image: string | null }
     size: string
     tar: string
     nicotine: string
@@ -21,17 +18,6 @@ export type ITable = {
     fsp: string
     corners: string
     capsules: string
-    pdfContent: string
-}
-function displayPdf(base64Pdf: string | null) {
-    if (!base64Pdf) return <span>No PDF</span>
-
-    const pdfUrl = `data:application/pdf;base64,${base64Pdf}`
-    return (
-        <a href={pdfUrl} download="product.pdf">
-            Download PDF
-        </a>
-    )
 }
 
 export const columns = (
@@ -42,7 +28,7 @@ export const columns = (
         id: 'select',
         header: ({ table }) => (
             <Checkbox
-            className="h-3 w-3 scale-150"
+                className="h-3 w-3 scale-150"
                 checked={
                     table.getIsAllPageRowsSelected() ||
                     (table.getIsSomePageRowsSelected() && 'indeterminate')
@@ -59,7 +45,7 @@ export const columns = (
                 checked={row.getIsSelected()}
                 onCheckedChange={(value) => row.toggleSelected(!!value)}
                 aria-label="Select row"
-                />
+            />
         ),
         enableSorting: false,
         enableHiding: false,
@@ -67,7 +53,7 @@ export const columns = (
     {
         accessorKey: 'brand.name',
         header: 'Brand',
-        cell: ({ row }) => <div>{row.original.brand.name}</div>, // Access the nested name property
+        cell: ({ row }) => <div>{row.original.brand.name}</div>,
     },
     {
         accessorKey: 'name',
@@ -121,26 +107,61 @@ export const columns = (
         header: 'Capsules',
         cell: ({ row }) => <div>{row.getValue('capsules')}</div>,
     },
-    // {
-    //     accessorKey: 'pdfContent',
-    //     header: 'PDF',
-    //     cell: ({ row }) => {
-    //         const pdfPath = row.original.pdfContent
-    //         return pdfPath ? (
-    //             <a href={pdfPath} target="_blank" rel="noopener noreferrer">
-    //                 View PDF
-    //             </a>
-    //         ) : (
-    //             <span>No PDF</span>
-    //         )
-    //     },
-    // },
     {
         accessorKey: 'pdfContent',
         header: 'PDF',
-        cell: ({ row }) => displayPdf(row.getValue('pdfContent')),
-    }
-,    
+        cell: ({ row }) => {
+            const [loading, setLoading] = useState(false)
+
+            const handleDownloadPDF = async () => {
+                setLoading(true);
+                try {
+                    const response = await api.get(`/api/products/${row.original.id}/pdf`, {
+                        responseType: 'blob', // Ensure we receive the file properly
+                    });
+            
+                    if (response.status === 200) {
+                        // Check if the response is empty (indicating no PDF exists)
+                        if (!response.data || response.data.size === 0) {
+                            toast.error('No PDF available for this product');
+                            return;
+                        }
+            
+                        const blob = new Blob([response.data], { type: 'application/pdf' });
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+            
+                        link.href = url;
+                        link.download = `${row.original.name}.pdf`; // Set default filename
+                        document.body.appendChild(link);
+                        link.click();
+            
+                        // Cleanup
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                    } else {
+                        toast.error('No PDF available for this product');
+                    }
+                } catch (error) {
+                    if (error.response && error.response.status === 404) {
+                        toast.error('No PDF available for this product'); // Handle missing PDFs gracefully
+                    } else {
+                        toast.error('Error fetching PDF');
+                    }
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            
+
+            return (
+                <button onClick={handleDownloadPDF} disabled={loading}>
+                    {loading ? 'Loading...' : <FileText className="h-5 w-5" />}
+                </button>
+            )
+        },
+    },
     {
         header: 'Actions',
         cell: ({ row }) => (
@@ -150,9 +171,6 @@ export const columns = (
                 </button>
                 <button onClick={() => handleDelete(row.original.id)}>
                     <Trash className="h-5 w-5" />
-                </button>
-                <button>
-                    <FileText className="h-5 w-5" />
                 </button>
             </div>
         ),

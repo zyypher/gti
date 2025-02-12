@@ -23,30 +23,15 @@ export async function GET(req: Request) {
         },
     })
 
-    const formattedProducts = products.map((product) => ({
-        ...product,
-        pdfContent: product.pdfContent ? Buffer.from(product.pdfContent).toString('base64') : null,
-    }))
-
-    return NextResponse.json(formattedProducts)
+    return NextResponse.json(products)
 }
-
 
 
 export async function POST(req: Request) {
     const formData = await req.formData()
-    const pdfFile = formData.get('pdf')
-
-    let pdfContent: Buffer | null = null
-
-    // Convert the file to binary if it exists
-    if (pdfFile instanceof File) {
-        const fileBuffer = await pdfFile.arrayBuffer()
-        pdfContent = Buffer.from(fileBuffer)
-    }
-
-    // Collect form data entries
+    const pdfFile = formData.get('pdf') as File | null
     const productData: Record<string, string> = {}
+
     formData.forEach((value, key) => {
         if (typeof value === 'string') {
             productData[key] = value
@@ -56,7 +41,7 @@ export async function POST(req: Request) {
     const { brandId, name, size, tar, nicotine, co, flavor, fsp, corners, capsules } = productData
 
     try {
-        // Create the product and store the binary PDF content
+        // Step 1: Create the Product (Without PDF)
         const product = await prisma.product.create({
             data: {
                 name,
@@ -68,14 +53,22 @@ export async function POST(req: Request) {
                 fsp,
                 corners,
                 capsules,
-                pdfContent,  // Save directly to the database
                 brand: {
-                    connect: {
-                        id: brandId,
-                    },
+                    connect: { id: brandId },
                 },
             },
         })
+
+        // Step 2: If there's a PDF, store it in ProductPDF
+        if (pdfFile) {
+            const fileBuffer = await pdfFile.arrayBuffer()
+            await prisma.productPDF.create({
+                data: {
+                    productId: product.id,
+                    pdfContent: Buffer.from(fileBuffer),
+                },
+            })
+        }
 
         return NextResponse.json(product, { status: 201 })
     } catch (error) {
@@ -83,9 +76,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
     }
 }
-
-
-
 
 export async function DELETE(req: Request) {
     const { id } = Object.fromEntries(new URL(req.url).searchParams)

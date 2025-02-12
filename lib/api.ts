@@ -26,12 +26,14 @@ api.interceptors.response.use(
     (response) => response,
     (error: AxiosError) => {
         if (error.response?.status === 401) {
-            toast.error('Invalid credentials. Please try again.')
-        } else {
-            toast.error('An error occurred. Please try again.')
+            toast.error('Invalid credentials. Please try again.');
+        } 
+        else if (error.response?.status !== 404) {
+            toast.error('An error occurred. Please try again.');
         }
-        return Promise.reject(error)
+        return Promise.reject(error);
     },
-)
+);
+
 
 export default api
