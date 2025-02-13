@@ -47,46 +47,32 @@ export const dashboardcolumns: ColumnDef<ITable>[] = [
     },
     {
         accessorKey: 'receptionist',
-        header: ({ column }) => {
-            return (
-                <button
-                    type="button"
-                    className="flex items-center gap-1.5"
-                    onClick={() =>
-                        column.toggleSorting(column.getIsSorted() === 'asc')
-                    }
-                >
-                    <span className="inline-flex items-center -space-x-[5px]">
-                        <MoveDown
-                            className={`size-2.5 shrink-0 text-black ${column.getIsSorted() === 'asc' && 'text-gray-500'}`}
-                        />
-                        <MoveUp
-                            className={`size-2.5 shrink-0 text-gray-500 ${column.getIsSorted() === 'asc' && '!text-black'}`}
-                        />
-                    </span>
-                    Sales Receptionist
-                </button>
-            )
-        },
+        header: 'Sales Receptionist',
         cell: ({ row }) => {
-            const image = row.original.receptionist
-
+            const receptionist = row.original.receptionist;
+    
+            // Provide a default fallback if receptionist is missing
+            if (!receptionist) {
+                return <span className="text-gray-500">No Receptionist</span>;
+            }
+    
             return (
                 <div className="flex items-center gap-2">
                     <div className="size-6 overflow-hidden">
                         <Image
-                            src={image.image}
-                            alt={image.name}
+                            src={receptionist.image || '/images/default-avatar.png'}
+                            alt={receptionist.name || 'Unknown'}
                             className="size-full object-cover"
                             width={24}
                             height={24}
                         />
                     </div>
-                    <span>{image.name}</span>
+                    <span>{receptionist.name || 'Unknown'}</span>
                 </div>
-            )
+            );
         },
     },
+    
     {
         accessorKey: 'sales_id',
         header: ({ column }) => {

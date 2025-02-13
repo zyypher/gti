@@ -2,12 +2,11 @@ import type { Metadata } from 'next'
 import '@/app/globals.css'
 import { Toaster } from 'react-hot-toast'
 
-
 export const metadata: Metadata = {
     title: 'GTI Sales Dashboard',
-    description: 'Gulbahar Tobacco International Sales Dashboard – Monitor sales performance, track inventory, and analyze business data in real-time. Empowering efficient decision-making for one of the leading tobacco manufacturers in the UAE.',
+    description:
+        'Gulbahar Tobacco International Sales Dashboard – Monitor sales performance, track inventory, and analyze business data in real-time. Empowering efficient decision-making for one of the leading tobacco manufacturers in the UAE.',
 }
-
 
 export default async function RootLayout({
     children,

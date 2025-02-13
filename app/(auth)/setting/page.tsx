@@ -169,7 +169,7 @@ export default function Setting() {
                                     </form>
                                 </CardContent>
                             </Card>
-                            <Card>
+                            {/* <Card>
                                 <CardHeader className="space-y-1.5 rounded-t-lg border-b border-gray-300 bg-gray-100 px-5 py-4 text-base/5 font-semibold text-black">
                                     <h3>Profile details</h3>
                                     <p className="text-sm/tight font-medium text-gray-700">
@@ -264,7 +264,7 @@ export default function Setting() {
                                         </div>
                                     </form>
                                 </CardContent>
-                            </Card>
+                            </Card> */}
                         </div>
                     </TabsContent>
 
