@@ -1,15 +1,15 @@
 {
-    "name": "GTI Sales Dashboard",
-    "short_name": "GTI",
-    "description": "Gulbahar Tobacco International Sales Dashboard – Monitor sales performance, track inventory, and analyze business data in real-time. Empowering efficient decision-making for one of the leading tobacco manufacturers in the UAE.",
+    "name": "GTI Admin Dashboard",
+    "short_name": "GTIApp",
+    "description": "Admin dashboard for GTI business",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#000000",
     "icons": [
         {
-            "src": "/icon.png",
-            "sizes": "512x512",
+            "src": "/images/gulbahar-logodark.png",
+            "sizes": "192x192",
             "type": "image/png"
         }
     ]
