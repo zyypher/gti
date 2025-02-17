@@ -35,6 +35,7 @@ const BrandsPage = () => {
 
     useEffect(() => {
         const fetchBrands = async () => {
+            setLoading(true)
             try {
                 const response = await api.get('/api/brands')
                 setBrands(response.data)
@@ -49,47 +50,49 @@ const BrandsPage = () => {
     }, [])
 
     const handleAddOrEditBrand = async (data: any) => {
-      setButtonLoading(true)
-      try {
-          const formData = new FormData()
-          formData.append('name', data.name)
-          formData.append('description', data.description || '')
-          if (data.image[0]) {
-              formData.append('image', data.image[0])
-          }
-  
-          const url = selectedBrand
-              ? `/api/brands/${selectedBrand.id}`
-              : '/api/brands'
-  
-          const method = selectedBrand ? 'put' : 'post'
-  
-          const response = await api({
-              method,
-              url,
-              data: formData,
-              headers: { 'Content-Type': 'multipart/form-data' },
-          })
-  
-          if (response.status === 200 || response.status === 201) {
-              toast.success(`Brand ${selectedBrand ? 'updated' : 'added'} successfully`)
-              setIsDialogOpen(false)
-              reset()
-              setSelectedBrand(null)
-              const refreshedBrands = await api.get('/api/brands')
-              setBrands(refreshedBrands.data)
-          } else {
-              toast.error('Failed to save brand')
-          }
-      } catch (error) {
-          toast.error('Error saving brand')
-          console.error(error)
-      } finally {
-          setButtonLoading(false)
-      }
-  }
-  
-  
+        setButtonLoading(true)
+        setLoading(true)
+        try {
+            const formData = new FormData()
+            formData.append('name', data.name)
+            formData.append('description', data.description || '')
+            if (data.image[0]) {
+                formData.append('image', data.image[0])
+            }
+
+            const url = selectedBrand
+                ? `/api/brands/${selectedBrand.id}`
+                : '/api/brands'
+
+            const method = selectedBrand ? 'put' : 'post'
+
+            const response = await api({
+                method,
+                url,
+                data: formData,
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
+
+            if (response.status === 200 || response.status === 201) {
+                toast.success(
+                    `Brand ${selectedBrand ? 'updated' : 'added'} successfully`,
+                )
+                setIsDialogOpen(false)
+                reset()
+                setSelectedBrand(null)
+                const refreshedBrands = await api.get('/api/brands')
+                setBrands(refreshedBrands.data)
+            } else {
+                toast.error('Failed to save brand')
+            }
+        } catch (error) {
+            toast.error('Error saving brand')
+            console.error(error)
+        } finally {
+            setButtonLoading(false)
+            setLoading(false)
+        }
+    }
 
     const openEditDialog = (brand: Brand) => {
         setSelectedBrand(brand)
@@ -98,54 +101,63 @@ const BrandsPage = () => {
         setIsDialogOpen(true)
     }
 
-    if (loading) {
-        return (
-            <div className="flex h-screen items-center justify-center">
-                Loading...
-            </div>
-        )
-    }
-
     return (
         <div className="space-y-4">
             <PageHeading heading="Brands" />
-            <Button
-                variant="black"
-                onClick={() => {
-                    setSelectedBrand(null)
-                    reset()
-                    setIsDialogOpen(true)
-                }}
-            >
-                Add Brand
-            </Button>
+            <div className="flex justify-end">
+                <Button
+                    variant="black"
+                    onClick={() => {
+                        setSelectedBrand(null)
+                        reset()
+                        setIsDialogOpen(true)
+                    }}
+                >
+                    Add Brand
+                </Button>
+            </div>
+            {/* Brand Grid Section with Conditional Loading */}
             <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
-                {brands.map((brand) => (
-                    <Card
-                        key={brand.id}
-                        className="relative transition hover:shadow-lg"
-                    >
-                        <button
-                            onClick={() => openEditDialog(brand)}
-                            className="absolute right-2 top-2 rounded-full bg-gray-200 p-2 hover:bg-gray-300"
-                        >
-                            <Pencil size={16} />
-                        </button>
-                        <CardContent className="space-y-3 p-4">
-                            <img
-                                src={brand.image}
-                                alt={brand.name}
-                                className="h-40 w-full rounded-lg object-cover"
-                            />
-                            <h3 className="text-gray-800 text-lg font-semibold">
-                                {brand.name}
-                            </h3>
-                            <p className="text-sm text-gray-600">
-                                {brand.description}
-                            </p>
-                        </CardContent>
-                    </Card>
-                ))}
+                {loading
+                    ? // Show 9 placeholder cards with pulse animation
+                      Array.from({ length: 9 }).map((_, index) => (
+                          <div
+                              key={index}
+                              className="h-60 w-full animate-pulse rounded-lg bg-gray-500"
+                          />
+                      ))
+                    : brands.map((brand) => (
+                          <Card
+                              key={brand.id}
+                              className="relative transition hover:shadow-lg"
+                          >
+                              <button
+                                  onClick={() => openEditDialog(brand)}
+                                  className="absolute bottom-2 right-2 rounded-full bg-gray-200 p-2 hover:bg-gray-300"
+                              >
+                                  <Pencil size={16} />
+                              </button>
+                              <CardContent className="space-y-3 p-4">
+                                  {brand.image ? (
+                                      <img
+                                          src={brand.image}
+                                          alt={brand.name}
+                                          className="h-40 w-full rounded-lg object-cover"
+                                      />
+                                  ) : (
+                                      <div className="flex h-40 w-full items-center justify-center rounded-lg bg-gray-300 text-sm text-gray-700">
+                                          No Image Available
+                                      </div>
+                                  )}
+                                  <h3 className="text-gray-800 text-lg font-semibold">
+                                      {brand.name}
+                                  </h3>
+                                  <p className="text-sm text-gray-600">
+                                      {brand.description}
+                                  </p>
+                              </CardContent>
+                          </Card>
+                      ))}
             </div>
 
             <Dialog
