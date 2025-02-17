@@ -68,7 +68,6 @@ const config: Config = {
                 '3xl': '0 1px 2px 0 rgba(95,74,46,0.08), 0 0 0 1px rgba(227,225,222,0.4)',
                 sm: '0 1px 2px 0 rgba(113,116,152,0.1)',
             },
-
             keyframes: {
                 'accordion-down': {
                     from: { height: '0' },
@@ -87,6 +86,11 @@ const config: Config = {
                 'accordion-down': 'accordion-down 0.3s ease-out',
                 'accordion-up': 'accordion-up 0.3s ease-out',
                 'caret-blink': 'caret-blink 1.25s ease-out infinite',
+            },
+            backdropBlur: {
+                sm: '4px',
+                md: '8px',
+                lg: '12px',
             },
         },
     },

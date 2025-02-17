@@ -27,10 +27,10 @@ export function Dialog({
     return (
         <DialogPrimitive.Root open={isOpen} onOpenChange={onClose}>
             <DialogPrimitive.Portal>
-                <DialogPrimitive.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" />
+                <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-md transition-opacity" />
                 <DialogPrimitive.Content
                     className={cn(
-                        'fixed left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-8 shadow-2xl focus:outline-none',
+                        'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-8 shadow-2xl focus:outline-none',
                     )}
                 >
                     <div className="mb-6 flex items-center justify-between">
