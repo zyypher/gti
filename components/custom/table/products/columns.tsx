@@ -1,11 +1,8 @@
-import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ColumnDef } from '@tanstack/react-table'
-import { Edit, Trash, FileText } from 'lucide-react'
-import api from '@/lib/api'
-import toast from 'react-hot-toast'
-import PDFDownloadButton from '../PDFDownloadButton'
+import { Edit, Trash } from 'lucide-react'
+import PDFDownloadButton from '../../PDFDownloadButton'
 
 export type ITable = {
     id: string
@@ -23,7 +20,7 @@ export type ITable = {
 
 export const columns = (
     handleEdit: (item: ITable) => void,
-    handleDelete: (id: string) => void
+    handleDelete: (id: string) => void,
 ): ColumnDef<ITable>[] => [
     {
         id: 'select',
@@ -112,7 +109,10 @@ export const columns = (
         accessorKey: 'pdfContent',
         header: 'PDF',
         cell: ({ row }) => (
-            <PDFDownloadButton productId={row.original.id} productName={row.original.name} />
+            <PDFDownloadButton
+                productId={row.original.id}
+                productName={row.original.name}
+            />
         ),
     },
     {

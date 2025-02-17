@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { columns, ITable } from '@/components/custom/table/columns'
+import { columns, ITable } from '@/components/custom/table/products/columns'
 import { DataTable } from '@/components/custom/table/data-table'
 import ProductsFilters from '@/components/products/filters/products-filters'
 import { Input } from '@/components/ui/input'
@@ -183,7 +183,7 @@ const Products = () => {
                 data={products}
                 filterField="product"
                 loading={loading}
-                rowSelectionCallback={handleRowSelection} // Pass callback function
+                rowSelectionCallback={handleRowSelection}
             />
 
             <Dialog
@@ -202,7 +202,7 @@ const Products = () => {
                             })}
                         />
                         {errors.name?.message && (
-                            <p className="text-red-500 mt-1 text-sm">
+                            <p className="mt-1 text-sm text-red-500">
                                 {String(errors.name.message)}
                             </p>
                         )}
@@ -223,7 +223,7 @@ const Products = () => {
                             ))}
                         </select>
                         {errors.brandId?.message && (
-                            <p className="text-red-500 mt-1 text-sm">
+                            <p className="mt-1 text-sm text-red-500">
                                 {String(errors.brandId.message)}
                             </p>
                         )}

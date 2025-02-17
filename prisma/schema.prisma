@@ -26,11 +26,13 @@ model DataRecord {
 }
 
 model Brand {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
-  image       String?
+  image       Bytes?
   products    Product[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 }
 
 model Product {

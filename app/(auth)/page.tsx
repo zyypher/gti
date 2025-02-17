@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
 import { DataTable } from '@/components/custom/table/data-table'
-import { columns } from '@/components/custom/table/columns' // ✅ Use the same columns as Products table
+import { columns } from '@/components/custom/table/products/columns' // ✅ Use the same columns as Products table
 import PageHeading from '@/components/layout/page-heading'
 import { Card } from '@/components/ui/card'
 
