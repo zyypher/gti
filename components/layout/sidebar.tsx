@@ -691,9 +691,9 @@ const Sidebar = () => {
                         <Cigarette className="size-[18px] shrink-0" />
                         <span>Products</span>
                     </NavLink>
-                    <NavLink href="/advertisements" className={`nav-link`}>
+                    <NavLink href="/promotions" className={`nav-link`}>
                         <FileText className="size-[18px] shrink-0" />
-                        <span>Advertisements</span>
+                        <span>Promotions</span>
                     </NavLink>
 
                     {/* <AccordionItem value="item-5" className="p-0 shadow-none">

@@ -26,13 +26,13 @@ model DataRecord {
 }
 
 model Brand {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
   description String?
   image       Bytes?
   products    Product[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
 }
 
 model Product {
@@ -59,14 +59,16 @@ enum Role {
   SALESPERSON
 }
 
-model Advertisement {
+model Promotion {
   id        String   @id @default(uuid())
-  type      String // 'banner' or 'advertisement'
-  filePath  String // Path where the file is stored
+  type      String
+  filePath  String?
+  fileData  Bytes    // Now it's required
   title     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 
 model ProductPDF {
   id         String   @id @default(uuid())

@@ -12,7 +12,7 @@ const Home = () => {
     const [stats, setStats] = useState({
         totalProducts: 0,
         totalBrands: 0,
-        totalAdvertisements: 0,
+        totalPromotions: 0,
     })
     const [topProducts, setTopProducts] = useState([]) // ✅ Only top products
 
@@ -59,8 +59,8 @@ const Home = () => {
                 </Card>
                 <Card>
                     <div className="p-4">
-                        <h3>Total Advertisements</h3>
-                        <h4>{stats.totalAdvertisements}</h4>
+                        <h3>Total Promotions</h3>
+                        <h4>{stats.totalPromotions}</h4>
                     </div>
                 </Card>
             </div>

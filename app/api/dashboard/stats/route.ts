@@ -7,12 +7,12 @@ export async function GET() {
     try {
         const totalProducts = await prisma.product.count()
         const totalBrands = await prisma.brand.count()
-        const totalAdvertisements = await prisma.advertisement.count()
+        const totalPromotions = await prisma.promotion.count()
 
         return NextResponse.json({
             totalProducts,
             totalBrands,
-            totalAdvertisements,
+            totalPromotions,
         })
     } catch (error) {
         console.error('Error fetching dashboard stats:', error)

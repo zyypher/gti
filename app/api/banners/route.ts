@@ -5,7 +5,7 @@ const prisma = new PrismaClient()
 
 export async function GET() {
     try {
-        const banners = await prisma.advertisement.findMany({
+        const banners = await prisma.promotion.findMany({
             where: {
                 type: 'banner',
             },
