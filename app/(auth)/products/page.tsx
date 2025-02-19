@@ -43,6 +43,15 @@ const Products = () => {
     const [banners, setBanners] = useState<IPromotion[]>([])
     const [advertisements, setAdvertisements] = useState<IPromotion[]>([])
 
+    const isPWA = () => {
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    };
+    
+    const isMobile = () => {
+        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    };
+    
+
     // Fetch banners and advertisements
     useEffect(() => {
         const fetchPromotions = async () => {
@@ -171,36 +180,6 @@ const Products = () => {
         console.log('##Selected rows in Products page:', ids)
     }
 
-    // const handleCreatePDF = async () => {
-    //     if (selectedRows.length === 0) return
-
-    //     try {
-    //         const response = await api.post('/api/pdf/generate', {
-    //             productIds: selectedRows,
-    //         })
-
-    //         if (response.status === 200) {
-    //             toast.success('PDF generated successfully!')
-    //             const pdfUrl = response.data.url
-
-    //             // Trigger PDF download
-    //             const downloadLink = document.createElement('a')
-    //             downloadLink.href = pdfUrl
-    //             downloadLink.download = 'merged-document.pdf'
-    //             document.body.appendChild(downloadLink)
-    //             downloadLink.click()
-    //             document.body.removeChild(downloadLink)
-
-    //             // Clear selected rows
-    //             setSelectedRows([])
-    //         } else {
-    //             toast.error('Failed to generate PDF.')
-    //         }
-    //     } catch (error) {
-    //         toast.error('Error generating PDF.')
-    //         console.error('Error:', error)
-    //     }
-    // }
 
     // Handle Create PDF
     const handleGeneratePDF = async () => {
@@ -212,40 +191,55 @@ const Products = () => {
             toast.error('All fields are required')
             return
         }
-
         try {
             const response = await api.post('/api/pdf/generate', {
                 bannerId: selectedBanner,
                 advertisementId: selectedAdvertisement,
                 productIds: selectedRows,
-            })
-
+            });
+    
             if (response.status === 200) {
-                toast.success('PDF generated successfully!')
-                const pdfUrl = response.data.url
-
-                // Trigger PDF download
-                const downloadLink = document.createElement('a')
-                downloadLink.href = pdfUrl
-                downloadLink.download = 'merged-document.pdf'
-                document.body.appendChild(downloadLink)
-                downloadLink.click()
-                document.body.removeChild(downloadLink)
-
-                // Clear selections
-                setIsPdfDialogOpen(false)
-                setSelectedBanner(null)
-                setSelectedAdvertisement(null)
-                setSelectedRows([])
-                setPdfStep(1)
+                toast.success('PDF generated successfully!');
+                const pdfUrl = response.data.url;
+                const fileName = `Merged_Document_${new Date().toISOString()}.pdf`;
+    
+                if (isPWA() || isMobile()) {
+                    // Mobile/PWA Mode: Use Web Share API
+                    if (navigator.share) {
+                        const blob = await fetch(pdfUrl).then((res) => res.blob());
+                        const file = new File([blob], fileName, { type: 'application/pdf' });
+    
+                        const shareData = {
+                            title: 'Shared PDF',
+                            text: `Here is the generated PDF: ${fileName}`,
+                            files: [file], // Share the file
+                        };
+    
+                        navigator
+                            .share(shareData)
+                            .then(() => console.log('PDF Shared Successfully'))
+                            .catch((err) => console.error('Error sharing PDF:', err));
+                    } else {
+                        toast.error('Sharing not supported on this device');
+                    }
+                } else {
+                    // Desktop Mode: Trigger Download
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = pdfUrl;
+                    downloadLink.download = fileName;
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                }
             } else {
-                toast.error('Failed to generate PDF.')
+                toast.error('Failed to generate PDF.');
             }
         } catch (error) {
-            toast.error('Error generating PDF.')
-            console.error('Error:', error)
+            toast.error('Error generating PDF.');
+            console.error('Error:', error);
         }
-    }
+    };
+    
 
     return (
         <div className="space-y-4">
