@@ -5,26 +5,48 @@ import { PDFDocument } from 'pdf-lib'
 const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
-    const { productIds } = await req.json()
+    const { bannerId, advertisementId, productIds } = await req.json()
 
     try {
-        // Fetch PDFs from the `ProductPDF` table using productIds
-        const products = await prisma.productPDF.findMany({
-            where: {
-                productId: { in: productIds },
-            },
-            select: {
-                pdfContent: true,  // Select binary PDF content
-            },
+        // Fetch Banner from Promotion table
+        const banner = await prisma.promotion.findUnique({
+            where: { id: bannerId, type: 'banner' },
+            select: { fileData: true }
         })
 
-        if (!products.length) {
-            return NextResponse.json({ error: 'No PDFs found for the selected products' }, { status: 404 })
+        console.log('##banner', banner)
+
+        // Fetch Advertisement from Promotion table
+        const advertisement = await prisma.promotion.findUnique({
+            where: { id: advertisementId, type: 'advertisement' },
+            select: { fileData: true }
+        })
+        console.log('##advertisement', advertisement)
+
+        // Fetch Product PDFs from ProductPDF table
+        const products = await prisma.productPDF.findMany({
+            where: { productId: { in: productIds } },
+            select: { pdfContent: true }
+        })
+
+        console.log('##products', products)
+
+
+        // Check if all required files exist
+        if (!banner || !advertisement || products.length === 0) {
+            return NextResponse.json({ error: 'Invalid selection: Missing banner, advertisement, or product PDFs' }, { status: 400 })
         }
 
         const pdfDoc = await PDFDocument.create()
 
-        // Process each product's PDF content
+        // Add Banner first
+        if (banner.fileData) {
+            const bannerPdf = await PDFDocument.load(banner.fileData)
+            const copiedPages = await pdfDoc.copyPages(bannerPdf, bannerPdf.getPageIndices())
+            copiedPages.forEach((page) => pdfDoc.addPage(page))
+        }
+
+        // Add Products in order
         for (const product of products) {
             if (product.pdfContent) {
                 const productPdf = await PDFDocument.load(product.pdfContent)
@@ -33,10 +55,14 @@ export async function POST(req: Request) {
             }
         }
 
-        // Save the merged PDF to a buffer
-        const mergedPdfBytes = await pdfDoc.save()
+        // Add Advertisement last
+        if (advertisement.fileData) {
+            const adPdf = await PDFDocument.load(advertisement.fileData)
+            const copiedPages = await pdfDoc.copyPages(adPdf, adPdf.getPageIndices())
+            copiedPages.forEach((page) => pdfDoc.addPage(page))
+        }
 
-        // Convert the PDF buffer to a base64 string
+        const mergedPdfBytes = await pdfDoc.save()
         const pdfBase64 = Buffer.from(mergedPdfBytes).toString('base64')
         const pdfUrl = `data:application/pdf;base64,${pdfBase64}`
 

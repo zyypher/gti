@@ -18,6 +18,13 @@ interface IBrand {
     name: string
 }
 
+export type IPromotion = {
+    id: string
+    title: string
+    type: 'banner' | 'advertisement'
+    filePath: string
+}
+
 const Products = () => {
     const [products, setProducts] = useState<ITable[]>([])
     const [brands, setBrands] = useState<IBrand[]>([])
@@ -26,6 +33,45 @@ const Products = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [buttonLoading, setButtonLoading] = useState(false)
     const [selectedRows, setSelectedRows] = useState<string[]>([])
+
+    const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false)
+    const [pdfStep, setPdfStep] = useState(1) // Tracks modal steps
+    const [selectedBanner, setSelectedBanner] = useState<string | null>(null)
+    const [selectedAdvertisement, setSelectedAdvertisement] = useState<
+        string | null
+    >(null)
+    const [banners, setBanners] = useState<IPromotion[]>([])
+    const [advertisements, setAdvertisements] = useState<IPromotion[]>([])
+
+    // Fetch banners and advertisements
+    useEffect(() => {
+        const fetchPromotions = async () => {
+            try {
+                const response = await api.get('/api/promotions')
+                const data: IPromotion[] = response.data
+                setBanners(data.filter((item) => item.type === 'banner'))
+                setAdvertisements(
+                    data.filter((item) => item.type === 'advertisement'),
+                )
+            } catch (error) {
+                console.error('Failed to load promotions:', error)
+            }
+        }
+        fetchPromotions()
+    }, [])
+
+    // Handle Next Step in PDF modal
+    const handleNextStep = () => {
+        if (pdfStep === 1 && !selectedBanner) {
+            toast.error('Please select a banner')
+            return
+        }
+        if (pdfStep === 2 && !selectedAdvertisement) {
+            toast.error('Please select an advertisement')
+            return
+        }
+        setPdfStep((prevStep) => prevStep + 1)
+    }
 
     const {
         register,
@@ -125,11 +171,52 @@ const Products = () => {
         console.log('##Selected rows in Products page:', ids)
     }
 
-    const handleCreatePDF = async () => {
-        if (selectedRows.length === 0) return
+    // const handleCreatePDF = async () => {
+    //     if (selectedRows.length === 0) return
+
+    //     try {
+    //         const response = await api.post('/api/pdf/generate', {
+    //             productIds: selectedRows,
+    //         })
+
+    //         if (response.status === 200) {
+    //             toast.success('PDF generated successfully!')
+    //             const pdfUrl = response.data.url
+
+    //             // Trigger PDF download
+    //             const downloadLink = document.createElement('a')
+    //             downloadLink.href = pdfUrl
+    //             downloadLink.download = 'merged-document.pdf'
+    //             document.body.appendChild(downloadLink)
+    //             downloadLink.click()
+    //             document.body.removeChild(downloadLink)
+
+    //             // Clear selected rows
+    //             setSelectedRows([])
+    //         } else {
+    //             toast.error('Failed to generate PDF.')
+    //         }
+    //     } catch (error) {
+    //         toast.error('Error generating PDF.')
+    //         console.error('Error:', error)
+    //     }
+    // }
+
+    // Handle Create PDF
+    const handleGeneratePDF = async () => {
+        if (
+            !selectedBanner ||
+            !selectedAdvertisement ||
+            selectedRows.length === 0
+        ) {
+            toast.error('All fields are required')
+            return
+        }
 
         try {
             const response = await api.post('/api/pdf/generate', {
+                bannerId: selectedBanner,
+                advertisementId: selectedAdvertisement,
                 productIds: selectedRows,
             })
 
@@ -145,8 +232,12 @@ const Products = () => {
                 downloadLink.click()
                 document.body.removeChild(downloadLink)
 
-                // Clear selected rows
+                // Clear selections
+                setIsPdfDialogOpen(false)
+                setSelectedBanner(null)
+                setSelectedAdvertisement(null)
                 setSelectedRows([])
+                setPdfStep(1)
             } else {
                 toast.error('Failed to generate PDF.')
             }
@@ -170,8 +261,8 @@ const Products = () => {
                     </Button>
                     <Button
                         variant="outline-black"
-                        disabled={selectedRows.length <= 1}
-                        onClick={handleCreatePDF}
+                        disabled={selectedRows.length === 0}
+                        onClick={() => setIsPdfDialogOpen(true)}
                     >
                         Create PDF
                     </Button>
@@ -245,6 +336,117 @@ const Products = () => {
                         accept="application/pdf"
                         {...register('pdf')}
                     />
+                </div>
+            </Dialog>
+
+            <Dialog
+                isOpen={isPdfDialogOpen}
+                onClose={() => {
+                    setIsPdfDialogOpen(false)
+                    setPdfStep(1)
+                    setSelectedBanner(null)
+                    setSelectedAdvertisement(null)
+                }}
+                onSubmit={() => {}}
+                title={
+                    pdfStep === 1
+                        ? 'Select Banner'
+                        : pdfStep === 2
+                          ? 'Select Advertisement'
+                          : 'Confirm & Generate PDF'
+                }
+            >
+                <div className="space-y-4">
+                    {pdfStep === 1 && (
+                        <>
+                            <p>Select a Banner for the PDF:</p>
+                            <select
+                                className="w-full rounded border p-2"
+                                value={selectedBanner || ''}
+                                onChange={(e) =>
+                                    setSelectedBanner(e.target.value)
+                                }
+                            >
+                                <option value="">Select Banner</option>
+                                {banners.map((banner) => (
+                                    <option key={banner.id} value={banner.id}>
+                                        {banner.title}
+                                    </option>
+                                ))}
+                            </select>
+                        </>
+                    )}
+
+                    {pdfStep === 2 && (
+                        <>
+                            <p>Select an Advertisement for the PDF:</p>
+                            <select
+                                className="w-full rounded border p-2"
+                                value={selectedAdvertisement || ''}
+                                onChange={(e) =>
+                                    setSelectedAdvertisement(e.target.value)
+                                }
+                            >
+                                <option value="">Select Advertisement</option>
+                                {advertisements.map((ad) => (
+                                    <option key={ad.id} value={ad.id}>
+                                        {ad.title}
+                                    </option>
+                                ))}
+                            </select>
+                        </>
+                    )}
+
+                    {pdfStep === 3 && (
+                        <>
+                            <p>Confirm the selection and generate PDF:</p>
+                            <ul>
+                                <li>
+                                    <strong>Banner:</strong>{' '}
+                                    {
+                                        banners.find(
+                                            (b) => b.id === selectedBanner,
+                                        )?.title
+                                    }
+                                </li>
+                                <li>
+                                    <strong>Advertisement:</strong>{' '}
+                                    {
+                                        advertisements.find(
+                                            (a) =>
+                                                a.id === selectedAdvertisement,
+                                        )?.title
+                                    }
+                                </li>
+                                <li>
+                                    <strong>Products Selected:</strong>{' '}
+                                    {selectedRows.length}
+                                </li>
+                            </ul>
+                        </>
+                    )}
+
+                    <div className="mt-4 flex justify-end gap-4">
+                        {pdfStep > 1 && (
+                            <Button
+                                variant="outline"
+                                onClick={() =>
+                                    setPdfStep((prevStep) => prevStep - 1)
+                                }
+                            >
+                                Back
+                            </Button>
+                        )}
+                        {pdfStep < 3 ? (
+                            <Button variant="black" onClick={handleNextStep}>
+                                Next
+                            </Button>
+                        ) : (
+                            <Button variant="black" onClick={handleGeneratePDF}>
+                                Generate PDF
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </Dialog>
         </div>
