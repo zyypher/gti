@@ -1,29 +1,37 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { promises as fs } from 'fs'
-import path from 'path'
-import { nanoid } from 'nanoid'
 
 const prisma = new PrismaClient()
-const uploadDir = path.join(process.cwd(), 'public', 'uploads')
 
 export async function GET(req: Request) {
-    const { search, ...filters } = Object.fromEntries(new URL(req.url).searchParams)
+    const url = new URL(req.url)
+    const queryParams = Object.fromEntries(url.searchParams)
 
-    const products = await prisma.product.findMany({
-        where: {
-            name: {
-                contains: search,
-                mode: 'insensitive',
+    // Convert numerical filters to string (if applicable)
+    const filters = Object.keys(queryParams).reduce((acc, key) => {
+        acc[key] = isNaN(Number(queryParams[key])) ? queryParams[key] : String(queryParams[key])
+        return acc
+    }, {} as Record<string, string>)
+
+    try {
+        const products = await prisma.product.findMany({
+            where: {
+                name: {
+                    contains: filters.search, // Assuming "search" is for the name field
+                    mode: 'insensitive',
+                },
+                ...filters,
             },
-            ...filters,
-        },
-        include: {
-            brand: true,
-        },
-    })
+            include: {
+                brand: true,
+            },
+        })
 
-    return NextResponse.json(products)
+        return NextResponse.json(products)
+    } catch (error) {
+        console.error('Error fetching products:', error)
+        return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
+    }
 }
 
 
@@ -38,7 +46,18 @@ export async function POST(req: Request) {
         }
     })
 
-    const { brandId, name, size, tar, nicotine, co, flavor, fsp, corners, capsules } = productData
+    const {
+        brandId,
+        name,
+        size,
+        tar,
+        nicotine,
+        co,
+        flavor,
+        fsp,
+        corners,
+        capsules,
+    } = productData
 
     try {
         // Step 1: Create the Product (Without PDF)
@@ -73,7 +92,10 @@ export async function POST(req: Request) {
         return NextResponse.json(product, { status: 201 })
     } catch (error) {
         console.error('Error creating product:', error)
-        return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
+        return NextResponse.json(
+            { error: 'Failed to create product' },
+            { status: 500 },
+        )
     }
 }
 
