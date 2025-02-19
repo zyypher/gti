@@ -12,6 +12,7 @@ import toast from 'react-hot-toast'
 import { Plus } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Dialog } from '@/components/ui/dialog'
+import { nanoid } from 'nanoid' // Generate unique slug
 
 interface IBrand {
     id: string
@@ -44,13 +45,17 @@ const Products = () => {
     const [advertisements, setAdvertisements] = useState<IPromotion[]>([])
 
     const isPWA = () => {
-        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        if (typeof window !== "undefined") {
+            return window.matchMedia('(display-mode: standalone)').matches || 
+                   (navigator as any).standalone === true;
+        }
+        return false;
     };
     
+
     const isMobile = () => {
-        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    };
-    
+        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    }
 
     // Fetch banners and advertisements
     useEffect(() => {
@@ -180,66 +185,80 @@ const Products = () => {
         console.log('##Selected rows in Products page:', ids)
     }
 
-
     // Handle Create PDF
+
     const handleGeneratePDF = async () => {
-        if (
-            !selectedBanner ||
-            !selectedAdvertisement ||
-            selectedRows.length === 0
-        ) {
-            toast.error('All fields are required')
-            return
-        }
         try {
             const response = await api.post('/api/pdf/generate', {
                 bannerId: selectedBanner,
                 advertisementId: selectedAdvertisement,
                 productIds: selectedRows,
-            });
-    
+            })
+
             if (response.status === 200) {
-                toast.success('PDF generated successfully!');
-                const pdfUrl = response.data.url;
-                const fileName = `Merged_Document_${new Date().toISOString()}.pdf`;
-    
+                toast.success('PDF generated successfully!')
+                const pdfUrl = response.data.url
+                const fileName = `Merged_Document_${new Date().toISOString()}.pdf`
+
+                // Generate a unique short URL slug
+                const uniqueSlug = nanoid(10)
+                const expirationDate = new Date()
+                expirationDate.setDate(expirationDate.getDate() + 30) // Expires in 30 days
+
+                // Save the URL mapping in the database
+                await api.post('/api/shared-pdf', {
+                    uniqueSlug,
+                    productIds: selectedRows.join(','), // Store as CSV
+                    expiresAt: expirationDate.toISOString(),
+                })
+
+                const shareableUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/${uniqueSlug}` // Change to your domain
+
                 if (isPWA() || isMobile()) {
-                    // Mobile/PWA Mode: Use Web Share API
+                    // Mobile Share
                     if (navigator.share) {
-                        const blob = await fetch(pdfUrl).then((res) => res.blob());
-                        const file = new File([blob], fileName, { type: 'application/pdf' });
-    
+                        const blob = await fetch(pdfUrl).then((res) =>
+                            res.blob(),
+                        )
+                        const file = new File([blob], fileName, {
+                            type: 'application/pdf',
+                        })
+
                         const shareData = {
                             title: 'Shared PDF',
-                            text: `Here is the generated PDF: ${fileName}`,
-                            files: [file], // Share the file
-                        };
-    
+                            text: `View the products here: ${shareableUrl}`,
+                            files: [file],
+                        }
+
                         navigator
                             .share(shareData)
-                            .then(() => console.log('PDF Shared Successfully'))
-                            .catch((err) => console.error('Error sharing PDF:', err));
+                            .then(() => console.log('Shared successfully'))
+                            .catch((err) =>
+                                console.error('Error sharing:', err),
+                            )
                     } else {
-                        toast.error('Sharing not supported on this device');
+                        toast.error('Sharing not supported')
                     }
                 } else {
-                    // Desktop Mode: Trigger Download
-                    const downloadLink = document.createElement('a');
-                    downloadLink.href = pdfUrl;
-                    downloadLink.download = fileName;
-                    document.body.appendChild(downloadLink);
-                    downloadLink.click();
-                    document.body.removeChild(downloadLink);
+                    // Desktop Mode: Download & Show URL
+                    const downloadLink = document.createElement('a')
+                    downloadLink.href = pdfUrl
+                    downloadLink.download = fileName
+                    document.body.appendChild(downloadLink)
+                    downloadLink.click()
+                    document.body.removeChild(downloadLink)
+
+                    // Show shareable link
+                    toast.success(`Share this URL: ${shareableUrl}`)
                 }
             } else {
-                toast.error('Failed to generate PDF.');
+                toast.error('Failed to generate PDF.')
             }
         } catch (error) {
-            toast.error('Error generating PDF.');
-            console.error('Error:', error);
+            toast.error('Error generating PDF.')
+            console.error('Error:', error)
         }
-    };
-    
+    }
 
     return (
         <div className="space-y-4">

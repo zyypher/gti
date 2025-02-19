@@ -77,3 +77,11 @@ model ProductPDF {
   createdAt  DateTime @default(now())
   product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
+
+model SharedPDF {
+  id          String   @id @default(uuid())  // Unique ID for URL
+  uniqueSlug  String   @unique               // Custom URL slug (random)
+  productIds  String   // Store Product IDs as a comma-separated string
+  createdAt   DateTime @default(now())       // Store timestamp
+  expiresAt   DateTime                        // Expiry date (e.g., +30 days)
+}
