@@ -65,7 +65,7 @@ export async function POST(req: Request) {
             await prisma.productPDF.create({
                 data: {
                     productId: product.id,
-                    pdfContent: Buffer.from(fileBuffer),
+                    pdfContent: new Uint8Array(fileBuffer),
                 },
             })
         }
