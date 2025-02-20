@@ -51,31 +51,32 @@ const Header = () => {
         {
             id: 1,
             profile: 'avatar.svg',
-            user: 'Brooklyn Simmons',
+            user: 'John Carter',
             message:
-                'recommended this online shop to byu electronics, <strong class="text-black">Advantage Electric</strong>',
-            time: '5 minutes ago',
-            shop: 'Advantage Electric',
+                'placed a bulk order for <strong class="text-black">Milano Classic - King Size</strong>. Review and confirm the order.',
+            time: 'Just now',
+            shop: 'Tobacco World',
         },
         {
             id: 2,
             profile: 'avatar-two.svg',
-            user: 'Sophia Williams',
+            user: 'Sarah Thompson',
             message:
-                'invites you ABC.fig file with you, <strong class="text-black">check item now</strong>',
-            time: '10 minutes ago',
-            shop: 'New item',
+                'requested a price quote for <strong class="text-black">Cavallo Mint Chill - Slim</strong>. Check and respond.',
+            time: '15 minutes ago',
+            shop: 'Cigar Hub',
         },
         {
             id: 3,
-            profile: 'avatar-three.svg',
-            user: 'Ava Davis',
+            profile: 'avatar-three.svg',    
+            user: 'David Smith',
             message:
-                'changed <strong class="text-black">the cosmetic payment</strong> due date to Sunday 05 March 2023',
-            time: '15 minutes ago',
-            shop: 'New item',
+                'left a review for <strong class="text-black">Mondal Bold - Regular</strong>: "Great quality and smooth taste!"',
+            time: '30 minutes ago',
+            shop: 'Elite Smoke',
         },
     ])
+    
 
     const removeNotification = (id: number) => {
         setNotifications((prevNotifications) =>
