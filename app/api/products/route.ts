@@ -3,41 +3,38 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-export async function GET(req: Request) {
-    const url = new URL(req.url)
-    const queryParams = Object.fromEntries(url.searchParams)
-
-    // Convert numerical filters to string (if applicable)
-    const filters = Object.keys(queryParams).reduce((acc, key) => {
-        acc[key] = isNaN(Number(queryParams[key])) ? queryParams[key] : String(queryParams[key])
-        return acc
-    }, {} as Record<string, string>)
-
+export async function GET() {
     try {
         const products = await prisma.product.findMany({
-            where: {
-                name: {
-                    contains: filters.search, // Assuming "search" is for the name field
-                    mode: 'insensitive',
-                },
-                ...filters,
-            },
             include: {
                 brand: true,
             },
         })
 
-        return NextResponse.json(products)
+        // Convert binary image data to base64 for preview
+        const formattedProducts = products.map((product) => ({
+            ...product,
+            image: product.image
+                ? `data:image/jpeg;base64,${Buffer.from(product.image).toString('base64')}`
+                : null,
+        }))
+
+        return NextResponse.json(formattedProducts)
     } catch (error) {
         console.error('Error fetching products:', error)
-        return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
+        return NextResponse.json(
+            { error: 'Failed to fetch products' },
+            { status: 500 },
+        )
     }
 }
+
 
 
 export async function POST(req: Request) {
     const formData = await req.formData()
     const pdfFile = formData.get('pdf') as File | null
+    const imageFile = formData.get('image') as File | null
     const productData: Record<string, string> = {}
 
     formData.forEach((value, key) => {
@@ -59,8 +56,16 @@ export async function POST(req: Request) {
         capsules,
     } = productData
 
+    let imageBuffer: Uint8Array | null = null
+
+    // Convert image file to binary
+    if (imageFile) {
+        const buffer = await imageFile.arrayBuffer()
+        imageBuffer = new Uint8Array(buffer)
+    }
+
     try {
-        // Step 1: Create the Product (Without PDF)
+        // Step 1: Create the Product (With Binary Image)
         const product = await prisma.product.create({
             data: {
                 name,
@@ -72,6 +77,7 @@ export async function POST(req: Request) {
                 fsp,
                 corners,
                 capsules,
+                image: imageBuffer, // ✅ Store image as binary
                 brand: {
                     connect: { id: brandId },
                 },
@@ -98,6 +104,7 @@ export async function POST(req: Request) {
         )
     }
 }
+
 
 export async function DELETE(req: Request) {
     const { id } = Object.fromEntries(new URL(req.url).searchParams)

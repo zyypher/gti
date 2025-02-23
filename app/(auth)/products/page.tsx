@@ -45,13 +45,14 @@ const Products = () => {
     const [advertisements, setAdvertisements] = useState<IPromotion[]>([])
 
     const isPWA = () => {
-        if (typeof window !== "undefined") {
-            return window.matchMedia('(display-mode: standalone)').matches || 
-                   (navigator as any).standalone === true;
+        if (typeof window !== 'undefined') {
+            return (
+                window.matchMedia('(display-mode: standalone)').matches ||
+                (navigator as any).standalone === true
+            )
         }
-        return false;
-    };
-    
+        return false
+    }
 
     const isMobile = () => {
         return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -128,7 +129,6 @@ const Products = () => {
     const handleAddProduct = async (data: any) => {
         setButtonLoading(true)
         try {
-            // Create FormData to handle file upload
             const formData = new FormData()
             formData.append('name', data.name)
             formData.append('brandId', data.brandId)
@@ -140,6 +140,11 @@ const Products = () => {
             formData.append('fsp', data.fsp || '')
             formData.append('corners', data.corners || '')
             formData.append('capsules', data.capsules || '')
+
+            // Attach Image File
+            if (data.image[0]) {
+                formData.append('image', data.image[0]) // ✅ Add image
+            }
 
             // Attach the PDF file
             if (data.pdf[0]) {
@@ -156,7 +161,7 @@ const Products = () => {
                 toast.success('Product added successfully')
                 reset()
                 setIsDialogOpen(false)
-                fetchProducts() // Refetch products to rerender table
+                fetchProducts() // ✅ Refresh the products list
             } else {
                 toast.error('Failed to add product')
             }
@@ -348,6 +353,11 @@ const Products = () => {
                         type="file"
                         accept="application/pdf"
                         {...register('pdf')}
+                    />
+                    <Input
+                        type="file"
+                        accept="image/*"
+                        {...register('image')}
                     />
                 </div>
             </Dialog>

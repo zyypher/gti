@@ -8,6 +8,7 @@ export type ITable = {
     id: string
     name: string
     brand: { name: string; description: string | null; image: string | null }
+    image: string
     size: string
     tar: string
     nicotine: string
@@ -58,6 +59,26 @@ export const columns = (
         header: 'Product Name',
         cell: ({ row }) => <div>{row.getValue('name')}</div>,
     },
+    {
+        accessorKey: 'image',
+        header: 'Image',
+        cell: ({ row }) => {
+            const imageUrl = row.original.image;
+            return imageUrl ? (
+                <img
+                    src={imageUrl}
+                    alt="Product Image"
+                    className="h-12 w-12 object-cover rounded"
+                />
+            ) : (
+                <div className="h-12 w-12 flex items-center justify-center bg-gray-200 text-gray-700 text-sm rounded">
+                    No Image
+                </div>
+            );
+        },
+    },
+    
+    
     {
         accessorKey: 'size',
         header: 'Size',

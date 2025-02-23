@@ -8,13 +8,14 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(uuid())
-  email       String       @unique
-  password    String
-  role        Role         @default(SALESPERSON)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  dataRecords DataRecord[]
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  role          Role           @default(SALESPERSON)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  dataRecords   DataRecord[]
+  notifications Notification[] // ✅ Add this relation
 }
 
 model DataRecord {
@@ -46,12 +47,14 @@ model Product {
   fsp       String?
   corners   String?
   capsules  String?
+  image     Bytes? 
   brand     Brand       @relation(fields: [brandId], references: [id])
   brandId   String
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   pdf       ProductPDF?
 }
+
 
 enum Role {
   ADMIN
@@ -63,12 +66,11 @@ model Promotion {
   id        String   @id @default(uuid())
   type      String
   filePath  String?
-  fileData  Bytes    // Now it's required
+  fileData  Bytes // Now it's required
   title     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
 
 model ProductPDF {
   id         String   @id @default(uuid())
@@ -79,9 +81,19 @@ model ProductPDF {
 }
 
 model SharedPDF {
-  id          String   @id @default(uuid())  // Unique ID for URL
-  uniqueSlug  String   @unique               // Custom URL slug (random)
-  productIds  String   // Store Product IDs as a comma-separated string
-  createdAt   DateTime @default(now())       // Store timestamp
-  expiresAt   DateTime                        // Expiry date (e.g., +30 days)
+  id         String   @id @default(uuid()) // Unique ID for URL
+  uniqueSlug String   @unique // Custom URL slug (random)
+  productIds String // Store Product IDs as a comma-separated string
+  createdAt  DateTime @default(now()) // Store timestamp
+  expiresAt  DateTime // Expiry date (e.g., +30 days)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  orderId   String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
