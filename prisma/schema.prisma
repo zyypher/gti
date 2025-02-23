@@ -64,8 +64,7 @@ enum Role {
 model Promotion {
   id        String   @id @default(uuid())
   type      String
-  filePath  String?
-  fileData  Bytes // Now it's required
+  filePath  String?  // ✅ Now stores S3 URL instead of binary data
   title     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -7,20 +7,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const productId = params.id
 
     try {
-        const pdfRecord = await prisma.productPDF.findUnique({
-            where: { productId },
-            select: { pdfContent: true },
+        // ✅ Fetch PDF URL from the `product` table instead of `productPDF`
+        const product = await prisma.product.findUnique({
+            where: { id: productId },
+            select: { pdfUrl: true }, // ✅ Use `pdfUrl` instead of `pdfContent`
         })
 
-        if (!pdfRecord || !pdfRecord.pdfContent) {
+        if (!product || !product.pdfUrl) {
             return NextResponse.json({ error: 'No PDF found' }, { status: 404 })
         }
 
-        // Convert binary data to Base64
-        const pdfBase64 = Buffer.from(pdfRecord.pdfContent).toString('base64')
-        const pdfUrl = `data:application/pdf;base64,${pdfBase64}`
-
-        return NextResponse.json({ url: pdfUrl })
+        return NextResponse.json({ url: product.pdfUrl }) // ✅ Directly return the S3 URL
     } catch (error) {
         console.error('Error fetching PDF:', error)
         return NextResponse.json({ error: 'Failed to fetch PDF' }, { status: 500 })
