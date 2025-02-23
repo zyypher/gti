@@ -37,7 +37,7 @@ model Brand {
 }
 
 model Product {
-  id        String      @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
   size      String?
   tar       String?
@@ -47,14 +47,13 @@ model Product {
   fsp       String?
   corners   String?
   capsules  String?
-  image     String?  // ✅ Changed from Bytes? to String? (Stores S3 URL)
+  image     String? // ✅ Stores S3 Image URL
+  pdfUrl    String? // ✅ Stores S3 PDF URL
   brand     Brand    @relation(fields: [brandId], references: [id])
   brandId   String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  pdf       ProductPDF?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
-
 
 enum Role {
   ADMIN
@@ -70,14 +69,6 @@ model Promotion {
   title     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model ProductPDF {
-  id         String   @id @default(uuid())
-  productId  String   @unique
-  pdfContent String?  // ✅ Changed from Bytes? to String? (Stores S3 URL)
-  createdAt  DateTime @default(now())
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model SharedPDF {

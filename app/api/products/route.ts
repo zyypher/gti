@@ -75,6 +75,7 @@ export async function GET() {
     }
 }
 
+
 // **POST Product (Create a New Product with S3 Uploads)**
 export async function POST(req: Request) {
     const formData = await req.formData();
@@ -91,7 +92,7 @@ export async function POST(req: Request) {
     const { brandId, name, size, tar, nicotine, co, flavor, fsp, corners, capsules } = productData;
 
     try {
-        // ✅ Step 1: Insert into Neon (Return immediately)
+        // ✅ Step 1: Create the product in Neon first
         const product = await prisma.product.create({
             data: { name, size, tar, nicotine, co, flavor, fsp, corners, capsules, brand: { connect: { id: brandId } } },
         });
@@ -99,37 +100,30 @@ export async function POST(req: Request) {
         // ✅ Step 2: Return the product immediately (modal closes & UI updates)
         const response = NextResponse.json(product, { status: 201 });
 
-        // ✅ Step 3: Run uploads in background (non-blocking)
+        // ✅ Step 3: Run S3 uploads in the background (non-blocking)
         (async () => {
-            const uploadTasks: Promise<void>[] = [];
+            const uploadTasks: Promise<string | null>[] = [];
 
             if (imageFile) {
-                uploadTasks.push(
-                    uploadToS3(imageFile, 'products')
-                        .then(async (imageUrl) => {
-                            await prisma.product.update({
-                                where: { id: product.id },
-                                data: { image: imageUrl },
-                            });
-                        })
-                        .catch((err) => console.error("Image upload failed", err))
-                );
+                uploadTasks.push(uploadToS3(imageFile, 'products').catch(() => null));
+            } else {
+                uploadTasks.push(Promise.resolve(null));
             }
 
             if (pdfFile) {
-                uploadTasks.push(
-                    uploadToS3(pdfFile, 'pdfs')
-                        .then(async (pdfUrl) => {
-                            await prisma.productPDF.create({
-                                data: { productId: product.id, pdfContent: pdfUrl },
-                            });
-                        })
-                        .catch((err) => console.error("PDF upload failed", err))
-                );
+                uploadTasks.push(uploadToS3(pdfFile, 'pdfs').catch(() => null));
+            } else {
+                uploadTasks.push(Promise.resolve(null));
             }
 
-            // **Uploads run in background, DB updates asynchronously**
-            await Promise.all(uploadTasks);
+            // Wait for uploads to complete
+            const [imageUrl, pdfUrl] = await Promise.all(uploadTasks);
+
+            // ✅ Step 4: Update the product with uploaded URLs
+            await prisma.product.update({
+                where: { id: product.id },
+                data: { image: imageUrl || null, pdfUrl: pdfUrl || null },
+            });
         })();
 
         return response;
@@ -147,7 +141,6 @@ export async function DELETE(req: Request) {
     try {
         const product = await prisma.product.findUnique({
             where: { id },
-            include: { pdf: true },
         });
 
         if (!product) {
@@ -161,8 +154,8 @@ export async function DELETE(req: Request) {
         }
 
         // **Delete PDF from S3**
-        if (product.pdf?.pdfContent) {
-            const pdfKey = product.pdf.pdfContent.split('.com/')[1];
+        if (product.pdfUrl) {
+            const pdfKey = product.pdfUrl.split('.com/')[1];
             await s3.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: pdfKey }));
         }
 
@@ -175,3 +168,4 @@ export async function DELETE(req: Request) {
         return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
     }
 }
+
