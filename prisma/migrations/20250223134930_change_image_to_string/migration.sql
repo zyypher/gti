@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Product" ALTER COLUMN "image" SET DATA TYPE TEXT;
+
+-- AlterTable
+ALTER TABLE "ProductPDF" ALTER COLUMN "pdfContent" SET DATA TYPE TEXT;

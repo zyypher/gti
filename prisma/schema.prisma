@@ -47,11 +47,11 @@ model Product {
   fsp       String?
   corners   String?
   capsules  String?
-  image     Bytes? 
-  brand     Brand       @relation(fields: [brandId], references: [id])
+  image     String?  // ✅ Changed from Bytes? to String? (Stores S3 URL)
+  brand     Brand    @relation(fields: [brandId], references: [id])
   brandId   String
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   pdf       ProductPDF?
 }
 
@@ -74,8 +74,8 @@ model Promotion {
 
 model ProductPDF {
   id         String   @id @default(uuid())
-  productId  String   @unique // Links to a product
-  pdfContent Bytes? // Store the PDF as binary
+  productId  String   @unique
+  pdfContent String?  // ✅ Changed from Bytes? to String? (Stores S3 URL)
   createdAt  DateTime @default(now())
   product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }

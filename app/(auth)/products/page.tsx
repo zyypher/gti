@@ -141,27 +141,20 @@ const Products = () => {
             formData.append('corners', data.corners || '')
             formData.append('capsules', data.capsules || '')
 
-            // Attach Image File
-            if (data.image[0]) {
-                formData.append('image', data.image[0]) // ✅ Add image
-            }
-
-            // Attach the PDF file
-            if (data.pdf[0]) {
-                formData.append('pdf', data.pdf[0])
-            }
+            if (data.image[0]) formData.append('image', data.image[0])
+            if (data.pdf[0]) formData.append('pdf', data.pdf[0])
 
             const response = await api.post(routes.addProduct, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
+                headers: { 'Content-Type': 'multipart/form-data' },
             })
 
-            if (response.status === 201 || response.status === 200) {
+            if (response.status === 201) {
                 toast.success('Product added successfully')
+
+                // ✅ Immediately close modal & refetch products
                 reset()
                 setIsDialogOpen(false)
-                fetchProducts() // ✅ Refresh the products list
+                fetchProducts() // ✅ Refetch products immediately
             } else {
                 toast.error('Failed to add product')
             }
