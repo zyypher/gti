@@ -136,9 +136,10 @@ const Products = () => {
     const handleEdit = (item: ITable) => {
         setSelectedProduct(item)
         setIsDialogOpen(true)
-        Object.keys(item).forEach((key) => setValue(key as any, (item as any)[key])) // Auto-fill form
+        Object.keys(item).forEach((key) =>
+            setValue(key as any, (item as any)[key]),
+        ) // Auto-fill form
     }
-    
 
     const handleDelete = (id: string) => {
         setDeleteProductId(id)
@@ -239,7 +240,7 @@ const Products = () => {
             formData.append('fsp', data.fsp || '')
             formData.append('corners', data.corners || '')
             formData.append('capsules', data.capsules || '')
-    
+
             // ✅ Append new image/PDF only if selected
             if (selectedProduct) {
                 if (data.image?.[0]) {
@@ -252,7 +253,7 @@ const Products = () => {
                 if (data.image?.[0]) formData.append('image', data.image[0])
                 if (data.pdf?.[0]) formData.append('pdf', data.pdf[0])
             }
-    
+
             let response
             if (selectedProduct) {
                 response = await api.put(
@@ -267,7 +268,7 @@ const Products = () => {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 }) // Create product
             }
-    
+
             if (response.status === 200 || response.status === 201) {
                 toast.success(
                     `Product ${selectedProduct ? 'updated' : 'added'} successfully`,
@@ -290,8 +291,6 @@ const Products = () => {
             setButtonLoading(false)
         }
     }
-    
-    
 
     const handleDeleteProduct = async () => {
         if (!deleteProductId) return
@@ -400,16 +399,27 @@ const Products = () => {
                     <Input placeholder="FSP" {...register('fsp')} />
                     <Input placeholder="Corners" {...register('corners')} />
                     <Input placeholder="Capsules" {...register('capsules')} />
-                    <Input
-                        type="file"
-                        accept="application/pdf"
-                        {...register('pdf')}
-                    />
-                    <Input
-                        type="file"
-                        accept="image/*"
-                        {...register('image')}
-                    />
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Upload Product Image
+                        </label>
+                        <Input
+                            type="file"
+                            accept="image/*"
+                            {...register('image')}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Upload Product PDF
+                        </label>
+                        <Input
+                            type="file"
+                            accept="application/pdf"
+                            {...register('pdf')}
+                        />
+                    </div>
                 </div>
             </Dialog>
 
