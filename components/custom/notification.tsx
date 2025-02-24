@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import api from '@/lib/api'; // ✅ API helper
+import api from '@/lib/api'; 
 
 interface Notification {
   id: string;
