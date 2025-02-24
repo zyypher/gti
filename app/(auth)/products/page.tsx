@@ -34,7 +34,6 @@ const Products = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [buttonLoading, setButtonLoading] = useState(false)
     const [selectedRows, setSelectedRows] = useState<string[]>([])
-
     const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false)
     const [pdfStep, setPdfStep] = useState(1) // Tracks modal steps
     const [selectedBanner, setSelectedBanner] = useState<string | null>(null)
@@ -43,6 +42,9 @@ const Products = () => {
     >(null)
     const [banners, setBanners] = useState<IPromotion[]>([])
     const [advertisements, setAdvertisements] = useState<IPromotion[]>([])
+    const [selectedProduct, setSelectedProduct] = useState<ITable | null>(null)
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [deleteProductId, setDeleteProductId] = useState<string | null>(null)
 
     const isPWA = () => {
         if (typeof window !== 'undefined') {
@@ -92,6 +94,7 @@ const Products = () => {
         register,
         handleSubmit,
         reset,
+        setValue,
         formState: { errors },
     } = useForm()
 
@@ -126,56 +129,20 @@ const Products = () => {
         fetchBrands()
     }, [filters])
 
-    const handleAddProduct = async (data: any) => {
-        setButtonLoading(true)
-        try {
-            const formData = new FormData()
-            formData.append('name', data.name)
-            formData.append('brandId', data.brandId)
-            formData.append('size', data.size || '')
-            formData.append('tar', data.tar || '')
-            formData.append('nicotine', data.nicotine || '')
-            formData.append('co', data.co || '')
-            formData.append('flavor', data.flavor || '')
-            formData.append('fsp', data.fsp || '')
-            formData.append('corners', data.corners || '')
-            formData.append('capsules', data.capsules || '')
-
-            if (data.image[0]) formData.append('image', data.image[0])
-            if (data.pdf[0]) formData.append('pdf', data.pdf[0])
-
-            const response = await api.post(routes.addProduct, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            })
-
-            if (response.status === 201) {
-                toast.success('Product added successfully')
-
-                // ✅ Immediately close modal & refetch products
-                reset()
-                setIsDialogOpen(false)
-                fetchProducts() // ✅ Refetch products immediately
-            } else {
-                toast.error('Failed to add product')
-            }
-        } catch (error) {
-            toast.error('Error adding product')
-            console.error('Error:', error)
-        } finally {
-            setButtonLoading(false)
-        }
-    }
-
     const handleFilterChange = (newFilters: { [key: string]: string }) => {
         setFilters(newFilters)
     }
 
     const handleEdit = (item: ITable) => {
-        console.log('Edit item:', item)
+        setSelectedProduct(item)
+        setIsDialogOpen(true)
+        Object.keys(item).forEach((key) => setValue(key as any, (item as any)[key])) // Auto-fill form
     }
+    
 
     const handleDelete = (id: string) => {
-        console.log('Delete item with ID:', id)
+        setDeleteProductId(id)
+        setIsDeleteDialogOpen(true)
     }
 
     const handleRowSelection = (ids: string[]) => {
@@ -258,6 +225,93 @@ const Products = () => {
         }
     }
 
+    const handleAddOrUpdateProduct = async (data: any) => {
+        setButtonLoading(true)
+        try {
+            const formData = new FormData()
+            formData.append('name', data.name)
+            formData.append('brandId', data.brandId)
+            formData.append('size', data.size || '')
+            formData.append('tar', data.tar || '')
+            formData.append('nicotine', data.nicotine || '')
+            formData.append('co', data.co || '')
+            formData.append('flavor', data.flavor || '')
+            formData.append('fsp', data.fsp || '')
+            formData.append('corners', data.corners || '')
+            formData.append('capsules', data.capsules || '')
+    
+            // ✅ Append new image/PDF only if selected
+            if (selectedProduct) {
+                if (data.image?.[0]) {
+                    formData.append('image', data.image[0])
+                }
+                if (data.pdf?.[0]) {
+                    formData.append('pdf', data.pdf[0])
+                }
+            } else {
+                if (data.image?.[0]) formData.append('image', data.image[0])
+                if (data.pdf?.[0]) formData.append('pdf', data.pdf[0])
+            }
+    
+            let response
+            if (selectedProduct) {
+                response = await api.put(
+                    `/api/products/${selectedProduct.id}/pdf`,
+                    formData,
+                    {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                    },
+                ) // Update product
+            } else {
+                response = await api.post(routes.addProduct, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                }) // Create product
+            }
+    
+            if (response.status === 200 || response.status === 201) {
+                toast.success(
+                    `Product ${selectedProduct ? 'updated' : 'added'} successfully`,
+                )
+                fetchProducts()
+                setIsDialogOpen(false)
+                reset()
+                setSelectedProduct(null)
+            } else {
+                toast.error(
+                    `Failed to ${selectedProduct ? 'update' : 'add'} product`,
+                )
+            }
+        } catch (error) {
+            toast.error(
+                `Error ${selectedProduct ? 'updating' : 'adding'} product`,
+            )
+            console.error(error)
+        } finally {
+            setButtonLoading(false)
+        }
+    }
+    
+    
+
+    const handleDeleteProduct = async () => {
+        if (!deleteProductId) return
+        try {
+            const response = await api.delete(
+                `/api/products/${deleteProductId}/pdf`,
+            )
+            if (response.status === 200) {
+                toast.success('Product deleted successfully')
+                fetchProducts()
+                setIsDeleteDialogOpen(false)
+            } else {
+                toast.error('Failed to delete product')
+            }
+        } catch (error) {
+            toast.error('Error deleting product')
+            console.error(error)
+        }
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between gap-4">
@@ -290,9 +344,13 @@ const Products = () => {
 
             <Dialog
                 isOpen={isDialogOpen}
-                onClose={() => setIsDialogOpen(false)}
-                title="Add New Product"
-                onSubmit={handleSubmit(handleAddProduct)}
+                onClose={() => {
+                    setIsDialogOpen(false)
+                    reset()
+                    setSelectedProduct(null)
+                }}
+                title={selectedProduct ? 'Edit Product' : 'Add New Product'}
+                onSubmit={handleSubmit(handleAddOrUpdateProduct)}
                 buttonLoading={buttonLoading}
             >
                 <div className="space-y-4">
@@ -464,6 +522,15 @@ const Products = () => {
                         )}
                     </div>
                 </div>
+            </Dialog>
+
+            <Dialog
+                isOpen={isDeleteDialogOpen}
+                onClose={() => setIsDeleteDialogOpen(false)}
+                title="Confirm Delete"
+                onSubmit={handleDeleteProduct}
+            >
+                <p>Are you sure you want to delete this product?</p>
             </Dialog>
         </div>
     )
