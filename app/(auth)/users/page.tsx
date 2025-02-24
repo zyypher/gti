@@ -10,6 +10,7 @@ import { Plus } from 'lucide-react'
 import { Dialog } from '@/components/ui/dialog'
 import { useForm } from 'react-hook-form'
 import { columns } from '@/components/custom/table/users/columns'
+import PageHeading from '@/components/layout/page-heading'
 
 type User = {
     id: string
@@ -27,21 +28,37 @@ const UsersPage = () => {
     const [buttonLoading, setButtonLoading] = useState(false)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
-    const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm()
+    const {
+        register,
+        handleSubmit,
+        reset,
+        setValue,
+        formState: { errors },
+    } = useForm()
 
     useEffect(() => {
         fetchUsers()
 
         // Handle edit event
         const editHandler = (event: CustomEvent) => openEditModal(event.detail)
-        const deleteHandler = (event: CustomEvent) => openDeleteDialog(event.detail)
+        const deleteHandler = (event: CustomEvent) =>
+            openDeleteDialog(event.detail)
 
         window.addEventListener('openEditUser', editHandler as EventListener)
-        window.addEventListener('confirmDeleteUser', deleteHandler as EventListener)
+        window.addEventListener(
+            'confirmDeleteUser',
+            deleteHandler as EventListener,
+        )
 
         return () => {
-            window.removeEventListener('openEditUser', editHandler as EventListener)
-            window.removeEventListener('confirmDeleteUser', deleteHandler as EventListener)
+            window.removeEventListener(
+                'openEditUser',
+                editHandler as EventListener,
+            )
+            window.removeEventListener(
+                'confirmDeleteUser',
+                deleteHandler as EventListener,
+            )
         }
     }, [])
 
@@ -105,15 +122,20 @@ const UsersPage = () => {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Users</h2>
+            <PageHeading heading="Users" />
+            <div className="flex items-center justify-end">
                 <Button variant="black" onClick={() => setIsDialogOpen(true)}>
                     <Plus className="mr-2" />
                     Add User
                 </Button>
             </div>
 
-            <DataTable columns={columns} data={users} filterField="email" loading={loading} />
+            <DataTable
+                columns={columns}
+                data={users}
+                filterField="email"
+                loading={loading}
+            />
 
             {/* Add/Edit User Dialog */}
             <Dialog
@@ -124,26 +146,46 @@ const UsersPage = () => {
                 buttonLoading={buttonLoading}
             >
                 <div className="space-y-4">
-                    <Input placeholder="Enter email" {...register('email', { required: 'Email is required' })} />
+                    <Input
+                        placeholder="Enter email"
+                        {...register('email', {
+                            required: 'Email is required',
+                        })}
+                    />
                     {errors.email && (
-                        <p className="text-red-500">{String(errors.email.message)}</p>
+                        <p className="text-red-500">
+                            {String(errors.email.message)}
+                        </p>
                     )}
 
                     {!selectedUser && (
-                        <Input placeholder="Enter password" type="password" {...register('password', { required: 'Password is required' })} />
+                        <Input
+                            placeholder="Enter password"
+                            type="password"
+                            {...register('password', {
+                                required: 'Password is required',
+                            })}
+                        />
                     )}
                     {errors.password && (
-                        <p className="text-red-500">{String(errors.password.message)}</p>
+                        <p className="text-red-500">
+                            {String(errors.password.message)}
+                        </p>
                     )}
 
-                    <select className="w-full p-2 border rounded" {...register('role', { required: 'Role is required' })}>
+                    <select
+                        className="w-full rounded border p-2"
+                        {...register('role', { required: 'Role is required' })}
+                    >
                         <option value="">Select Role</option>
                         <option value="ADMIN">Admin</option>
                         <option value="SUPERVISOR">Supervisor</option>
                         <option value="SALESPERSON">Salesperson</option>
                     </select>
                     {errors.role && (
-                        <p className="text-red-500">{String(errors.role.message)}</p>
+                        <p className="text-red-500">
+                            {String(errors.role.message)}
+                        </p>
                     )}
                 </div>
             </Dialog>

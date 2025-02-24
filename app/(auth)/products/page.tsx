@@ -13,6 +13,7 @@ import { Plus } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Dialog } from '@/components/ui/dialog'
 import { nanoid } from 'nanoid' // Generate unique slug
+import PageHeading from '@/components/layout/page-heading'
 
 interface IBrand {
     id: string
@@ -313,6 +314,7 @@ const Products = () => {
 
     return (
         <div className="space-y-4">
+            <PageHeading heading="Products" />
             <div className="flex items-center justify-between gap-4">
                 <ProductsFilters onFilterChange={handleFilterChange} />
                 <div className="flex gap-4">
