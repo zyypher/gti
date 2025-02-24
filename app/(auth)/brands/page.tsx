@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog } from '@/components/ui/dialog'
 import { useForm } from 'react-hook-form'
 import { Pencil } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type Brand = {
     id: string
@@ -121,10 +122,14 @@ const BrandsPage = () => {
                 {loading
                     ? // Show 9 placeholder cards with pulse animation
                       Array.from({ length: 9 }).map((_, index) => (
-                          <div
-                              key={index}
-                              className="h-60 w-full animate-pulse rounded-lg bg-gray-500"
-                          />
+                          <Card key={index} className="relative">
+                              <CardContent className="space-y-3 p-4">
+                                  <Skeleton className="h-40 w-full rounded-lg" />
+                                  <Skeleton className="h-6 w-3/4 rounded-md" />
+                                  <Skeleton className="h-4 w-1/2 rounded-md" />
+                                  <Skeleton className="absolute bottom-2 right-2 h-8 w-8 rounded-full" />
+                              </CardContent>
+                          </Card>
                       ))
                     : brands.map((brand) => (
                           <Card
