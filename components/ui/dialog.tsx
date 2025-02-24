@@ -11,7 +11,7 @@ interface DialogProps {
     title: string
     description?: string
     children: React.ReactNode
-    onSubmit: () => void
+    onSubmit?: () => void
     buttonLoading?: boolean
 }
 
@@ -49,6 +49,7 @@ export function Dialog({
                     )}
 
                     <div className="space-y-4">{children}</div>
+                    {onSubmit && (
 
                     <div className="mt-6 flex justify-end gap-4">
                         <DialogPrimitive.Close asChild>
@@ -69,6 +70,8 @@ export function Dialog({
                             )}
                         </Button>
                     </div>
+                                    )}
+
                 </DialogPrimitive.Content>
             </DialogPrimitive.Portal>
         </DialogPrimitive.Root>

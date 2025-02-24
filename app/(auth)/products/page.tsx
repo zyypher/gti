@@ -155,6 +155,7 @@ const Products = () => {
     // Handle Create PDF
 
     const handleGeneratePDF = async () => {
+        setButtonLoading(true)
         try {
             const response = await api.post('/api/pdf/generate', {
                 bannerId: selectedBanner,
@@ -178,6 +179,10 @@ const Products = () => {
                     productIds: selectedRows.join(','), // Store as CSV
                     expiresAt: expirationDate.toISOString(),
                 })
+                setIsPdfDialogOpen(false)
+                setPdfStep(1)
+                setSelectedBanner(null)
+                setSelectedAdvertisement(null)
 
                 const shareableUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/${uniqueSlug}` // Change to your domain
 
@@ -224,6 +229,8 @@ const Products = () => {
         } catch (error) {
             toast.error('Error generating PDF.')
             console.error('Error:', error)
+        } finally {
+            setButtonLoading(false)
         }
     }
 
@@ -402,7 +409,7 @@ const Products = () => {
                     <Input placeholder="Corners" {...register('corners')} />
                     <Input placeholder="Capsules" {...register('capsules')} />
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
                             Upload Product Image
                         </label>
                         <Input
@@ -413,7 +420,7 @@ const Products = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
                             Upload Product PDF
                         </label>
                         <Input
@@ -433,7 +440,7 @@ const Products = () => {
                     setSelectedBanner(null)
                     setSelectedAdvertisement(null)
                 }}
-                onSubmit={() => {}}
+                // onSubmit={() => {}}
                 title={
                     pdfStep === 1
                         ? 'Select Banner'
@@ -442,7 +449,7 @@ const Products = () => {
                           : 'Confirm & Generate PDF'
                 }
             >
-                <div className="space-y-4">
+                <div className="space-y-4 p-4">
                     {pdfStep === 1 && (
                         <>
                             <p>Select a Banner for the PDF:</p>
@@ -485,34 +492,47 @@ const Products = () => {
 
                     {pdfStep === 3 && (
                         <>
-                            <p>Confirm the selection and generate PDF:</p>
-                            <ul>
+                            <p className="text-lg font-medium">
+                                Confirm the selection and generate PDF:
+                            </p>
+                            <ul className="space-y-2">
                                 <li>
                                     <strong>Banner:</strong>{' '}
-                                    {
-                                        banners.find(
-                                            (b) => b.id === selectedBanner,
-                                        )?.title
-                                    }
+                                    {banners.find(
+                                        (b) => b.id === selectedBanner,
+                                    )?.title || 'Not selected'}
                                 </li>
                                 <li>
                                     <strong>Advertisement:</strong>{' '}
-                                    {
-                                        advertisements.find(
-                                            (a) =>
-                                                a.id === selectedAdvertisement,
-                                        )?.title
-                                    }
+                                    {advertisements.find(
+                                        (a) => a.id === selectedAdvertisement,
+                                    )?.title || 'Not selected'}
                                 </li>
                                 <li>
-                                    <strong>Products Selected:</strong>{' '}
-                                    {selectedRows.length}
+                                    <strong>Products Selected:</strong>
+                                    <ul className="ml-4 list-disc">
+                                        {products
+                                            .filter((product) =>
+                                                selectedRows.includes(
+                                                    product.id,
+                                                ),
+                                            )
+                                            .map((product) => (
+                                                <li
+                                                    key={product.id}
+                                                    className="text-gray-700"
+                                                >
+                                                    {product.name}
+                                                </li>
+                                            ))}
+                                    </ul>
                                 </li>
                             </ul>
                         </>
                     )}
 
-                    <div className="mt-4 flex justify-end gap-4">
+                    {/* Navigation Buttons & Generate PDF Button in One Row */}
+                    <div className="mt-6 flex justify-end gap-4">
                         {pdfStep > 1 && (
                             <Button
                                 variant="outline"
@@ -523,13 +543,25 @@ const Products = () => {
                                 Back
                             </Button>
                         )}
+
                         {pdfStep < 3 ? (
                             <Button variant="black" onClick={handleNextStep}>
                                 Next
                             </Button>
                         ) : (
-                            <Button variant="black" onClick={handleGeneratePDF}>
-                                Generate PDF
+                            <Button
+                                variant="black"
+                                onClick={handleGeneratePDF}
+                                disabled={buttonLoading}
+                            >
+                                {buttonLoading ? (
+                                    <span className="flex items-center">
+                                        <span className="loader mr-2"></span>{' '}
+                                        Generating...
+                                    </span>
+                                ) : (
+                                    'Generate PDF'
+                                )}
                             </Button>
                         )}
                     </div>
