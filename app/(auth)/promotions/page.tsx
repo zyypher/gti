@@ -213,8 +213,7 @@ const PromotionsPage = () => {
             <Dialog
                 isOpen={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
-                title="Add Banner/Advertisement"
-                onSubmit={handleSubmit}
+                title="Add Promotion"
             >
                 <div className="space-y-4">
                     <Input
@@ -249,11 +248,13 @@ const PromotionsPage = () => {
                             type="submit"
                             variant="black"
                             disabled={isSubmitting}
+                            onClick={handleSubmit}
+                            className="relative flex h-10 min-w-[120px] items-center justify-center"
                         >
                             {isSubmitting ? (
-                                <div className="loader" />
+                                <div className="loader"></div> 
                             ) : (
-                                'Submit'
+                                <span className="opacity-100">Submit</span>
                             )}
                         </Button>
                     </div>
