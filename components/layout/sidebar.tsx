@@ -695,6 +695,10 @@ const Sidebar = () => {
                         <FileText className="size-[18px] shrink-0" />
                         <span>Promotions</span>
                     </NavLink>
+                    <NavLink href="/generated-pdfs" className={`nav-link`}>
+                        <FileText className="size-[18px] shrink-0" />
+                        <span>Generated PDFs</span>
+                    </NavLink>
 
                     {/* <AccordionItem value="item-5" className="p-0 shadow-none">
                         <AccordionTrigger className="nav-link">

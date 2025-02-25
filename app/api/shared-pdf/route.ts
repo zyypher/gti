@@ -4,6 +4,42 @@ import { nanoid } from 'nanoid';
 
 const prisma = new PrismaClient();
 
+// ✅ GET Method: Fetch all Shared PDFs
+export async function GET() {
+    try {
+        const sharedPdfs = await prisma.sharedPDF.findMany();
+
+        // ✅ Fetch product details for each shared PDF
+        const pdfsWithDetails = await Promise.all(
+            sharedPdfs.map(async (pdf) => {
+                const productIdsArray = pdf.productIds.split(',');
+
+                // ✅ Fetch product details including name and pdfUrl
+                const products = await prisma.product.findMany({
+                    where: { id: { in: productIdsArray } },
+                    select: { id: true, name: true, pdfUrl: true },
+                });
+
+                return {
+                    id: pdf.id,
+                    uniqueSlug: pdf.uniqueSlug,
+                    products,
+                    createdAt: pdf.createdAt,
+                    expiresAt: pdf.expiresAt,
+                };
+            })
+        );
+
+        return NextResponse.json(pdfsWithDetails);
+    } catch (error) {
+        console.error('Error fetching shared PDFs:', error);
+        return NextResponse.json(
+            { error: 'Failed to fetch shared PDFs' },
+            { status: 500 }
+        );
+    }
+}
+
 export async function POST(req: Request) {
     try {
         let { productIds, expiresAt } = await req.json();
