@@ -5,14 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import {
-    Bell,
-    ChevronDown,
-    Info,
-    LogOut,
-    Menu,
-    UserCog,
-} from 'lucide-react'
+import { Bell, ChevronDown, Info, LogOut, Menu, UserCog } from 'lucide-react'
 import {
     Popover,
     PopoverContent,
@@ -32,7 +25,10 @@ const Header = () => {
     const pathName = usePathname()
 
     // ✅ State for user details and loading
-    const [user, setUser] = useState<{ firstName: string; lastName: string } | null>(null)
+    const [user, setUser] = useState<{
+        firstName: string
+        lastName: string
+    } | null>(null)
     const [loading, setLoading] = useState(true)
 
     // ✅ Fetch user details
@@ -57,8 +53,8 @@ const Header = () => {
 
     // ✅ Extract initials for the user
     const getUserInitials = () => {
-        if (user) {
-            return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
+        if (user && (user?.firstName || user?.lastName)) {
+            return `${user?.firstName?.charAt(0)}${user?.lastName?.charAt(0)}`.toUpperCase()
         }
         return 'G' // Default for "Guest"
     }
@@ -94,11 +90,15 @@ const Header = () => {
                                 className="mr-4 w-full max-w-80 divide-y divide-gray-300 p-0"
                             >
                                 <div className="rounded-t-lg bg-gray-100 p-3 text-black">
-                                    <h2 className="font-semibold leading-5">Notifications</h2>
+                                    <h2 className="font-semibold leading-5">
+                                        Notifications
+                                    </h2>
                                 </div>
                                 <div className="p-4 text-center">
                                     <Info className="mx-auto mb-2 h-8 w-8 text-gray-500" />
-                                    <p className="text-sm text-gray-500">No notifications</p>
+                                    <p className="text-sm text-gray-500">
+                                        No notifications
+                                    </p>
                                 </div>
                             </PopoverContent>
                         </Popover>
@@ -114,7 +114,7 @@ const Header = () => {
                                         <Skeleton className="h-8 w-8 rounded-full" />
                                     ) : (
                                         // ✅ Profile Circle with Initials
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-white text-sm font-bold">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-sm font-bold text-white">
                                             {getUserInitials()}
                                         </div>
                                     )}
@@ -132,7 +132,11 @@ const Header = () => {
                                                     Welcome back 👋
                                                 </h5>
                                                 <h2 className="line-clamp-1 text-xs font-bold text-black">
-                                                    {user ? `${user.firstName} ${user.lastName}` : 'Guest'}
+                                                    {user &&
+                                                    (user?.firstName ||
+                                                        user?.lastName)
+                                                        ? `${user.firstName} ${user.lastName}`
+                                                        : 'Guest'}
                                                 </h2>
                                             </>
                                         )}

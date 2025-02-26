@@ -183,6 +183,8 @@ const Products = () => {
                 setPdfStep(1)
                 setSelectedBanner(null)
                 setSelectedAdvertisement(null)
+                reset();
+                setSelectedRows([]);
 
                 const shareableUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/${uniqueSlug}` // Change to your domain
 

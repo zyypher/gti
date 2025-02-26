@@ -1,16 +1,17 @@
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcrypt');
+const { PrismaClient } = require('@prisma/client')
+const bcrypt = require('bcrypt')
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
 
 async function main() {
-    // Seed admin user
-    const password = 'Gulb@h4r_Adm1n#888!';
-    const hashedPassword = await bcrypt.hash(password, 12);
+    // Hash password
+    const password = 'Gulb@h4r_Adm1n#888!'
+    const hashedPassword = await bcrypt.hash(password, 12)
 
-    await prisma.user.upsert({
+    // Create or update admin user
+    const adminUser = await prisma.user.upsert({
         where: { email: 'admin@gulbahartobacco.com' },
-        update: {}, // Update if user exists
+        update: {}, // No updates needed
         create: {
             email: 'admin@gulbahartobacco.com',
             password: hashedPassword,
@@ -18,16 +19,16 @@ async function main() {
             createdAt: new Date(),
             updatedAt: new Date(),
         },
-    });
+    })
 
-    console.log('✅ Admin user seeded');
+    console.log('✅ Admin user seeded successfully with ID:', adminUser.id)
 }
 
 main()
     .catch((e) => {
-        console.error(e);
-        process.exit(1);
+        console.error(e)
+        process.exit(1)
     })
     .finally(async () => {
-        await prisma.$disconnect();
-    });
+        await prisma.$disconnect()
+    })
