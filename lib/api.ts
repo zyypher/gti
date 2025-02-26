@@ -29,7 +29,7 @@ api.interceptors.response.use(
             toast.error('Invalid credentials. Please try again.');
         } 
         else if (error.response?.status !== 404) {
-            toast.error('An error occurred. Please try again.');
+            // toast.error('An error occurred. Please try again.');
         }
         return Promise.reject(error);
     },
