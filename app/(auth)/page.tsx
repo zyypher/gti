@@ -52,7 +52,7 @@ const Home = () => {
         { name: 'Products', value: stats.totalProducts },
         { name: 'Banners', value: stats.totalBanners },
         { name: 'Ads', value: stats.totalAds },
-        { name: 'Shared PDFs', value: stats.totalSharedPdfs },
+        { name: 'Generated PDFs', value: stats.totalSharedPdfs },
     ]
 
     return (
@@ -148,7 +148,7 @@ const Home = () => {
                                         size={24}
                                     />
                                     <h3 className="leading-tight">
-                                        Shared PDFs
+                                        Generated PDFs
                                     </h3>
                                 </div>
                                 <h4 className="text-3xl font-bold text-black">

@@ -19,6 +19,7 @@ model User {
   updatedAt     DateTime       @updatedAt
   dataRecords   DataRecord[]
   notifications Notification[]
+  sharedPDFs    SharedPDF[]
 }
 
 model DataRecord {
@@ -79,6 +80,8 @@ model SharedPDF {
   productIds String // Store Product IDs as a comma-separated string
   createdAt  DateTime @default(now()) // Store timestamp
   expiresAt  DateTime // Expiry date (e.g., +30 days)
+  createdById String
+  createdBy   User @relation(fields: [createdById], references: [id], onDelete: Cascade)
 }
 
 model Notification {

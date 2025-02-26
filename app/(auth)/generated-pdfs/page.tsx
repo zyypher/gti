@@ -29,7 +29,7 @@ const GeneratedPDFs = () => {
                 const pdfData: IGeneratedPDF[] = response.data
                 setPdfs(pdfData)
             } catch (error) {
-                console.error('Error fetching shared PDFs:', error)
+                console.error('Error fetching generated PDFs:', error)
             } finally {
                 setLoading(false)
             }
@@ -39,7 +39,7 @@ const GeneratedPDFs = () => {
 
     return (
         <div className="container mx-auto px-4 py-6">
-            <h1 className="mb-6 text-2xl font-semibold">Shared PDFs</h1>
+            <h1 className="mb-6 text-2xl font-semibold">Generated PDFs</h1>
 
             {loading ? (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
