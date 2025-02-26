@@ -5,14 +5,20 @@ const prisma = new PrismaClient()
 
 export async function GET() {
     try {
-        const totalProducts = await prisma.product.count()
+        const totalUsers = await prisma.user.count()
         const totalBrands = await prisma.brand.count()
-        const totalPromotions = await prisma.promotion.count()
+        const totalProducts = await prisma.product.count()
+        const totalBanners = await prisma.promotion.count({ where: { type: 'banner' } })
+        const totalAds = await prisma.promotion.count({ where: { type: 'advertisement' } })
+        const totalSharedPdfs = await prisma.sharedPDF.count()
 
         return NextResponse.json({
-            totalProducts,
+            totalUsers,
             totalBrands,
-            totalPromotions,
+            totalProducts,
+            totalBanners,
+            totalAds,
+            totalSharedPdfs,
         })
     } catch (error) {
         console.error('Error fetching dashboard stats:', error)

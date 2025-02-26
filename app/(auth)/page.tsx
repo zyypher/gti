@@ -3,25 +3,36 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
-import { DataTable } from '@/components/custom/table/data-table'
-import { columns } from '@/components/custom/table/products/columns'
 import PageHeading from '@/components/layout/page-heading'
 import { Card } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+    LineChart,
+    Line,
+} from 'recharts'
+import { Users, Package, FileText, Image, Database } from 'lucide-react'
+import DashboardSkeleton from '@/components/DashboardSkeleton'
 
 const Home = () => {
     const [stats, setStats] = useState({
-        totalProducts: 0,
+        totalUsers: 0,
         totalBrands: 0,
-        totalPromotions: 0,
+        totalProducts: 0,
+        totalBanners: 0,
+        totalAds: 0,
+        totalSharedPdfs: 0,
     })
-    const [topProducts, setTopProducts] = useState([])
-    const [loadingStats, setLoadingStats] = useState(true) // ✅ Loading for stats
-    const [loadingProducts, setLoadingProducts] = useState(true) // ✅ Loading for table
+    const [loadingStats, setLoadingStats] = useState(true)
 
     useEffect(() => {
         fetchStats()
-        fetchTopProducts()
     }, [])
 
     const fetchStats = async () => {
@@ -31,84 +42,164 @@ const Home = () => {
         } catch (error) {
             toast.error('Failed to load dashboard stats')
         } finally {
-            setLoadingStats(false) // ✅ Stop loading after fetching
+            setLoadingStats(false)
         }
     }
 
-    const fetchTopProducts = async () => {
-        try {
-            const response = await api.get('/api/products/top')
-            setTopProducts(response.data)
-        } catch (error) {
-            toast.error('Failed to load top products')
-        } finally {
-            setLoadingProducts(false) // ✅ Stop loading after fetching
-        }
-    }
+    const data = [
+        { name: 'Users', value: stats.totalUsers },
+        { name: 'Brands', value: stats.totalBrands },
+        { name: 'Products', value: stats.totalProducts },
+        { name: 'Banners', value: stats.totalBanners },
+        { name: 'Ads', value: stats.totalAds },
+        { name: 'Shared PDFs', value: stats.totalSharedPdfs },
+    ]
 
     return (
         <div className="relative space-y-4">
             <PageHeading heading="Dashboard" />
 
-            {/* ✅ Stats Section with Skeleton Loader */}
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                <Card>
-                    <div className="p-4">
-                        <h3>Total Products</h3>
-                        {loadingStats ? (
-                            <Skeleton className="h-6 w-16 rounded-md" />
-                        ) : (
-                            <h4>{stats.totalProducts}</h4>
-                        )}
-                    </div>
-                </Card>
-                <Card>
-                    <div className="p-4">
-                        <h3>Total Brands</h3>
-                        {loadingStats ? (
-                            <Skeleton className="h-6 w-16 rounded-md" />
-                        ) : (
-                            <h4>{stats.totalBrands}</h4>
-                        )}
-                    </div>
-                </Card>
-                <Card>
-                    <div className="p-4">
-                        <h3>Total Promotions</h3>
-                        {loadingStats ? (
-                            <Skeleton className="h-6 w-16 rounded-md" />
-                        ) : (
-                            <h4>{stats.totalPromotions}</h4>
-                        )}
-                    </div>
-                </Card>
-            </div>
+            {loadingStats ? (
+                <DashboardSkeleton />
+            ) : (
+                <>
+                    {/* ✅ Stats Cards Section */}
+                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
+                        <Card className="relative rounded-[6px] rounded-b-none rounded-t-2xl border border-b-[3px] border-b-[#972d2d] bg-gray-100 p-5 shadow-md">
+                            <div className="space-y-3.5 font-semibold">
+                                <div className="flex items-center gap-1.5">
+                                    <Users
+                                        className="text-gray-700"
+                                        size={24}
+                                    />
+                                    <h3 className="leading-tight">Users</h3>
+                                </div>
+                                <h4 className="text-3xl font-bold text-black">
+                                    {stats.totalUsers}
+                                </h4>
+                            </div>
+                        </Card>
 
-            {/* ✅ Top Products Table with Skeleton Loader */}
-            <div className="mt-4">
-                <h2>Top Products</h2>
-                {loadingProducts ? (
-                    // 🟡 Skeleton Loader for Table
-                    <div className="space-y-3">
-                        <Skeleton className="h-10 w-full rounded-md" /> {/* Table Header */}
-                        {Array.from({ length: 5 }).map((_, index) => (
-                            <Skeleton
-                                key={index}
-                                className="h-12 w-full rounded-md"
-                            />
-                        ))}
+                        <Card className="bg-green-100 relative rounded-[6px] rounded-b-none rounded-t-2xl border border-b-[3px] border-b-[#178f4d] p-5 shadow-md">
+                            <div className="space-y-3.5 font-semibold">
+                                <div className="flex items-center gap-1.5">
+                                    <FileText
+                                        className="text-green-700"
+                                        size={24}
+                                    />
+                                    <h3 className="leading-tight">Brands</h3>
+                                </div>
+                                <h4 className="text-3xl font-bold text-black">
+                                    {stats.totalBrands}
+                                </h4>
+                            </div>
+                        </Card>
+
+                        <Card className="bg-blue-100 relative rounded-[6px] rounded-b-none rounded-t-2xl border border-b-[3px] border-b-[#1d4ed8] p-5 shadow-md">
+                            <div className="space-y-3.5 font-semibold">
+                                <div className="flex items-center gap-1.5">
+                                    <Package
+                                        className="text-blue-700"
+                                        size={24}
+                                    />
+                                    <h3 className="leading-tight">Products</h3>
+                                </div>
+                                <h4 className="text-3xl font-bold text-black">
+                                    {stats.totalProducts}
+                                </h4>
+                            </div>
+                        </Card>
+
+                        <Card className="bg-yellow-100 relative rounded-[6px] rounded-b-none rounded-t-2xl border border-b-[3px] border-b-[#d97706] p-5 shadow-md">
+                            <div className="space-y-3.5 font-semibold">
+                                <div className="flex items-center gap-1.5">
+                                    <Image
+                                        className="text-yellow-700"
+                                        size={24}
+                                    />
+                                    <h3 className="leading-tight">Banners</h3>
+                                </div>
+                                <h4 className="text-3xl font-bold text-black">
+                                    {stats.totalBanners}
+                                </h4>
+                            </div>
+                        </Card>
+
+                        <Card className="bg-orange-100 relative rounded-[6px] rounded-b-none rounded-t-2xl border border-b-[3px] border-b-[#c2410c] p-5 shadow-md">
+                            <div className="space-y-3.5 font-semibold">
+                                <div className="flex items-center gap-1.5">
+                                    <Image
+                                        className="text-orange-700"
+                                        size={24}
+                                    />
+                                    <h3 className="leading-tight">Ads</h3>
+                                </div>
+                                <h4 className="text-3xl font-bold text-black">
+                                    {stats.totalAds}
+                                </h4>
+                            </div>
+                        </Card>
+
+                        <Card className="bg-purple-100 relative rounded-[6px] rounded-b-none rounded-t-2xl border border-b-[3px] border-b-[#6d28d9] p-5 shadow-md">
+                            <div className="space-y-3.5 font-semibold">
+                                <div className="flex items-center gap-1.5">
+                                    <Database
+                                        className="text-purple-700"
+                                        size={24}
+                                    />
+                                    <h3 className="leading-tight">
+                                        Shared PDFs
+                                    </h3>
+                                </div>
+                                <h4 className="text-3xl font-bold text-black">
+                                    {stats.totalSharedPdfs}
+                                </h4>
+                            </div>
+                        </Card>
                     </div>
-                ) : (
-                    <DataTable
-                        columns={columns(
-                            (item) => console.log('Edit:', item),
-                            (id) => console.log('Delete:', id)
-                        )}
-                        data={topProducts}
-                        filterField="name"
-                    />
-                )}
-            </div>
+
+                    {/* ✅ Graphs Section */}
+                    <div className="grid gap-6 md:grid-cols-2">
+                        {/* ✅ Bar Chart */}
+                        <Card className="p-4">
+                            <h3 className="font-semibold text-black">
+                                Statistics Overview
+                            </h3>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={data}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="value" fill="#4f46e5" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </Card>
+
+                        {/* ✅ Line Chart */}
+                        <Card className="p-4">
+                            <h3 className="font-semibold text-black">
+                                Growth Over Time
+                            </h3>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={data}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="value"
+                                        stroke="#e11d48"
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </Card>
+                    </div>
+                </>
+            )}
         </div>
     )
 }
