@@ -28,6 +28,7 @@ const Home = () => {
         totalBanners: 0,
         totalAds: 0,
         totalSharedPdfs: 0,
+        totalOrders: 0,
     })
     const [loadingStats, setLoadingStats] = useState(true)
 
@@ -37,14 +38,15 @@ const Home = () => {
 
     const fetchStats = async () => {
         try {
-            const response = await api.get('/api/dashboard/stats')
-            setStats(response.data)
+            const response = await api.get('/api/dashboard/stats');
+            setStats(response.data);
         } catch (error) {
-            toast.error('Failed to load dashboard stats')
+            toast.error('Failed to load dashboard stats');
         } finally {
-            setLoadingStats(false)
+            setLoadingStats(false);
         }
-    }
+    };
+
 
     const data = [
         { name: 'Users', value: stats.totalUsers },
@@ -53,6 +55,7 @@ const Home = () => {
         { name: 'Banners', value: stats.totalBanners },
         { name: 'Ads', value: stats.totalAds },
         { name: 'Generated PDFs', value: stats.totalSharedPdfs },
+        { name: 'Orders', value: stats.totalOrders },
     ]
 
     return (
@@ -156,6 +159,19 @@ const Home = () => {
                                 </h4>
                             </div>
                         </Card>
+
+                        <Card className="bg-pink-100 relative rounded-[6px] rounded-b-none rounded-t-2xl border border-b-[3px] border-b-[#db2777] p-5 shadow-md">
+                            <div className="space-y-3.5 font-semibold">
+                                <div className="flex items-center gap-1.5">
+                                    <Package className="text-pink-700" size={24} />
+                                    <h3 className="leading-tight">Orders</h3>
+                                </div>
+                                <h4 className="text-3xl font-bold text-black">
+                                    {stats.totalOrders}
+                                </h4>
+                            </div>
+                        </Card>
+
                     </div>
 
                     {/* ✅ Graphs Section */}
