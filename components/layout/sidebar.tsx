@@ -34,7 +34,8 @@ import {
     Cigarette,
     Package,
     CircleUserRound,
-    FileText
+    FileText,
+    ListOrdered
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
@@ -698,6 +699,10 @@ const Sidebar = () => {
                     <NavLink href="/generated-pdfs" className={`nav-link`}>
                         <FileText className="size-[18px] shrink-0" />
                         <span>Generated PDFs</span>
+                    </NavLink>
+                    <NavLink href="/orders" className={`nav-link`}>
+                        <ListOrdered className="size-[18px] shrink-0" />
+                        <span>Orders</span>
                     </NavLink>
 
                     {/* <AccordionItem value="item-5" className="p-0 shadow-none">
