@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -23,13 +22,12 @@ import { logout } from '@/lib/auth'
 const Header = () => {
     const router = useRouter()
     const pathName = usePathname()
-
     // ✅ State for user details and loading
-    const [user, setUser] = useState<{
-        firstName: string
-        lastName: string
-    } | null>(null)
+    const [user, setUser] = useState<{ firstName: string; lastName: string; email: string } | null>(null)
     const [loading, setLoading] = useState(true)
+    const [notifications, setNotifications] = useState<{ id: string; message: string; createdAt: string; isRead: boolean }[]>([])
+    const [unreadCount, setUnreadCount] = useState(0)
+    const [loadingNotifications, setLoadingNotifications] = useState(true)
 
     // ✅ Fetch user details
     useEffect(() => {
@@ -40,23 +38,53 @@ const Header = () => {
             } catch (error) {
                 console.error('Failed to fetch user data')
             } finally {
-                setLoading(false) // ✅ Stop loading
+                setLoading(false)
             }
         }
         fetchUser()
     }, [])
 
-    const handleLogout = async () => {
-        await logout()
-        router.push('/login') // Redirect to login page
+    // ✅ Fetch notifications on page load
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const response = await api.get('/api/notifications')
+                setNotifications(response.data.notifications)
+                setUnreadCount(response.data.unreadCount) // ✅ Set unread count
+            } catch (error) {
+                console.error('Failed to fetch notifications:', error)
+            } finally {
+                setLoadingNotifications(false)
+            }
+        }
+        fetchNotifications()
+    }, [])
+
+    // ✅ Mark all notifications as read when user opens the panel
+    const markNotificationsAsRead = async () => {
+        if (unreadCount === 0) return // ✅ No need to update if already read
+
+        try {
+            await api.patch('/api/notifications') // ✅ Mark as read
+            setUnreadCount(0) // ✅ Reset unread count immediately
+            setNotifications((prev) =>
+                prev.map((n) => ({ ...n, isRead: true })),
+            ) // ✅ Update state
+        } catch (error) {
+            console.error('Failed to mark notifications as read:', error)
+        }
     }
 
-    // ✅ Extract initials for the user
+    const handleLogout = async () => {
+        await logout()
+        router.push('/login')
+    }
+
     const getUserInitials = () => {
         if (user && (user?.firstName || user?.lastName)) {
             return `${user?.firstName?.charAt(0)}${user?.lastName?.charAt(0)}`.toUpperCase()
         }
-        return 'G' // Default for "Guest"
+        return 'G'
     }
 
     return (
@@ -76,29 +104,47 @@ const Header = () => {
                                     className="relative duration-300 hover:opacity-80"
                                 >
                                     <Bell className="h-5 w-5" />
-                                    <Badge
-                                        variant={'primary'}
-                                        size={'number'}
-                                        className="absolute -right-0.5 -top-0.5 grid h-3 min-w-3 place-content-center px-1 text-[9px]"
-                                    >
-                                        3
-                                    </Badge>
+                                    {unreadCount > 0 && (
+                                        <Badge
+                                            variant={'primary'}
+                                            size={'number'}
+                                            className="absolute -right-0.5 -top-0.5 grid h-3 min-w-3 place-content-center px-1 text-[9px]"
+                                        >
+                                            {unreadCount}
+                                        </Badge>
+                                    )}
                                 </button>
                             </PopoverTrigger>
                             <PopoverContent
                                 sideOffset={12}
                                 className="mr-4 w-full max-w-80 divide-y divide-gray-300 p-0"
+                                onOpenAutoFocus={markNotificationsAsRead} // ✅ Mark as read when opened
                             >
                                 <div className="rounded-t-lg bg-gray-100 p-3 text-black">
                                     <h2 className="font-semibold leading-5">
                                         Notifications
                                     </h2>
                                 </div>
-                                <div className="p-4 text-center">
-                                    <Info className="mx-auto mb-2 h-8 w-8 text-gray-500" />
-                                    <p className="text-sm text-gray-500">
-                                        No notifications
-                                    </p>
+                                <div className="p-4">
+                                    {loadingNotifications ? (
+                                        <Skeleton className="h-10 w-full rounded-md" />
+                                    ) : notifications.length === 0 ? (
+                                        <div className="text-center">
+                                            <Info className="mx-auto mb-2 h-8 w-8 text-gray-500" />
+                                            <p className="text-sm text-gray-500">No notifications</p>
+                                        </div>
+                                    ) : (
+                                        <ul className="space-y-2">
+                                            {notifications?.map((notification) => (
+                                                <li key={notification.id} className={`p-2 rounded ${notification.isRead ? 'bg-gray-200' : 'bg-gray-100'}`}>
+                                                    <p className="text-sm text-gray-800">{notification.message}</p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {new Date(notification.createdAt).toLocaleString()}
+                                                    </p>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
                                 </div>
                             </PopoverContent>
                         </Popover>
@@ -110,18 +156,14 @@ const Header = () => {
                             <DropdownMenuTrigger asChild>
                                 <div className="group flex cursor-pointer items-center gap-2.5 rounded-lg">
                                     {loading ? (
-                                        // 🟡 Skeleton Loader for profile
                                         <Skeleton className="h-8 w-8 rounded-full" />
                                     ) : (
-                                        // ✅ Profile Circle with Initials
                                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-sm font-bold text-white">
                                             {getUserInitials()}
                                         </div>
                                     )}
-
                                     <div className="hidden space-y-1 lg:block">
                                         {loading ? (
-                                            // 🟡 Skeleton Loader for name
                                             <>
                                                 <Skeleton className="h-3 w-24 rounded" />
                                                 <Skeleton className="h-4 w-28 rounded" />
@@ -132,10 +174,12 @@ const Header = () => {
                                                     Welcome back 👋
                                                 </h5>
                                                 <h2 className="line-clamp-1 text-xs font-bold text-black">
-                                                    {user &&
-                                                    (user?.firstName ||
-                                                        user?.lastName)
-                                                        ? `${user.firstName} ${user.lastName}`
+                                                    {user
+                                                        ? user.email === 'admin@gulbahartobacco.com'
+                                                            ? 'Admin'
+                                                            : user.firstName || user.lastName
+                                                                ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+                                                                : 'User'
                                                         : 'Guest'}
                                                 </h2>
                                             </>
@@ -149,26 +193,15 @@ const Header = () => {
                                     </button>
                                 </div>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                align="end"
-                                sideOffset={12}
-                                className="min-w-[200px] space-y-1 rounded-lg p-1.5 text-sm font-medium"
-                            >
+                            <DropdownMenuContent align="end" sideOffset={12} className="min-w-[200px] space-y-1 rounded-lg p-1.5 text-sm font-medium">
                                 <DropdownMenuItem className="p-0">
-                                    <Link
-                                        href="/setting"
-                                        className={`flex items-center gap-1.5 rounded-lg px-3 py-2 ${pathName === '/setting' && '!bg-gray-400 !text-black'}`}
-                                    >
+                                    <Link href="/setting" className="flex items-center gap-1.5 rounded-lg px-3 py-2">
                                         <UserCog className="size-[18px] shrink-0" />
                                         Profile
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem className="p-0">
-                                    <Link
-                                        href="/login"
-                                        onClick={handleLogout}
-                                        className={`flex items-center gap-1.5 rounded-lg px-3 py-2 ${pathName === '/login' && '!bg-gray-400 !text-black'}`}
-                                    >
+                                    <Link href="/login" onClick={handleLogout} className="flex items-center gap-1.5 rounded-lg px-3 py-2">
                                         <LogOut className="size-[18px] shrink-0" />
                                         Sign out
                                     </Link>
@@ -176,14 +209,6 @@ const Header = () => {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
-
-                    {/* ☰ Sidebar Toggle */}
-                    <button
-                        type="button"
-                        className="order-3 duration-300 hover:opacity-80 lg:hidden"
-                    >
-                        <Menu className="h-5 w-5" />
-                    </button>
                 </div>
             </div>
         </header>

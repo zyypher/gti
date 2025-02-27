@@ -1,28 +1,62 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { getUserIdFromToken } from '@/lib/getUserIdFromToken'
 
 const prisma = new PrismaClient()
 
-export async function POST(req: Request) {
+// ✅ Fetch Unread Notifications & All Notifications
+export async function GET(req: Request) {
     try {
-        const { userId, orderId, message } = await req.json()
+        // ✅ Extract userId from JWT
+        const userId = await getUserIdFromToken(req)
 
-        if (!userId || !orderId || !message) {
+        if (!userId) {
             return NextResponse.json(
-                { error: 'Missing fields' },
-                { status: 400 },
+                { error: 'Unauthorized' },
+                { status: 401 },
             )
         }
 
-        const notification = await prisma.notification.create({
-            data: { userId, orderId, message },
+        // ✅ Fetch all notifications for user
+        const notifications = await prisma.notification.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
         })
 
-        return NextResponse.json({ success: true, notification })
+        // ✅ Count Unread Notifications
+        const unreadCount = notifications.filter((n) => !n.isRead).length
+
+        return NextResponse.json({ notifications, unreadCount })
     } catch (error) {
-        console.error('Error creating notification:', error)
+        console.error('Error fetching notifications:', error)
         return NextResponse.json(
-            { error: 'Failed to create notification' },
+            { error: 'Failed to fetch notifications' },
+            { status: 500 },
+        )
+    }
+}
+
+// ✅ Mark all notifications as read
+export async function PATCH(req: Request) {
+    try {
+        const userId = await getUserIdFromToken(req)
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 },
+            )
+        }
+
+        await prisma.notification.updateMany({
+            where: { userId, isRead: false },
+            data: { isRead: true },
+        })
+
+        return NextResponse.json({ success: true })
+    } catch (error) {
+        console.error('Error marking notifications as read:', error)
+        return NextResponse.json(
+            { error: 'Failed to update notifications' },
             { status: 500 },
         )
     }
