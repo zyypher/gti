@@ -22,7 +22,7 @@ import { logout } from '@/lib/auth'
 const Header = () => {
     const router = useRouter()
     const pathName = usePathname()
-    // ✅ State for user details and loading
+
     const [user, setUser] = useState<{ firstName: string; lastName: string; email: string } | null>(null)
     const [loading, setLoading] = useState(true)
     const [notifications, setNotifications] = useState<{ id: string; message: string; createdAt: string; isRead: boolean }[]>([])
@@ -50,7 +50,6 @@ const Header = () => {
         }
     };
 
-    // ✅ Fetch user details
     useEffect(() => {
         const fetchUser = async () => {
             try {
@@ -68,13 +67,12 @@ const Header = () => {
         fetchUser()
     }, [])
 
-    // ✅ Fetch notifications on page load
     useEffect(() => {
         const fetchNotifications = async () => {
             try {
                 const response = await api.get('/api/notifications')
                 setNotifications(response.data.notifications)
-                setUnreadCount(response.data.unreadCount) // ✅ Set unread count
+                setUnreadCount(response.data.unreadCount) 
             } catch (error) {
                 console.error('Failed to fetch notifications:', error)
             } finally {
@@ -84,16 +82,15 @@ const Header = () => {
         fetchNotifications()
     }, [])
 
-    // ✅ Mark all notifications as read when user opens the panel
     const markNotificationsAsRead = async () => {
-        if (unreadCount === 0) return // ✅ No need to update if already read
+        if (unreadCount === 0) return 
 
         try {
-            await api.patch('/api/notifications') // ✅ Mark as read
-            setUnreadCount(0) // ✅ Reset unread count immediately
+            await api.patch('/api/notifications') 
+            setUnreadCount(0) 
             setNotifications((prev) =>
                 prev.map((n) => ({ ...n, isRead: true })),
-            ) // ✅ Update state
+            ) 
         } catch (error) {
             console.error('Failed to mark notifications as read:', error)
         }
@@ -111,6 +108,11 @@ const Header = () => {
         return 'G'
     }
 
+    const toggleSidebar = () => {
+        document.getElementById('sidebar')?.classList.add('open')
+        document.getElementById('overlay')?.classList.add('open')
+    }
+
     return (
         <header className="fixed inset-x-0 top-0 z-30 bg-white px-4 py-[15px] shadow-sm lg:px-5">
             <div className="flex items-center justify-between gap-5">
@@ -122,9 +124,7 @@ const Header = () => {
                     />
                 </Link>
 
-
                 <div className="inline-flex items-center gap-3 sm:gap-5">
-                    {/* 🔔 Notifications */}
                     <div className="order-2 lg:order-none">
                         <Popover>
                             <PopoverTrigger asChild>
@@ -147,7 +147,7 @@ const Header = () => {
                             <PopoverContent
                                 sideOffset={12}
                                 className="mr-4 w-full max-w-80 divide-y divide-gray-300 p-0"
-                                onOpenAutoFocus={markNotificationsAsRead} // ✅ Mark as read when opened
+                                onOpenAutoFocus={markNotificationsAsRead}
                             >
                                 <div className="rounded-t-lg bg-gray-100 p-3 text-black">
                                     <h2 className="font-semibold leading-5">
@@ -179,7 +179,6 @@ const Header = () => {
                         </Popover>
                     </div>
 
-                    {/* ✅ User Dropdown with Skeleton Loader */}
                     <div className="hidden lg:block">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -191,7 +190,7 @@ const Header = () => {
                                             {getUserInitials()}
                                         </div>
                                     )}
-                                    <div className="hidden space-y-1 lg:block">
+                                     <div className="hidden space-y-1 lg:block">
                                         {loading ? (
                                             <>
                                                 <Skeleton className="h-3 w-24 rounded" />
@@ -238,6 +237,14 @@ const Header = () => {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
+
+                    <button
+                        type="button"
+                        className="lg:hidden"
+                        onClick={toggleSidebar}
+                    >
+                        <Menu className="h-5 w-5" />
+                    </button>
                 </div>
             </div>
         </header>

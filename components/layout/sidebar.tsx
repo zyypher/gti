@@ -1,34 +1,15 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
+    Accordion
 } from '@/components/ui/accordion'
 import { Card } from '@/components/ui/card'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
     ChevronDown,
-    ClipboardType,
-    Component,
-    FileType,
-    Fingerprint,
-    Gauge,
-    Gem,
-    MessageSquareText,
     Minus,
-    PanelLeftDashed,
-    Phone,
-    PieChart,
-    RectangleEllipsis,
-    Rocket,
-    ScrollText,
     Settings,
-    Sheet,
-    SquareKanban,
-    TableProperties,
     Home,
     X,
     Cigarette,
@@ -37,7 +18,6 @@ import {
     FileText,
     ListOrdered
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
 import NavLink from '@/components/layout/nav-link'
 
