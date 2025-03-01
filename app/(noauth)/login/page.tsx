@@ -14,7 +14,6 @@ import routes from '@/lib/routes'
 import api from '@/lib/api'
 import { toast } from 'react-hot-toast'
 
-
 const loginSchema = z.object({
     email: z.string().email('Invalid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters long'),
@@ -45,17 +44,10 @@ export default function Login() {
             setLoading(false)
         }
     }
-    
+
     return (
         <div className="grid h-screen w-full gap-5 p-4 md:grid-cols-2">
             <div className="relative hidden overflow-hidden rounded-[20px] bg-[#3B06D2] p-4 md:block md:h-full">
-                <Image
-                    src="/images/gulbahar-logodark.svg"
-                    width={145}
-                    height={34}
-                    alt="Logo"
-                    className="absolute left-4 top-4 z-10 h-auto w-auto"
-                />
                 <Image
                     src="/images/login-cover-step.svg"
                     width={240}
@@ -80,8 +72,17 @@ export default function Login() {
                     </p>
                 </div>
             </div>
-            <div className="flex overflow-y-auto py-2">
-                <Card className="m-auto w-full max-w-[400px] space-y-[30px] p-5 shadow-sm md:w-[400px]">
+
+            <div className="flex flex-col justify-center items-center h-full">
+                <Image
+                    src="/images/gulbahar-logodark.svg"
+                    width={145}
+                    height={34}
+                    alt="Logo"
+                    className="mb-4"
+                />
+
+                <Card className="w-full max-w-[400px] space-y-[30px] p-5 shadow-sm">
                     <CardHeader className="space-y-2">
                         <h2 className="text-lg font-semibold text-black lg:text-xl/tight">
                             Sign In to your account
