@@ -14,6 +14,7 @@ import { useForm } from 'react-hook-form'
 import { Dialog } from '@/components/ui/dialog'
 import { nanoid } from 'nanoid' // Generate unique slug
 import PageHeading from '@/components/layout/page-heading'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface IBrand {
     id: string
@@ -344,13 +345,37 @@ const Products = () => {
                 </div>
             </div>
 
-            <DataTable
-                columns={columns(handleEdit, handleDelete)}
-                data={products}
-                filterField="product"
-                loading={loading}
-                rowSelectionCallback={handleRowSelection}
-            />
+            {loading ? (
+                <div className="w-full border border-gray-300 rounded-md overflow-hidden">
+                    {/* Table Header Skeleton */}
+                    <div className="flex items-center bg-gray-200 p-3">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                            <Skeleton key={index} className="h-5 w-1/5 mx-2" />
+                        ))}
+                    </div>
+
+                    {/* Table Rows Skeleton */}
+                    {Array.from({ length: 5 }).map((_, index) => (
+                        <div key={index} className="flex items-center p-3 border-t border-gray-300">
+                            {Array.from({ length: 5 }).map((_, subIndex) => (
+                                <Skeleton key={subIndex} className="h-5 w-1/5 mx-2" />
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            ) : products.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-10">
+                    <p className="text-gray-500 text-lg">No products found</p>
+                </div>
+            ) : (
+                <DataTable
+                    columns={columns(handleEdit, handleDelete)}
+                    data={products}
+                    filterField="product"
+                    loading={loading}
+                    rowSelectionCallback={handleRowSelection}
+                />
+            )}
 
             <Dialog
                 isOpen={isDialogOpen}

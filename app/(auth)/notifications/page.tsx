@@ -53,7 +53,6 @@ export default function NotificationsPage() {
             <PageHeading heading="Notifications" />
 
             <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Recent Notifications</h3>
                 {notifications.some((n) => !n.isRead) && (
                     <Button
                         variant="outline"
@@ -75,17 +74,18 @@ export default function NotificationsPage() {
                     ))}
                 </div>
             ) : notifications.length === 0 ? (
-                <p className="text-center text-gray-500">No notifications found.</p>
+                <div className="col-span-full flex flex-col items-center justify-center py-10">
+                    <p className="text-gray-500 text-lg">No notifications found</p>
+                </div>
             ) : (
                 <div className="space-y-3">
                     {notifications.map((notification) => (
                         <Card
                             key={notification.id}
-                            className={`p-4 border ${
-                                notification.isRead
-                                    ? 'border-gray-200 bg-white'
-                                    : 'border-blue-500 bg-blue-50'
-                            }`}
+                            className={`p-4 border ${notification.isRead
+                                ? 'border-gray-200 bg-white'
+                                : 'border-blue-500 bg-blue-50'
+                                }`}
                         >
                             <div className="flex items-start justify-between">
                                 <div>

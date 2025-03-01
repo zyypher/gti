@@ -117,52 +117,60 @@ const BrandsPage = () => {
                     Add Brand
                 </Button>
             </div>
-            {/* Brand Grid Section with Conditional Loading */}
+
+            {/* ✅ Brand Grid Section with Conditional Loading */}
             <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
-                {loading
-                    ? // Show 9 placeholder cards with pulse animation
-                      Array.from({ length: 9 }).map((_, index) => (
-                          <Card key={index} className="relative">
-                              <CardContent className="space-y-3 p-4">
-                                  <Skeleton className="h-40 w-full rounded-lg" />
-                                  <Skeleton className="h-6 w-3/4 rounded-md" />
-                                  <Skeleton className="h-4 w-1/2 rounded-md" />
-                                  <Skeleton className="absolute bottom-2 right-2 h-8 w-8 rounded-full" />
-                              </CardContent>
-                          </Card>
-                      ))
-                    : brands.map((brand) => (
-                          <Card
-                              key={brand.id}
-                              className="relative transition hover:shadow-lg"
-                          >
-                              <button
-                                  onClick={() => openEditDialog(brand)}
-                                  className="absolute bottom-2 right-2 rounded-full bg-gray-200 p-2 hover:bg-gray-300"
-                              >
-                                  <Pencil size={16} />
-                              </button>
-                              <CardContent className="space-y-3 p-4">
-                                  {brand.image ? (
-                                      <img
-                                          src={brand.image}
-                                          alt={brand.name}
-                                          className="h-40 w-full rounded-lg object-cover"
-                                      />
-                                  ) : (
-                                      <div className="flex h-40 w-full items-center justify-center rounded-lg bg-gray-300 text-sm text-gray-700">
-                                          No Image Available
-                                      </div>
-                                  )}
-                                  <h3 className="text-gray-800 text-lg font-semibold">
-                                      {brand.name}
-                                  </h3>
-                                  <p className="text-sm text-gray-600">
-                                      {brand.description}
-                                  </p>
-                              </CardContent>
-                          </Card>
-                      ))}
+                {loading ? (
+                    // Show 9 placeholder cards with pulse animation
+                    Array.from({ length: 9 }).map((_, index) => (
+                        <Card key={index} className="relative">
+                            <CardContent className="space-y-3 p-4">
+                                <Skeleton className="h-40 w-full rounded-lg" />
+                                <Skeleton className="h-6 w-3/4 rounded-md" />
+                                <Skeleton className="h-4 w-1/2 rounded-md" />
+                                <Skeleton className="absolute bottom-2 right-2 h-8 w-8 rounded-full" />
+                            </CardContent>
+                        </Card>
+                    ))
+                ) : brands.length === 0 ? (
+                    // ✅ Show "No brands found" message when there are no brands
+                    <div className="col-span-full flex flex-col items-center justify-center py-10">
+                        <p className="text-gray-500 text-lg">No brands found</p>
+                    </div>
+                ) : (
+                    brands.map((brand) => (
+                        <Card
+                            key={brand.id}
+                            className="relative transition hover:shadow-lg"
+                        >
+                            <button
+                                onClick={() => openEditDialog(brand)}
+                                className="absolute bottom-2 right-2 rounded-full bg-gray-200 p-2 hover:bg-gray-300"
+                            >
+                                <Pencil size={16} />
+                            </button>
+                            <CardContent className="space-y-3 p-4">
+                                {brand.image ? (
+                                    <img
+                                        src={brand.image}
+                                        alt={brand.name}
+                                        className="h-40 w-full rounded-lg object-cover"
+                                    />
+                                ) : (
+                                    <div className="flex h-40 w-full items-center justify-center rounded-lg bg-gray-300 text-sm text-gray-700">
+                                        No Image Available
+                                    </div>
+                                )}
+                                <h3 className="text-gray-800 text-lg font-semibold">
+                                    {brand.name}
+                                </h3>
+                                <p className="text-sm text-gray-600">
+                                    {brand.description}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ))
+                )}
             </div>
 
             <Dialog

@@ -20,8 +20,6 @@ const GeneratedPDFs = () => {
     const [pdfs, setPdfs] = useState<IGeneratedPDF[]>([])
     const [loading, setLoading] = useState(true)
 
-    console.log('##pdf', pdfs)
-
     useEffect(() => {
         const fetchPdfs = async () => {
             try {
@@ -51,6 +49,10 @@ const GeneratedPDFs = () => {
                             <Skeleton className="h-10 w-full" />
                         </Card>
                     ))}
+                </div>
+            ) : pdfs.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-10">
+                    <p className="text-gray-500 text-lg">No generated PDFs found</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

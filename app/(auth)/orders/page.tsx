@@ -54,7 +54,9 @@ export default function Orders() {
                     ))}
                 </div>
             ) : orders.length === 0 ? (
-                <p className="text-center text-gray-500">No orders found.</p>
+                <div className="col-span-full flex flex-col items-center justify-center py-10">
+                    <p className="text-gray-500 text-lg">No orders found</p>
+                </div>
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
                     {orders.map((order) => (

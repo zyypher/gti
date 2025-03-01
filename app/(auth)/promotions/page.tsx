@@ -126,29 +126,10 @@ const PromotionsPage = () => {
         }
     }
 
-    if (loading) {
-        return (
-            <div className="space-y-6 p-4">
-                {/* Skeleton Loader Grid */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    {Array.from({ length: 6 }).map((_, index) => (
-                        <div
-                            key={index}
-                            className="relative rounded border bg-white p-2 shadow-md"
-                        >
-                            <Skeleton className="h-48 w-full rounded-md" />
-                            <Skeleton className="mx-auto mt-2 h-5 w-3/4 rounded-md" />
-                            <Skeleton className="absolute right-2 top-2 h-5 w-5 rounded-md" />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )
-    }
-
     return (
         <div className="space-y-6 p-4">
             <PageHeading heading="Promotions" />
+
             {/* Add Promotion and Filter */}
             <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
                 <select
@@ -156,9 +137,9 @@ const PromotionsPage = () => {
                     onChange={(e) =>
                         setFilter(
                             e.target.value as
-                                | 'all'
-                                | 'banner'
-                                | 'advertisement',
+                            | 'all'
+                            | 'banner'
+                            | 'advertisement',
                         )
                     }
                     className="rounded border p-2"
@@ -173,41 +154,60 @@ const PromotionsPage = () => {
                 </Button>
             </div>
 
-            {/* Promotions Grid */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                {filteredPromotions.map((item) => (
-                    <div
-                        key={item.id}
-                        className="relative rounded border bg-white p-2 shadow-md"
-                    >
-                        {item.filePath ? (
-                            <iframe
-                                src={item.filePath}
-                                className="h-48 w-full"
-                                title={item.title}
-                            />
-                        ) : (
-                            <p className="text-center text-red-500">
-                                No PDF preview available
-                            </p>
-                        )}
-                        <p className="mt-2 w-full overflow-hidden text-ellipsis whitespace-nowrap text-center font-medium">
-                            {item.title.length > 20
-                                ? item.title.slice(0, 20) + '...'
-                                : item.title}
-                        </p>
-                        <button
-                            className="absolute right-2 top-2 text-red-500"
-                            onClick={() => {
-                                setDeleteId(item.id)
-                                setDeleteDialogOpen(true)
-                            }}
+            {/* Promotions Grid with Skeleton & No Promotions Message */}
+            {loading ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                        <div
+                            key={index}
+                            className="relative rounded border bg-white p-2 shadow-md"
                         >
-                            <Trash2 size={20} />
-                        </button>
-                    </div>
-                ))}
-            </div>
+                            <Skeleton className="h-48 w-full rounded-md" />
+                            <Skeleton className="mx-auto mt-2 h-5 w-3/4 rounded-md" />
+                            <Skeleton className="absolute right-2 top-2 h-5 w-5 rounded-md" />
+                        </div>
+                    ))}
+                </div>
+            ) : filteredPromotions.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-10">
+                    <p className="text-gray-500 text-lg">No promotions found</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {filteredPromotions.map((item) => (
+                        <div
+                            key={item.id}
+                            className="relative rounded border bg-white p-2 shadow-md"
+                        >
+                            {item.filePath ? (
+                                <iframe
+                                    src={item.filePath}
+                                    className="h-48 w-full"
+                                    title={item.title}
+                                />
+                            ) : (
+                                <p className="text-center text-red-500">
+                                    No PDF preview available
+                                </p>
+                            )}
+                            <p className="mt-2 w-full overflow-hidden text-ellipsis whitespace-nowrap text-center font-medium">
+                                {item.title.length > 20
+                                    ? item.title.slice(0, 20) + '...'
+                                    : item.title}
+                            </p>
+                            <button
+                                className="absolute right-2 top-2 text-red-500"
+                                onClick={() => {
+                                    setDeleteId(item.id)
+                                    setDeleteDialogOpen(true)
+                                }}
+                            >
+                                <Trash2 size={20} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* Dialog for adding promotions */}
             <Dialog
@@ -249,13 +249,8 @@ const PromotionsPage = () => {
                             variant="black"
                             disabled={isSubmitting}
                             onClick={handleSubmit}
-                            className="relative flex h-10 min-w-[120px] items-center justify-center"
                         >
-                            {isSubmitting ? (
-                                <div className="loader"></div> 
-                            ) : (
-                                <span className="opacity-100">Submit</span>
-                            )}
+                            {isSubmitting ? 'Submitting...' : 'Submit'}
                         </Button>
                     </div>
                 </div>
@@ -268,18 +263,7 @@ const PromotionsPage = () => {
                 title="Confirm Deletion"
                 onSubmit={handleDelete}
             >
-                <div className="space-y-4 text-center">
-                    <p>Are you sure you want to delete this promotion?</p>
-                    <div className="flex justify-center gap-4">
-                        <Button
-                            variant="black"
-                            onClick={() => setDeleteDialogOpen(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button onClick={handleDelete}>Delete</Button>
-                    </div>
-                </div>
+                <p>Are you sure you want to delete this promotion?</p>
             </Dialog>
         </div>
     )

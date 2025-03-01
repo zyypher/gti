@@ -16,7 +16,8 @@ import {
     Package,
     CircleUserRound,
     FileText,
-    ListOrdered
+    ListOrdered,
+    MessageCircle
 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import NavLink from '@/components/layout/nav-link'
@@ -179,7 +180,7 @@ const Sidebar = () => {
                         <span>Orders</span>
                     </NavLink>
                     <NavLink href="/notifications" className={`nav-link`}>
-                        <ListOrdered className="size-[18px] shrink-0" />
+                        <MessageCircle className="size-[18px] shrink-0" />
                         <span>Notifications</span>
                     </NavLink>
                     <h3 className="mt-2.5 whitespace-nowrap rounded-lg bg-gray-400 px-5 py-2.5 text-xs/tight font-semibold uppercase text-black">
