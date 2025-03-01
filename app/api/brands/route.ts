@@ -53,10 +53,10 @@ export async function POST(req: NextRequest) {
         }
 
         const newBrand = await prisma.brand.create({
-            data: { 
-                name, 
-                description, 
-                image: imageBuffer 
+            data: {
+                name,
+                description,
+                image: imageBuffer
             },
         })
 
@@ -90,6 +90,7 @@ export async function PUT(req: NextRequest) {
 }
 
 // Delete a brand
+// Delete a brand and its related products
 export async function DELETE(req: NextRequest) {
     try {
         const { id } = await req.json()
@@ -98,11 +99,18 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: 'ID is required' }, { status: 400 })
         }
 
+        // ✅ Step 1: Delete all products related to this brand
+        await prisma.product.deleteMany({
+            where: { brandId: id },
+        })
+
+        // ✅ Step 2: Delete the brand
         await prisma.brand.delete({ where: { id } })
 
-        return NextResponse.json({ message: 'Brand deleted successfully' })
+        return NextResponse.json({ message: 'Brand and related products deleted successfully' })
     } catch (error) {
         console.error('Error deleting brand:', error)
         return NextResponse.json({ error: 'Failed to delete brand' }, { status: 500 })
     }
 }
+
