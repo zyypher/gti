@@ -408,8 +408,9 @@ const Products = () => {
                             {...register('brandId', {
                                 required: 'Brand is required',
                             })}
-                            className="block w-full rounded-lg border p-2"
+                            className="block w-full rounded-lg border border-gray-300 p-2 focus:border-black focus:ring-1 focus:ring-black bg-white"
                         >
+
                             <option value="">Select a brand</option>
                             {brands.map((brand) => (
                                 <option key={brand.id} value={brand.id}>
@@ -432,7 +433,20 @@ const Products = () => {
                     />
                     <Input placeholder="Enter CO (mg)" {...register('co')} />
                     <Input placeholder="Flavor" {...register('flavor')} />
-                    <Input placeholder="FSP" {...register('fsp')} />
+                    <div>
+                        <select
+                            {...register('fsp', { required: 'FSP selection is required' })}
+                            className="block w-full rounded-lg border border-gray-300 p-2 focus:border-black focus:ring-1 focus:ring-black bg-white"
+                        >
+                            <option value="">Select FSP</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                        {errors.fsp?.message && (
+                            <p className="mt-1 text-sm text-red-500">{String(errors.fsp.message)}</p>
+                        )}
+                    </div>
+
                     <Input placeholder="Corners" {...register('corners')} />
                     <Input placeholder="Capsules" {...register('capsules')} />
                     <div>
