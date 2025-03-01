@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 import { Plus } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Dialog } from '@/components/ui/dialog'
-import { nanoid } from 'nanoid' // Generate unique slug
+import { nanoid } from 'nanoid'
 import PageHeading from '@/components/layout/page-heading'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -47,6 +47,9 @@ const Products = () => {
     const [selectedProduct, setSelectedProduct] = useState<ITable | null>(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [deleteProductId, setDeleteProductId] = useState<string | null>(null)
+    const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+    const [shareableUrl, setShareableUrl] = useState('');
+
 
     const isPWA = () => {
         if (typeof window !== 'undefined') {
@@ -224,7 +227,9 @@ const Products = () => {
                     document.body.removeChild(downloadLink)
 
                     // Show shareable link
-                    toast.success(`Share this URL: ${shareableUrl}`)
+                    setShareableUrl(shareableUrl);
+                    setIsShareDialogOpen(true); // ✅ Open the new dialog instead of toast
+
                 }
             } else {
                 toast.error('Failed to generate PDF.')
@@ -617,6 +622,30 @@ const Products = () => {
             >
                 <p>Are you sure you want to delete this product?</p>
             </Dialog>
+
+            <Dialog
+                isOpen={isShareDialogOpen}
+                onClose={() => setIsShareDialogOpen(false)}
+                title="PDF Generated"
+            >
+                <div className="space-y-4 p-4">
+                    <p className="text-gray-700">Your PDF has been generated successfully.</p>
+
+                    <div className="flex items-center space-x-2 border rounded-md p-2 bg-gray-100">
+                        <span className="truncate">{shareableUrl}</span>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                navigator.clipboard.writeText(shareableUrl);
+                                toast.success("Link copied to clipboard!");
+                            }}
+                        >
+                            Copy Link
+                        </Button>
+                    </div>
+                </div>
+            </Dialog>
+
         </div>
     )
 }
