@@ -29,11 +29,35 @@ const Header = () => {
     const [unreadCount, setUnreadCount] = useState(0)
     const [loadingNotifications, setLoadingNotifications] = useState(true)
 
+    const subscribeToPush = async (userId: string) => {
+        if ('serviceWorker' in navigator && 'PushManager' in window) {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const existingSubscription = await registration.pushManager.getSubscription();
+
+                if (!existingSubscription) {
+                    const newSubscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+                    });
+
+                    await api.post('/api/subscribe', { userId, subscription: newSubscription });
+                    console.log('Push subscription saved:', newSubscription);
+                }
+            } catch (error) {
+                console.error('Error subscribing to push notifications:', error);
+            }
+        }
+    };
+
     // ✅ Fetch user details
     useEffect(() => {
         const fetchUser = async () => {
             try {
                 const response = await api.get('/api/users/me')
+                if (response.data?.id) {
+                    subscribeToPush(response.data.id);
+                }
                 setUser(response.data)
             } catch (error) {
                 console.error('Failed to fetch user data')

@@ -284,9 +284,9 @@ const Products = () => {
                     `Product ${selectedProduct ? 'updated' : 'added'} successfully`,
                 )
                 fetchProducts()
-                setIsDialogOpen(false)
                 reset()
                 setSelectedProduct(null)
+                setIsDialogOpen(false)
             } else {
                 toast.error(
                     `Failed to ${selectedProduct ? 'update' : 'add'} product`,
@@ -355,9 +355,9 @@ const Products = () => {
             <Dialog
                 isOpen={isDialogOpen}
                 onClose={() => {
-                    setIsDialogOpen(false)
                     reset()
                     setSelectedProduct(null)
+                    setIsDialogOpen(false)
                 }}
                 title={selectedProduct ? 'Edit Product' : 'Add New Product'}
                 onSubmit={handleSubmit(handleAddOrUpdateProduct)}
@@ -447,8 +447,8 @@ const Products = () => {
                     pdfStep === 1
                         ? 'Select Banner'
                         : pdfStep === 2
-                          ? 'Select Advertisement'
-                          : 'Confirm & Generate PDF'
+                            ? 'Select Advertisement'
+                            : 'Confirm & Generate PDF'
                 }
             >
                 <div className="space-y-4 p-4">

@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { getUserIdFromToken } from '@/lib/getUserIdFromToken'
+import webpush from 'web-push';
 
 const prisma = new PrismaClient()
+
+webpush.setVapidDetails(
+    process.env.VAPID_EMAIL!,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!
+);
 
 // ✅ Fetch Unread Notifications & All Notifications
 export async function GET(req: Request) {
@@ -59,5 +66,41 @@ export async function PATCH(req: Request) {
             { error: 'Failed to update notifications' },
             { status: 500 },
         )
+    }
+}
+
+
+export async function POST(req: Request) {
+    try {
+        const { userId, orderId, message } = await req.json();
+
+        if (!userId || !message) {
+            return NextResponse.json({ error: 'Missing data' }, { status: 400 });
+        }
+
+        // ✅ Save notification
+        const notification = await prisma.notification.create({
+            data: { userId, orderId, message },
+        });
+
+        // ✅ Get user push subscription
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+
+        if (user?.pushSubscription) {
+            const subscription = JSON.parse(user.pushSubscription);
+            await webpush.sendNotification(
+                subscription,
+                JSON.stringify({
+                    title: 'New Notification',
+                    message,
+                    url: '/notifications', // ✅ Redirect to notifications page
+                })
+            );
+        }
+
+        return NextResponse.json({ success: true, notification });
+    } catch (error) {
+        console.error('Error creating notification:', error);
+        return NextResponse.json({ error: 'Failed to create notification' }, { status: 500 });
     }
 }

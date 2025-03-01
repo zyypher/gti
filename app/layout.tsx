@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import '@/app/globals.css'
 import { Toaster } from 'react-hot-toast'
+import ServiceWorker from '@/components/ServiceWorker' // ✅ Import the new component
 
 export const metadata: Metadata = {
     title: 'GTI Sales Dashboard',
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
         'Gulbahar Tobacco International Sales Dashboard – Monitor sales performance, track inventory, and analyze business data in real-time. Empowering efficient decision-making for one of the leading tobacco manufacturers in the UAE.',
 }
 
-export default async function RootLayout({
+export default function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode
@@ -35,6 +36,9 @@ export default async function RootLayout({
             <body className="bg-gray-400 font-plus-jakarta text-sm/[22px] font-normal text-gray antialiased">
                 {children}
                 <Toaster position="top-center" reverseOrder={false} />
+
+                {/* ✅ Include Service Worker Component */}
+                <ServiceWorker />
             </body>
         </html>
     )
