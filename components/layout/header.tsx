@@ -28,6 +28,7 @@ const Header = () => {
     const [notifications, setNotifications] = useState<{ id: string; message: string; createdAt: string; isRead: boolean }[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [loadingNotifications, setLoadingNotifications] = useState(true)
+    const [displayName, setDisplayName] = useState<string | null>(null);
 
     const subscribeToPush = async (userId: string) => {
         if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -72,7 +73,7 @@ const Header = () => {
             try {
                 const response = await api.get('/api/notifications')
                 setNotifications(response.data.notifications)
-                setUnreadCount(response.data.unreadCount) 
+                setUnreadCount(response.data.unreadCount)
             } catch (error) {
                 console.error('Failed to fetch notifications:', error)
             } finally {
@@ -82,15 +83,27 @@ const Header = () => {
         fetchNotifications()
     }, [])
 
+
+
+    useEffect(() => {
+        if (user?.firstName || user?.lastName) {
+            setDisplayName(`${user.firstName ?? ''} ${user.lastName ?? ''}`.trim());
+        } else if (user?.email === 'admin@gulbahartobacco.com') {
+            setDisplayName('Admin');
+        } else {
+            setDisplayName('Sales User');
+        }
+    }, [user]); // ✅ Reacts to user changes
+
     const markNotificationsAsRead = async () => {
-        if (unreadCount === 0) return 
+        if (unreadCount === 0) return
 
         try {
-            await api.patch('/api/notifications') 
-            setUnreadCount(0) 
+            await api.patch('/api/notifications')
+            setUnreadCount(0)
             setNotifications((prev) =>
                 prev.map((n) => ({ ...n, isRead: true })),
-            ) 
+            )
         } catch (error) {
             console.error('Failed to mark notifications as read:', error)
         }
@@ -190,7 +203,7 @@ const Header = () => {
                                             {getUserInitials()}
                                         </div>
                                     )}
-                                     <div className="hidden space-y-1 lg:block">
+                                    <div className="hidden space-y-1 lg:block">
                                         {loading ? (
                                             <>
                                                 <Skeleton className="h-3 w-24 rounded" />
@@ -202,17 +215,12 @@ const Header = () => {
                                                     Welcome back 👋
                                                 </h5>
                                                 <h2 className="line-clamp-1 text-xs font-bold text-black">
-                                                    {user
-                                                        ? user.email === 'admin@gulbahartobacco.com'
-                                                            ? 'Admin'
-                                                            : user.firstName || user.lastName
-                                                                ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
-                                                                : 'User'
-                                                        : 'Guest'}
+                                                    {displayName}
                                                 </h2>
                                             </>
                                         )}
                                     </div>
+
                                     <button
                                         type="button"
                                         className="-ml-1 mt-auto text-black transition group-hover:opacity-70"
