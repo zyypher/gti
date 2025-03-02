@@ -190,8 +190,6 @@ const Products = () => {
                 reset();
                 setSelectedRows([]);
 
-                const shareableUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/${uniqueSlug}` // Change to your domain
-
                 if (isPWA() || isMobile()) {
                     // Mobile Share
                     if (navigator.share) {
@@ -225,6 +223,15 @@ const Products = () => {
                     document.body.appendChild(downloadLink)
                     downloadLink.click()
                     document.body.removeChild(downloadLink)
+
+                    const sharedPdfResponse = await api.post('/api/shared-pdf', {
+                        productIds: selectedRows.join(','), // ✅ Send only productIds, API generates slug
+                        expiresAt: expirationDate.toISOString(),
+                    });
+
+                    // ✅ Extract slug from API response
+                    const { slug } = sharedPdfResponse.data;
+                    const shareableUrl = `${process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL}/${slug}`; // ✅ Use API returned slug
 
                     // Show shareable link
                     setShareableUrl(shareableUrl);
