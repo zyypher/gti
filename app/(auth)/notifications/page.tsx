@@ -82,9 +82,9 @@ export default function NotificationsPage() {
                     {notifications.map((notification) => (
                         <Card
                             key={notification.id}
-                            className={`p-4 border ${notification.isRead
-                                ? 'border-gray-200 bg-white'
-                                : 'border-blue-500 bg-blue-50'
+                            className={`p-4 border rounded-lg ${notification.isRead
+                                ? 'border-gray-300 bg-blue-50' 
+                                : 'border-blue-500 bg-white'
                                 }`}
                         >
                             <div className="flex items-start justify-between">
@@ -106,6 +106,7 @@ export default function NotificationsPage() {
                             </div>
                         </Card>
                     ))}
+
                 </div>
             )}
         </div>
