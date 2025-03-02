@@ -8,18 +8,18 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  password      String
-  firstName     String?
-  lastName      String?
-  phoneNumber   String?
-  role          Role           @default(SALESPERSON)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  dataRecords   DataRecord[]
-  notifications Notification[]
-  sharedPDFs    SharedPDF[]
+  id               String         @id @default(uuid())
+  email            String         @unique
+  password         String
+  firstName        String?
+  lastName         String?
+  phoneNumber      String?
+  role             Role           @default(SALESPERSON)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  dataRecords      DataRecord[]
+  notifications    Notification[]
+  sharedPDFs       SharedPDF[]
   pushSubscription String?
 }
 
@@ -62,7 +62,6 @@ model Product {
 
 enum Role {
   ADMIN
-  SUPERVISOR
   SALESPERSON
 }
 
