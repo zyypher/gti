@@ -95,13 +95,29 @@ model Notification {
 }
 
 model Order {
-  id         String   @id @default(uuid())
+  id         String         @id @default(uuid())
   slug       String
   name       String
   company    String
   email      String
   phone      String
-  products   String
-  quantities String
-  createdAt  DateTime @default(now())
+  products   Json
+  quantities Json
+  status     OrderStatus    @default(CREATED)
+  history    OrderHistory[]
+  createdAt  DateTime       @default(now())
+}
+
+model OrderHistory {
+  id        String   @id @default(uuid())
+  orderId   String
+  message   String
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+enum OrderStatus {
+  CREATED
+  IN_PROGRESS
+  COMPLETED
 }

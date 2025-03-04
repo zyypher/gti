@@ -99,26 +99,30 @@ export async function POST(req: Request) {
  * **Helper function to fetch and add PDF to the merged document**
  */
 async function addPdfToDocument(pdfDoc: PDFDocument, pdfUrl: string) {
-    try {
-        console.log(`📥 Fetching PDF from: ${pdfUrl}`)
-        const response = await fetch(pdfUrl)
-        if (!response.ok) throw new Error(`❌ Failed to fetch PDF: ${pdfUrl}`)
+    if (!pdfUrl) {
+        console.error('🚨 Missing PDF URL:', pdfUrl);
+        return;
+    }
 
-        const pdfBuffer = await response.arrayBuffer()
-        const pdf = await PDFDocument.load(pdfBuffer)
+    try {
+        console.log(`📥 Fetching PDF from: ${pdfUrl}`);
+        const response = await fetch(pdfUrl);
+        if (!response.ok) throw new Error(`❌ Failed to fetch PDF: ${pdfUrl}`);
+
+        const pdfBuffer = await response.arrayBuffer();
+        const pdf = await PDFDocument.load(pdfBuffer);
 
         // Copy pages and add to main document
-        const copiedPages = await pdfDoc.copyPages(pdf, pdf.getPageIndices())
+        const copiedPages = await pdfDoc.copyPages(pdf, pdf.getPageIndices());
 
         if (copiedPages.length === 0) {
-            console.error(`🚨 No pages copied from: ${pdfUrl}`)
+            console.error(`🚨 No pages copied from: ${pdfUrl}`);
         } else {
-            console.log(`✅ Successfully added ${copiedPages.length} pages from ${pdfUrl}`)
+            console.log(`✅ Successfully added ${copiedPages.length} pages from ${pdfUrl}`);
         }
 
-        copiedPages.forEach((page) => pdfDoc.addPage(page))
+        copiedPages.forEach((page) => pdfDoc.addPage(page));
     } catch (error) {
-        console.error(`🚨 Error adding PDF from ${pdfUrl}:`, error)
+        console.error(`🚨 Error adding PDF from ${pdfUrl}:`, error);
     }
 }
-

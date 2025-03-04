@@ -31,23 +31,36 @@ const Header = () => {
     const [displayName, setDisplayName] = useState<string | null>(null);
 
     const subscribeToPush = async (userId: string) => {
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-            try {
-                const registration = await navigator.serviceWorker.ready;
-                const existingSubscription = await registration.pushManager.getSubscription();
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            console.error('Push notifications are not supported in this browser.');
+            return;
+        }
 
-                if (!existingSubscription) {
-                    const newSubscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-                    });
+        try {
+            // 🔹 Request Notification Permission First
+            const permission = await Notification.requestPermission();
 
-                    await api.post('/api/subscribe', { userId, subscription: newSubscription });
-                    console.log('Push subscription saved:', newSubscription);
-                }
-            } catch (error) {
-                console.error('Error subscribing to push notifications:', error);
+            if (permission !== 'granted') {
+                console.warn('Push notifications permission denied.');
+                return; // ❌ Exit if permission is denied
             }
+
+            // 🔹 Register the Service Worker
+            const registration = await navigator.serviceWorker.ready;
+            const existingSubscription = await registration.pushManager.getSubscription();
+
+            if (!existingSubscription) {
+                const newSubscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+                });
+
+                // 🔹 Send Subscription to Backend
+                await api.post('/api/subscribe', { userId, subscription: newSubscription });
+                console.log('Push subscription saved:', newSubscription);
+            }
+        } catch (error) {
+            console.error('Error subscribing to push notifications:', error);
         }
     };
 

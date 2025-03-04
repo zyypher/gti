@@ -1,12 +1,18 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import api from '@/lib/api'
-import toast from 'react-hot-toast'
-import PageHeading from '@/components/layout/page-heading'
-import { Card } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Package, Calendar, Phone, Mail, Building2 } from 'lucide-react'
+import { useEffect, useState } from 'react';
+import api from '@/lib/api';
+import toast from 'react-hot-toast';
+import PageHeading from '@/components/layout/page-heading';
+import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Calendar, Phone, Mail, Building2 } from 'lucide-react';
+import Link from 'next/link';
+
+interface Product {
+    id: string;
+    name: string;
+}
 
 interface Order {
     id: string;
@@ -15,30 +21,29 @@ interface Order {
     company: string;
     email: string;
     phone: string;
-    products: string;
-    quantities: string;
+    products: Product[];
+    quantities: Record<string, number>;
     createdAt: string;
 }
 
 export default function Orders() {
-    const [orders, setOrders] = useState<Order[]>([])
-
-    const [loading, setLoading] = useState(true)
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchOrders()
-    }, [])
+        fetchOrders();
+    }, []);
 
     const fetchOrders = async () => {
         try {
-            const response = await api.get<Order[]>('/api/orders')
-            setOrders(response.data)
+            const response = await api.get<Order[]>('/api/orders');
+            setOrders(response.data);
         } catch (error) {
-            toast.error('Failed to load orders')
+            toast.error('Failed to load orders');
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    };
 
     return (
         <div className="space-y-4">
@@ -82,17 +87,27 @@ export default function Orders() {
                                 <hr />
                                 <div className="mt-2 text-sm">
                                     <strong>Products Ordered:</strong>
-                                    <p className="text-gray-800">{order.products}</p>
+                                    <ul>
+                                        {order.products.length > 0 ? (
+                                            order.products.map((product) => (
+                                                <li key={product.id} className="text-gray-800">
+                                                    {product.name} - {order.quantities[product.id] || 0} units
+                                                </li>
+                                            ))
+                                        ) : (
+                                            <p className="text-gray-800">No products found</p>
+                                        )}
+                                    </ul>
                                 </div>
-                                <div className="mt-2 text-sm">
-                                    <strong>Quantities:</strong>
-                                    <p className="text-gray-800">{order.quantities}</p>
-                                </div>
+
+                                <Link href={`/orders/${order.id}`} className="text-blue-500 font-medium">
+                                    View Details →
+                                </Link>
                             </div>
                         </Card>
                     ))}
                 </div>
             )}
         </div>
-    )
+    );
 }

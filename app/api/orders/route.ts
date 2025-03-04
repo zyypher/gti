@@ -6,67 +6,59 @@ const prisma = new PrismaClient();
 
 export async function GET(req: Request) {
     try {
-        // ✅ 1️⃣ Get Logged-in User ID
         const userId = await getUserIdFromToken(req);
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // ✅ 2️⃣ Find Slugs from Shared PDFs Created by User
+        // Get slugs for shared PDFs created by the user
         const sharedPdfs = await prisma.sharedPDF.findMany({
             where: { createdById: userId },
             select: { uniqueSlug: true },
         });
 
         const slugs = sharedPdfs.map((pdf) => pdf.uniqueSlug);
-
         if (slugs.length === 0) {
             return NextResponse.json([]); // No orders for this user
         }
 
-        // ✅ 3️⃣ Fetch Orders That Match the User’s Slugs
+        // Fetch orders and parse JSON data
         const orders = await prisma.order.findMany({
-            where: {
-                slug: { in: slugs }, // Match orders where the slug is in the shared PDFs
-            },
+            where: { slug: { in: slugs } },
             orderBy: { createdAt: 'desc' },
         });
 
-        // ✅ 4️⃣ Fetch Product Names for Each Order
         const ordersWithProducts = await Promise.all(
             orders.map(async (order) => {
-                const productIds = order.products.split(',');
-        
+                // ✅ Parse products and quantities correctly
+                const productIds = JSON.parse(order.products || '[]');
+                const productQuantities = JSON.parse(order.quantities || '{}');
+
+                // Ensure productIds is an array
+                if (!Array.isArray(productIds)) {
+                    console.error(`Invalid products format in order ${order.id}:`, productIds);
+                    return { ...order, products: [], quantities: {} };
+                }
+
+                // Fetch product details
                 const products = await prisma.product.findMany({
-                    where: { id: { in: productIds } },
+                    where: { id: { in: productIds } }, // ✅ Now passing an array
                     select: { id: true, name: true },
                 });
-        
-                // ✅ Define parsedQuantities with correct type
-                let parsedQuantities: Record<string, number> = {};
-                try {
-                    parsedQuantities = JSON.parse(order.quantities) as Record<string, number>;
-                } catch (error) {
-                    console.error('Error parsing quantities JSON:', error);
-                }
-        
+
                 return {
                     ...order,
-                    products: products.map((p) => p.name).join(', '), // ✅ Show names instead of IDs
-                    quantities: products
-                        .map((p) => `${p.name}: ${parsedQuantities[p.id] || 0}`)
-                        .join(', '), // ✅ Now correctly retrieves quantities
+                    products, // ✅ Attach full product objects
+                    quantities: productQuantities, // ✅ Attach parsed quantities
                 };
             })
         );
-        
 
         return NextResponse.json(ordersWithProducts);
     } catch (error) {
         console.error('Error fetching orders:', error);
-        return NextResponse.json(
-            { error: 'Failed to load orders' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to load orders' }, { status: 500 });
     }
 }
+
+
