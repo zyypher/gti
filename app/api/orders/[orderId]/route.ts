@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -23,38 +23,46 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
             return NextResponse.json({ error: "Order not found" }, { status: 404 });
         }
 
-        // ✅ Ensure proper JSON parsing & type safety
+        // ✅ Properly handle Prisma JSON parsing
         let productIds: string[] = [];
         let productQuantities: Record<string, number> = {};
 
-        if (Array.isArray(order.products)) {
-            productIds = order.products;
+        // 🛠 Fix: Ensure productIds is a valid string array
+        if (Array.isArray(order.products) && order.products.every(id => typeof id === "string")) {
+            productIds = order.products as string[];
         } else if (typeof order.products === "string") {
             try {
                 productIds = JSON.parse(order.products);
+                if (!Array.isArray(productIds) || !productIds.every(id => typeof id === "string")) {
+                    throw new Error("Invalid format");
+                }
             } catch (error) {
-                console.error(`Invalid products format for order ${order.id}:`, order.products);
+                console.error(`❌ Invalid products format for order ${order.id}:`, order.products);
                 return NextResponse.json({ error: "Invalid products format" }, { status: 500 });
             }
         }
 
+        // 🛠 Fix: Ensure productQuantities is a valid object
         if (typeof order.quantities === "object" && !Array.isArray(order.quantities)) {
             productQuantities = order.quantities as Record<string, number>;
         } else if (typeof order.quantities === "string") {
             try {
                 productQuantities = JSON.parse(order.quantities);
+                if (typeof productQuantities !== "object" || Array.isArray(productQuantities)) {
+                    throw new Error("Invalid format");
+                }
             } catch (error) {
-                console.error(`Invalid quantities format for order ${order.id}:`, order.quantities);
+                console.error(`❌ Invalid quantities format for order ${order.id}:`, order.quantities);
                 return NextResponse.json({ error: "Invalid quantities format" }, { status: 500 });
             }
         }
 
         if (!Array.isArray(productIds)) {
-            console.error(`Invalid products format for order ${order.id}:`, productIds);
+            console.error(`❌ Invalid products format for order ${order.id}:`, productIds);
             return NextResponse.json({ error: "Invalid products format" }, { status: 500 });
         }
 
-        // Fetch product details
+        // ✅ Fetch product details
         const products = await prisma.product.findMany({
             where: { id: { in: productIds } },
             select: { id: true, name: true },
@@ -68,7 +76,7 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
 
         return NextResponse.json(formattedOrder);
     } catch (error) {
-        console.error(error);
+        console.error("❌ Error fetching order:", error);
         return NextResponse.json({ error: "Failed to fetch order" }, { status: 500 });
     }
 }
@@ -84,24 +92,24 @@ export async function PATCH(req: Request, { params }: { params: { orderId: strin
             return NextResponse.json({ error: "Order not found" }, { status: 404 });
         }
 
-        // Update status if provided
-        let updateData: any = {};
+        // ✅ Update status if provided
+        let updateData: Prisma.OrderUpdateInput = {};
         if (status) {
             updateData.status = status;
         }
 
-        // Update quantities if provided
+        // ✅ Update quantities if provided
         if (updatedQuantities && typeof updatedQuantities === "object") {
             updateData.quantities = JSON.stringify(updatedQuantities);
         }
 
-        // Perform update
+        // ✅ Perform update
         const updatedOrder = await prisma.order.update({
             where: { id: params.orderId },
             data: updateData,
         });
 
-        // Add Entry to Order History
+        // ✅ Add entry to order history
         await prisma.orderHistory.create({
             data: {
                 orderId: params.orderId,
@@ -113,6 +121,7 @@ export async function PATCH(req: Request, { params }: { params: { orderId: strin
 
         return NextResponse.json(updatedOrder);
     } catch (error) {
+        console.error("❌ Error updating order:", error);
         return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
     }
 }
