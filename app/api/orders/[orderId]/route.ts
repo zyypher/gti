@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -9,7 +9,7 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
             where: { id: params.orderId },
             include: {
                 history: {
-                    orderBy: { createdAt: 'asc' }, // Sort history events
+                    orderBy: { createdAt: "asc" }, // Sort history events
                     select: {
                         id: true,
                         createdAt: true,
@@ -20,16 +20,38 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
         });
 
         if (!order) {
-            return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+            return NextResponse.json({ error: "Order not found" }, { status: 404 });
         }
 
-        // Parse products & quantities
-        const productIds = Array.isArray(order.products) ? order.products : JSON.parse(order.products || '[]');
-        const productQuantities = typeof order.quantities === 'object' ? order.quantities : JSON.parse(order.quantities || '{}');
+        // ✅ Ensure proper JSON parsing & type safety
+        let productIds: string[] = [];
+        let productQuantities: Record<string, number> = {};
+
+        if (Array.isArray(order.products)) {
+            productIds = order.products;
+        } else if (typeof order.products === "string") {
+            try {
+                productIds = JSON.parse(order.products);
+            } catch (error) {
+                console.error(`Invalid products format for order ${order.id}:`, order.products);
+                return NextResponse.json({ error: "Invalid products format" }, { status: 500 });
+            }
+        }
+
+        if (typeof order.quantities === "object" && !Array.isArray(order.quantities)) {
+            productQuantities = order.quantities as Record<string, number>;
+        } else if (typeof order.quantities === "string") {
+            try {
+                productQuantities = JSON.parse(order.quantities);
+            } catch (error) {
+                console.error(`Invalid quantities format for order ${order.id}:`, order.quantities);
+                return NextResponse.json({ error: "Invalid quantities format" }, { status: 500 });
+            }
+        }
 
         if (!Array.isArray(productIds)) {
-            console.error(`Invalid products format for order ${order.id}`);
-            return NextResponse.json({ error: 'Invalid products format' }, { status: 500 });
+            console.error(`Invalid products format for order ${order.id}:`, productIds);
+            return NextResponse.json({ error: "Invalid products format" }, { status: 500 });
         }
 
         // Fetch product details
@@ -40,14 +62,14 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
 
         const formattedOrder = {
             ...order,
-            products, // Attach full product objects
-            quantities: productQuantities, // Attach parsed quantities
+            products,
+            quantities: productQuantities,
         };
 
         return NextResponse.json(formattedOrder);
     } catch (error) {
         console.error(error);
-        return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 });
+        return NextResponse.json({ error: "Failed to fetch order" }, { status: 500 });
     }
 }
 
@@ -59,7 +81,7 @@ export async function PATCH(req: Request, { params }: { params: { orderId: strin
         // Fetch existing order
         const order = await prisma.order.findUnique({ where: { id: params.orderId } });
         if (!order) {
-            return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+            return NextResponse.json({ error: "Order not found" }, { status: 404 });
         }
 
         // Update status if provided
@@ -69,7 +91,7 @@ export async function PATCH(req: Request, { params }: { params: { orderId: strin
         }
 
         // Update quantities if provided
-        if (updatedQuantities) {
+        if (updatedQuantities && typeof updatedQuantities === "object") {
             updateData.quantities = JSON.stringify(updatedQuantities);
         }
 
@@ -85,12 +107,12 @@ export async function PATCH(req: Request, { params }: { params: { orderId: strin
                 orderId: params.orderId,
                 message: status
                     ? `Order status updated to ${status}`
-                    : 'Order quantities updated',
+                    : "Order quantities updated",
             },
         });
 
         return NextResponse.json(updatedOrder);
     } catch (error) {
-        return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+        return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
     }
 }
