@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { getUserIdFromToken } from '@/lib/getUserIdFromToken';
+import { NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
+import { getUserIdFromToken } from "@/lib/getUserIdFromToken";
 
 const prisma = new PrismaClient();
 
@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     try {
         const userId = await getUserIdFromToken(req);
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         // Get slugs for shared PDFs created by the user
@@ -22,43 +22,68 @@ export async function GET(req: Request) {
             return NextResponse.json([]); // No orders for this user
         }
 
-        // Fetch orders and parse JSON data
+        // Fetch orders
         const orders = await prisma.order.findMany({
             where: { slug: { in: slugs } },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
         });
 
+        // ✅ Ensure proper JSON parsing & type safety
         const ordersWithProducts = await Promise.all(
             orders.map(async (order) => {
-                // ✅ Parse products and quantities correctly
-                const productIds = Array.isArray(order.products) ? order.products : JSON.parse(order.products || '[]');
-                const productQuantities = typeof order.quantities === 'object' ? order.quantities : JSON.parse(order.quantities || '{}');
+                let productIds: string[] = [];
+                let productQuantities: Record<string, number> = {};
 
-                // Ensure productIds is an array
-                if (!Array.isArray(productIds)) {
-                    console.error(`Invalid products format in order ${order.id}:`, productIds);
-                    return { ...order, products: [], quantities: {} };
+                // 🛠 Fix: Handle different JSON formats safely
+                if (Array.isArray(order.products) && order.products.every(id => typeof id === "string")) {
+                    productIds = order.products as string[];
+                } else if (typeof order.products === "string") {
+                    try {
+                        const parsedProducts = JSON.parse(order.products);
+                        if (Array.isArray(parsedProducts) && parsedProducts.every(id => typeof id === "string")) {
+                            productIds = parsedProducts;
+                        } else {
+                            throw new Error("Invalid format");
+                        }
+                    } catch (error) {
+                        console.error(`❌ Invalid products format for order ${order.id}:`, order.products);
+                        return { ...order, products: [], quantities: {} };
+                    }
                 }
 
-                // Fetch product details
+                if (order.quantities && typeof order.quantities === "object" && !Array.isArray(order.quantities)) {
+                    productQuantities = order.quantities as Record<string, number>;
+                } else if (typeof order.quantities === "string") {
+                    try {
+                        const parsedQuantities = JSON.parse(order.quantities);
+                        if (typeof parsedQuantities === "object" && !Array.isArray(parsedQuantities)) {
+                            productQuantities = parsedQuantities;
+                        } else {
+                            throw new Error("Invalid format");
+                        }
+                    } catch (error) {
+                        console.error(`❌ Invalid quantities format for order ${order.id}:`, order.quantities);
+                        return { ...order, products: [], quantities: {} };
+                    }
+                }
+
+                // ✅ Fetch product details
                 const products = await prisma.product.findMany({
-                    where: { id: { in: productIds } }, // ✅ Now passing an array
+                    where: { id: { in: productIds } },
                     select: { id: true, name: true },
                 });
 
                 return {
                     ...order,
-                    products, // ✅ Attach full product objects
-                    quantities: productQuantities, // ✅ Attach parsed quantities
+                    products, // Attach full product objects
+                    quantities: productQuantities, // Attach parsed quantities
                 };
             })
         );
 
         return NextResponse.json(ordersWithProducts);
     } catch (error) {
-        console.error('Error fetching orders:', error);
-        return NextResponse.json({ error: 'Failed to load orders' }, { status: 500 });
+        console.error("❌ Error fetching orders:", error);
+        return NextResponse.json({ error: "Failed to load orders" }, { status: 500 });
     }
 }
-
-
