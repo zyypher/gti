@@ -9,7 +9,7 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
             where: { id: params.orderId },
             include: {
                 history: {
-                    orderBy: { createdAt: "asc" }, // Sort history events
+                    orderBy: { createdAt: "asc" },
                     select: {
                         id: true,
                         createdAt: true,
@@ -23,7 +23,7 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
             return NextResponse.json({ error: "Order not found" }, { status: 404 });
         }
 
-        // ✅ Properly handle Prisma JSON parsing
+        // ✅ Ensure proper JSON parsing & type safety
         let productIds: string[] = [];
         let productQuantities: Record<string, number> = {};
 
@@ -32,23 +32,29 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
             productIds = order.products as string[];
         } else if (typeof order.products === "string") {
             try {
-                productIds = JSON.parse(order.products);
-                if (!Array.isArray(productIds) || !productIds.every(id => typeof id === "string")) {
+                const parsedProducts = JSON.parse(order.products);
+                if (Array.isArray(parsedProducts) && parsedProducts.every(id => typeof id === "string")) {
+                    productIds = parsedProducts;
+                } else {
                     throw new Error("Invalid format");
                 }
             } catch (error) {
                 console.error(`❌ Invalid products format for order ${order.id}:`, order.products);
                 return NextResponse.json({ error: "Invalid products format" }, { status: 500 });
             }
+        } else {
+            console.error(`❌ Unexpected products format for order ${order.id}:`, order.products);
         }
 
         // 🛠 Fix: Ensure productQuantities is a valid object
-        if (typeof order.quantities === "object" && !Array.isArray(order.quantities)) {
+        if (order.quantities && typeof order.quantities === "object" && !Array.isArray(order.quantities)) {
             productQuantities = order.quantities as Record<string, number>;
         } else if (typeof order.quantities === "string") {
             try {
-                productQuantities = JSON.parse(order.quantities);
-                if (typeof productQuantities !== "object" || Array.isArray(productQuantities)) {
+                const parsedQuantities = JSON.parse(order.quantities);
+                if (typeof parsedQuantities === "object" && !Array.isArray(parsedQuantities)) {
+                    productQuantities = parsedQuantities;
+                } else {
                     throw new Error("Invalid format");
                 }
             } catch (error) {
