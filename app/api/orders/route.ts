@@ -31,8 +31,8 @@ export async function GET(req: Request) {
         const ordersWithProducts = await Promise.all(
             orders.map(async (order) => {
                 // ✅ Parse products and quantities correctly
-                const productIds = JSON.parse(order.products || '[]');
-                const productQuantities = JSON.parse(order.quantities || '{}');
+                const productIds = Array.isArray(order.products) ? order.products : JSON.parse(order.products || '[]');
+                const productQuantities = typeof order.quantities === 'object' ? order.quantities : JSON.parse(order.quantities || '{}');
 
                 // Ensure productIds is an array
                 if (!Array.isArray(productIds)) {

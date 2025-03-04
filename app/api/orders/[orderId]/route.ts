@@ -24,8 +24,8 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
         }
 
         // Parse products & quantities
-        const productIds = JSON.parse(order.products || '[]');
-        const productQuantities = JSON.parse(order.quantities || '{}');
+        const productIds = Array.isArray(order.products) ? order.products : JSON.parse(order.products || '[]');
+        const productQuantities = typeof order.quantities === 'object' ? order.quantities : JSON.parse(order.quantities || '{}');
 
         if (!Array.isArray(productIds)) {
             console.error(`Invalid products format for order ${order.id}`);
