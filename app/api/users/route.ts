@@ -1,36 +1,51 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+import sendEmail from '@/app/api/auth/sendEmail';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
-// Get all users
 export async function GET(req: NextRequest) {
     try {
-        const users = await prisma.user.findMany()
-        return NextResponse.json(users)
+        const users = await prisma.user.findMany();
+        return NextResponse.json(users);
     } catch (error) {
-        console.error('Error fetching users:', error)
-        return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+        console.error('Error fetching users:', error);
+        return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
     }
 }
 
-// Add a new user
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
     try {
-        const { email, password, role } = await req.json()
+        const { email, role } = await req.json();
 
-        if (!email || !password || !role) {
-            return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
+        // ✅ Check if user already exists
+        const existingUser = await prisma.user.findUnique({ where: { email } });
+        if (existingUser) {
+            return NextResponse.json({ error: "User already exists" }, { status: 400 });
         }
 
+        // ✅ Create User without password
         const newUser = await prisma.user.create({
-            data: { email, password, role },
-        })
+            data: { email, role },
+        });
 
-        return NextResponse.json(newUser, { status: 201 })
+        // ✅ Generate Password Reset Token (Valid for 1 Hour)
+        const resetToken = crypto.randomUUID();
+        await prisma.passwordResetToken.create({
+            data: {
+                userId: newUser.id,
+                token: resetToken,
+                expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour expiry
+            },
+        });
+
+        // ✅ Send Email with Set Password Link
+        const resetLink = `${process.env.FRONTEND_URL}/set-password?token=${resetToken}`;
+        await sendEmail(email, "Set Your Password", `Click the link to set your password: ${resetLink}`);
+
+        return NextResponse.json({ message: "User created and email sent" }, { status: 201 });
     } catch (error) {
-        console.error('Error creating user:', error)
-        return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
+        console.error("Error creating user:", error);
+        return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
     }
 }
-

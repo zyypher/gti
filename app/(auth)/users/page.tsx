@@ -158,28 +158,12 @@ const UsersPage = () => {
                         </p>
                     )}
 
-                    {!selectedUser && (
-                        <Input
-                            placeholder="Enter password"
-                            type="password"
-                            {...register('password', {
-                                required: 'Password is required',
-                            })}
-                        />
-                    )}
-                    {errors.password && (
-                        <p className="text-red-500">
-                            {String(errors.password.message)}
-                        </p>
-                    )}
-
                     <select
                         className="w-full rounded border p-2"
                         {...register('role', { required: 'Role is required' })}
                     >
                         <option value="">Select Role</option>
                         <option value="ADMIN">Admin</option>
-                        <option value="SUPERVISOR">Supervisor</option>
                         <option value="SALESPERSON">Salesperson</option>
                     </select>
                     {errors.role && (
@@ -189,6 +173,7 @@ const UsersPage = () => {
                     )}
                 </div>
             </Dialog>
+
 
             {/* Delete Confirmation Dialog */}
             <Dialog

@@ -9,7 +9,6 @@ export async function POST(req: Request) {
     try {
         // Read and parse the request body
         const body = await req.json()
-
         const { email, password } = body
 
         // Check if user exists in the database
@@ -17,7 +16,7 @@ export async function POST(req: Request) {
             where: { email },
         })
 
-        if (!user) {
+        if (!user || !user.password) {
             return NextResponse.json(
                 { error: 'Invalid email or password' },
                 { status: 401 },
