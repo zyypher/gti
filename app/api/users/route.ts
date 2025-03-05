@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         });
 
         // ✅ Send Email with Set Password Link
-        const resetLink = `${process.env.FRONTEND_URL}/set-password?token=${resetToken}`;
+        const resetLink = `${process.env.NEXT_PUBLIC_API_BASE_URL}/set-password?token=${resetToken}`;
         await sendEmail(email, "Set Your Password", `Click the link to set your password: ${resetLink}`);
 
         return NextResponse.json({ message: "User created and email sent" }, { status: 201 });
