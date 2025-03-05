@@ -11,17 +11,11 @@ export default async function sendEmail(to: string, subject: string, resetLink: 
             <p>Hello,</p>
             <p>An account has been created for you. To secure your account, please set your password using the link below:</p>
             
-            <p style="text-align: center;">
-                <a href="${resetLink}" 
-                   style="display: inline-block; padding: 10px 15px; background-color: #007BFF; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                   Set Password
-                </a>
+            <p style="word-wrap: break-word; background: #f4f4f4; padding: 10px; border-radius: 5px;">
+                <a href="${resetLink}" style="color: #007BFF; text-decoration: none;">${resetLink}</a>
             </p>
 
-            <p>If the button above does not work, you can copy and paste the following link into your browser:</p>
-            <p style="word-wrap: break-word; background: #f4f4f4; padding: 10px; border-radius: 5px;">${resetLink}</p>
-
-            <p>This link will expire in **1 hour** for security reasons.</p>
+            <p>This link will expire in <strong>1 hour</strong> for security reasons.</p>
 
             <p>If you did not request this, please ignore this email.</p>
 
