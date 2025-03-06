@@ -155,14 +155,26 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                 </div>
             </div>
 
-
-            {/* Mobile Filters Button */}
-            <div className="flex justify-end md:hidden">
+            {/* Mobile Filters Button & Clear Filters Button */}
+            <div className="flex justify-end md:hidden gap-2">
+                {/* Mobile Filter Button */}
                 <Button
                     variant="outline"
                     onClick={() => setIsMobileFilterOpen(true)}
                 >
                     <Filter size={20} />
+                </Button>
+
+                {/* Clear Filters Button */}
+                <Button
+                    variant="outline"
+                    size="small"
+                    onClick={() => {
+                        setFilters({}); // ✅ Clear filters
+                        onFilterChange({}); // ✅ Apply empty filters
+                    }}
+                >
+                    <X size={18} />
                 </Button>
             </div>
 
@@ -171,17 +183,16 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                 isOpen={isMobileFilterOpen}
                 onClose={() => setIsMobileFilterOpen(false)}
                 title="Filters"
-                onSubmit={() => onFilterChange(filters)}
             >
                 <div className="space-y-4 p-4">
                     <Input
                         placeholder="Search by name"
                         value={filters.name || ''}
-                        onChange={(e) => handleChange('name', e.target.value)}
+                        onChange={(e) => setFilters({ ...filters, name: e.target.value })} // ✅ Do not apply instantly
                     />
 
                     <Select
-                        onValueChange={(value) => handleChange('brandId', value)}
+                        onValueChange={(value) => setFilters({ ...filters, brandId: value })}
                         value={filters.brandId || ''}
                     >
                         <SelectTrigger>
@@ -199,23 +210,23 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                     <Input
                         placeholder="Enter Size"
                         value={filters.size || ''}
-                        onChange={(e) => handleChange('size', e.target.value)}
+                        onChange={(e) => setFilters({ ...filters, size: e.target.value })}
                     />
 
                     <Input
                         placeholder="Enter Flavor"
                         value={filters.flavor || ''}
-                        onChange={(e) => handleChange('flavor', e.target.value)}
+                        onChange={(e) => setFilters({ ...filters, flavor: e.target.value })}
                     />
 
                     <Input
                         placeholder="Enter Packet Style"
                         value={filters.packetStyle || ''}
-                        onChange={(e) => handleChange('packetStyle', e.target.value)}
+                        onChange={(e) => setFilters({ ...filters, packetStyle: e.target.value })}
                     />
 
                     <Select
-                        onValueChange={(value) => handleChange('fsp', value)}
+                        onValueChange={(value) => setFilters({ ...filters, fsp: value })}
                         value={filters.fsp || ''}
                     >
                         <SelectTrigger>
@@ -228,7 +239,7 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                     </Select>
 
                     <Select
-                        onValueChange={(value) => handleChange('capsules', value)}
+                        onValueChange={(value) => setFilters({ ...filters, capsules: value })}
                         value={filters.capsules || ''}
                     >
                         <SelectTrigger>
@@ -246,41 +257,42 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                         placeholder="Enter Tar (mg)"
                         type="number"
                         value={filters.tar || ''}
-                        onChange={(e) => handleChange('tar', e.target.value)}
+                        onChange={(e) => setFilters({ ...filters, tar: e.target.value })}
                     />
                     <Input
                         placeholder="Enter Nicotine (mg)"
                         type="number"
                         value={filters.nicotine || ''}
-                        onChange={(e) => handleChange('nicotine', e.target.value)}
+                        onChange={(e) => setFilters({ ...filters, nicotine: e.target.value })}
                     />
                     <Input
                         placeholder="Enter Carbon Monoxide (mg)"
                         type="number"
                         value={filters.co || ''}
-                        onChange={(e) => handleChange('co', e.target.value)}
+                        onChange={(e) => setFilters({ ...filters, co: e.target.value })}
                     />
 
                     <Input
                         placeholder="Enter Color of Packet"
                         value={filters.color || ''}
-                        onChange={(e) => handleChange('color', e.target.value)}
+                        onChange={(e) => setFilters({ ...filters, color: e.target.value })}
                     />
 
                     {/* Actions */}
                     <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={clearFilters}>
-                            Clear
-                        </Button>
                         <Button
                             variant="black"
-                            onClick={() => setIsMobileFilterOpen(false)}
+                            onClick={() => {
+                                onFilterChange(filters); // ✅ Apply filters
+                                setIsMobileFilterOpen(false); // ✅ Close modal
+                            }}
                         >
                             Apply
                         </Button>
                     </div>
                 </div>
             </Dialog>
+
 
         </>
     )
