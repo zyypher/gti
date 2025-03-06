@@ -392,15 +392,17 @@ const Products = () => {
             <Dialog
                 isOpen={isDialogOpen}
                 onClose={() => {
-                    reset()
-                    setSelectedProduct(null)
-                    setIsDialogOpen(false)
+                    reset();
+                    setSelectedProduct(null);
+                    setIsDialogOpen(false);
                 }}
                 title={selectedProduct ? 'Edit Product' : 'Add New Product'}
                 onSubmit={handleSubmit(handleAddOrUpdateProduct)}
                 buttonLoading={buttonLoading}
             >
-                <div className="space-y-4">
+                {/* Scrollable Container */}
+                <div className="max-h-[70vh] overflow-y-auto space-y-4 p-2">
+                    {/* Product Name */}
                     <div>
                         <Input
                             placeholder="Enter product name"
@@ -409,12 +411,11 @@ const Products = () => {
                             })}
                         />
                         {errors.name?.message && (
-                            <p className="mt-1 text-sm text-red-500">
-                                {String(errors.name.message)}
-                            </p>
+                            <p className="mt-1 text-sm text-red-500">{String(errors.name.message)}</p>
                         )}
                     </div>
 
+                    {/* Brand Selection */}
                     <div>
                         <select
                             {...register('brandId', {
@@ -422,7 +423,6 @@ const Products = () => {
                             })}
                             className="block w-full rounded-lg border border-gray-300 p-2 focus:border-black focus:ring-1 focus:ring-black bg-white"
                         >
-
                             <option value="">Select a brand</option>
                             {brands.map((brand) => (
                                 <option key={brand.id} value={brand.id}>
@@ -431,36 +431,120 @@ const Products = () => {
                             ))}
                         </select>
                         {errors.brandId?.message && (
-                            <p className="mt-1 text-sm text-red-500">
-                                {String(errors.brandId.message)}
-                            </p>
+                            <p className="mt-1 text-sm text-red-500">{String(errors.brandId.message)}</p>
                         )}
                     </div>
 
-                    <Input placeholder="Enter size" {...register('size')} />
-                    <Input placeholder="Enter tar (mg)" {...register('tar')} />
-                    <Input
-                        placeholder="Enter nicotine (mg)"
-                        {...register('nicotine')}
-                    />
-                    <Input placeholder="Enter CO (mg)" {...register('co')} />
-                    <Input placeholder="Flavor" {...register('flavor')} />
+                    {/* Size */}
+                    <div>
+                        <Input
+                            placeholder="Enter size"
+                            {...register('size', { required: 'Size is required' })}
+                        />
+                        {errors.size?.message && (
+                            <p className="mt-1 text-sm text-red-500">{String(errors.size.message)}</p>
+                        )}
+                    </div>
+
+                    {/* Flavor */}
+                    <div>
+                        <Input
+                            placeholder="Flavor"
+                            {...register('flavor', { required: 'Flavor is required' })}
+                        />
+                        {errors.flavor?.message && (
+                            <p className="mt-1 text-sm text-red-500">{String(errors.flavor.message)}</p>
+                        )}
+                    </div>
+
+                    {/* Tar (mg) */}
+                    <div>
+                        <Input
+                            type="number"
+                            placeholder="Enter tar (mg)"
+                            {...register('tar', { required: 'Tar is required' })}
+                        />
+                        {errors.tar?.message && (
+                            <p className="mt-1 text-sm text-red-500">{String(errors.tar.message)}</p>
+                        )}
+                    </div>
+
+                    {/* Nicotine (mg) */}
+                    <div>
+                        <Input
+                            type="number"
+                            placeholder="Enter nicotine (mg)"
+                            {...register('nicotine', { required: 'Nicotine is required' })}
+                        />
+                        {errors.nicotine?.message && (
+                            <p className="mt-1 text-sm text-red-500">{String(errors.nicotine.message)}</p>
+                        )}
+                    </div>
+
+                    {/* Carbon Monoxide (CO) - Optional */}
+                    <div>
+                        <Input
+                            type="number"
+                            placeholder="Enter CO (mg) (optional)"
+                            {...register('co')}
+                        />
+                    </div>
+
+                    {/* Packet Style */}
+                    <div>
+                        <Input
+                            placeholder="Packet Style (e.g., Fan Pack, Slide Pack, Regular)"
+                            {...register('packetStyle', { required: 'Packet style is required' })}
+                        />
+                        {errors.packetStyle?.message && (
+                            <p className="mt-1 text-sm text-red-500">{String(errors.packetStyle.message)}</p>
+                        )}
+                    </div>
+
+                    {/* FSP (Firm Shell Pack) - Yes/No Dropdown */}
                     <div>
                         <select
                             {...register('fsp', { required: 'FSP selection is required' })}
                             className="block w-full rounded-lg border border-gray-300 p-2 focus:border-black focus:ring-1 focus:ring-black bg-white"
                         >
                             <option value="">Select FSP</option>
-                            <option value="yes">Yes</option>
-                            <option value="no">No</option>
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
                         </select>
                         {errors.fsp?.message && (
                             <p className="mt-1 text-sm text-red-500">{String(errors.fsp.message)}</p>
                         )}
                     </div>
 
-                    <Input placeholder="Corners" {...register('corners')} />
-                    <Input placeholder="Capsules" {...register('capsules')} />
+                    {/* Number of Capsules - 0, 1, 2, 3 */}
+                    <div>
+                        <select
+                            {...register('capsules', { required: 'Select number of capsules' })}
+                            className="block w-full rounded-lg border border-gray-300 p-2 focus:border-black focus:ring-1 focus:ring-black bg-white"
+                        >
+                            <option value="">Select Capsules</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                        {errors.capsules?.message && (
+                            <p className="mt-1 text-sm text-red-500">{String(errors.capsules.message)}</p>
+                        )}
+                    </div>
+
+                    {/* Color of the Packet */}
+                    <div>
+                        <Input
+                            placeholder="Enter Packet Color"
+                            {...register('color', { required: 'Packet color is required' })}
+                        />
+                        {errors.color?.message && (
+                            <p className="mt-1 text-sm text-red-500">{String(errors.color.message)}</p>
+                        )}
+                    </div>
+
+                    {/* Upload Product Image */}
                     <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">
                             Upload Product Image
@@ -468,10 +552,14 @@ const Products = () => {
                         <Input
                             type="file"
                             accept="image/*"
-                            {...register('image')}
+                            {...register('image', { required: 'Product image is required' })}
                         />
+                        {errors.image?.message && (
+                            <p className="mt-1 text-sm text-red-500">{String(errors.image.message)}</p>
+                        )}
                     </div>
 
+                    {/* Upload Product PDF */}
                     <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">
                             Upload Product PDF
@@ -479,11 +567,16 @@ const Products = () => {
                         <Input
                             type="file"
                             accept="application/pdf"
-                            {...register('pdf')}
+                            {...register('pdf', { required: 'Product PDF is required' })}
                         />
+                        {errors.pdf?.message && (
+                            <p className="mt-1 text-sm text-red-500">{String(errors.pdf.message)}</p>
+                        )}
                     </div>
                 </div>
             </Dialog>
+
+
 
             <Dialog
                 isOpen={isPdfDialogOpen}

@@ -1,10 +1,4 @@
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
@@ -26,7 +20,6 @@ export default function ProductsFilters({ onFilterChange }: FilterProps) {
     const [brands, setBrands] = useState<IBrand[]>([])
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
 
-    // Fetch brands dynamically from API
     useEffect(() => {
         const fetchBrands = async () => {
             try {
@@ -39,14 +32,12 @@ export default function ProductsFilters({ onFilterChange }: FilterProps) {
         fetchBrands()
     }, [])
 
-    // Handle filter changes
     const handleChange = (key: string, value: string) => {
         const updatedFilters = { ...filters, [key]: value }
         setFilters(updatedFilters)
         onFilterChange(updatedFilters)
     }
 
-    // Clear all filters
     const clearFilters = () => {
         setFilters({})
         onFilterChange({})
@@ -61,19 +52,6 @@ export default function ProductsFilters({ onFilterChange }: FilterProps) {
                     value={filters.name || ''}
                     onChange={(e) => handleChange('name', e.target.value)}
                 />
-
-                <Select
-                    onValueChange={(value) => handleChange('size', value)}
-                    value={filters.size || ''}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select Size" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="King Size">King Size</SelectItem>
-                        <SelectItem value="Slim">Slim</SelectItem>
-                    </SelectContent>
-                </Select>
 
                 <Select
                     onValueChange={(value) => handleChange('brandId', value)}
@@ -92,6 +70,52 @@ export default function ProductsFilters({ onFilterChange }: FilterProps) {
                 </Select>
 
                 <Input
+                    placeholder="Enter size"
+                    value={filters.size || ''}
+                    onChange={(e) => handleChange('size', e.target.value)}
+                />
+
+                <Input
+                    placeholder="Flavor"
+                    value={filters.flavor || ''}
+                    onChange={(e) => handleChange('flavor', e.target.value)}
+                />
+
+                <Input
+                    placeholder="Packet Style"
+                    value={filters.packetStyle || ''}
+                    onChange={(e) => handleChange('packetStyle', e.target.value)}
+                />
+
+                <Select
+                    onValueChange={(value) => handleChange('fsp', value)}
+                    value={filters.fsp || ''}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="FSP (Firm Shell Pack)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select
+                    onValueChange={(value) => handleChange('capsules', value)}
+                    value={filters.capsules || ''}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Number of Capsules" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="0">0</SelectItem>
+                        <SelectItem value="1">1</SelectItem>
+                        <SelectItem value="2">2</SelectItem>
+                        <SelectItem value="3">3</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Input
                     placeholder="Tar (mg)"
                     type="number"
                     value={filters.tar || ''}
@@ -104,16 +128,23 @@ export default function ProductsFilters({ onFilterChange }: FilterProps) {
                     onChange={(e) => handleChange('nicotine', e.target.value)}
                 />
                 <Input
-                    placeholder="CO (mg)"
+                    placeholder="Carbon Monoxide (mg)"
                     type="number"
                     value={filters.co || ''}
                     onChange={(e) => handleChange('co', e.target.value)}
+                />
+
+                <Input
+                    placeholder="Color of Packet"
+                    value={filters.color || ''}
+                    onChange={(e) => handleChange('color', e.target.value)}
                 />
 
                 <Button variant="outline" onClick={clearFilters}>
                     <X size={20} />
                 </Button>
             </div>
+
 
             {/* Mobile Filters Button */}
             <div className="flex justify-end md:hidden">
@@ -140,22 +171,7 @@ export default function ProductsFilters({ onFilterChange }: FilterProps) {
                     />
 
                     <Select
-                        onValueChange={(value) => handleChange('size', value)}
-                        value={filters.size || ''}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select Size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="King Size">King Size</SelectItem>
-                            <SelectItem value="Slim">Slim</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    <Select
-                        onValueChange={(value) =>
-                            handleChange('brandId', value)
-                        }
+                        onValueChange={(value) => handleChange('brandId', value)}
                         value={filters.brandId || ''}
                     >
                         <SelectTrigger>
@@ -171,24 +187,74 @@ export default function ProductsFilters({ onFilterChange }: FilterProps) {
                     </Select>
 
                     <Input
-                        placeholder="Tar (mg)"
+                        placeholder="Enter Size"
+                        value={filters.size || ''}
+                        onChange={(e) => handleChange('size', e.target.value)}
+                    />
+
+                    <Input
+                        placeholder="Enter Flavor"
+                        value={filters.flavor || ''}
+                        onChange={(e) => handleChange('flavor', e.target.value)}
+                    />
+
+                    <Input
+                        placeholder="Enter Packet Style"
+                        value={filters.packetStyle || ''}
+                        onChange={(e) => handleChange('packetStyle', e.target.value)}
+                    />
+
+                    <Select
+                        onValueChange={(value) => handleChange('fsp', value)}
+                        value={filters.fsp || ''}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="FSP (Firm Shell Pack)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="true">Yes</SelectItem>
+                            <SelectItem value="false">No</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        onValueChange={(value) => handleChange('capsules', value)}
+                        value={filters.capsules || ''}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Number of Capsules" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="0">0</SelectItem>
+                            <SelectItem value="1">1</SelectItem>
+                            <SelectItem value="2">2</SelectItem>
+                            <SelectItem value="3">3</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Input
+                        placeholder="Enter Tar (mg)"
                         type="number"
                         value={filters.tar || ''}
                         onChange={(e) => handleChange('tar', e.target.value)}
                     />
                     <Input
-                        placeholder="Nicotine (mg)"
+                        placeholder="Enter Nicotine (mg)"
                         type="number"
                         value={filters.nicotine || ''}
-                        onChange={(e) =>
-                            handleChange('nicotine', e.target.value)
-                        }
+                        onChange={(e) => handleChange('nicotine', e.target.value)}
                     />
                     <Input
-                        placeholder="CO (mg)"
+                        placeholder="Enter Carbon Monoxide (mg)"
                         type="number"
                         value={filters.co || ''}
                         onChange={(e) => handleChange('co', e.target.value)}
+                    />
+
+                    <Input
+                        placeholder="Enter Color of Packet"
+                        value={filters.color || ''}
+                        onChange={(e) => handleChange('color', e.target.value)}
                     />
 
                     {/* Actions */}
@@ -205,6 +271,7 @@ export default function ProductsFilters({ onFilterChange }: FilterProps) {
                     </div>
                 </div>
             </Dialog>
+
         </>
     )
 }

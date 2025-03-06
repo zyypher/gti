@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
@@ -62,18 +62,59 @@ const uploadToS3 = async (file: File, folder: string): Promise<string> => {
 
 
 // **GET Products (Fetch All)**
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        const url = new URL(req.url);
+        const searchParams = new URLSearchParams(url.search);
+
+        const filters: any = {};
+        
+        if (searchParams.has("name")) {
+            filters.name = { contains: searchParams.get("name"), mode: "insensitive" };
+        }
+        if (searchParams.has("brandId")) {
+            filters.brandId = searchParams.get("brandId");
+        }
+        if (searchParams.has("size")) {
+            filters.size = searchParams.get("size");
+        }
+        if (searchParams.has("flavor")) {
+            filters.flavor = searchParams.get("flavor");
+        }
+        if (searchParams.has("packetStyle")) {
+            filters.packetStyle = searchParams.get("packetStyle");
+        }
+        if (searchParams.has("fsp")) {
+            filters.fsp = searchParams.get("fsp") === "true"; // Convert string to boolean
+        }
+        if (searchParams.has("capsules")) {
+            filters.capsules = parseInt(searchParams.get("capsules") || "0");
+        }
+        if (searchParams.has("tar")) {
+            filters.tar = parseFloat(searchParams.get("tar") || "0");
+        }
+        if (searchParams.has("nicotine")) {
+            filters.nicotine = parseFloat(searchParams.get("nicotine") || "0");
+        }
+        if (searchParams.has("co")) {
+            filters.co = parseFloat(searchParams.get("co") || "0");
+        }
+        if (searchParams.has("color")) {
+            filters.color = searchParams.get("color");
+        }
+
         const products = await prisma.product.findMany({
+            where: filters,
             include: { brand: true },
         });
 
         return NextResponse.json(products);
     } catch (error) {
-        console.error('Error fetching products:', error);
-        return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
+        console.error("Error fetching products:", error);
+        return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
     }
 }
+
 
 
 // **POST Product (Create a New Product with S3 Uploads)**
@@ -89,12 +130,31 @@ export async function POST(req: Request) {
         }
     });
 
-    const { brandId, name, size, tar, nicotine, co, flavor, fsp, corners, capsules } = productData;
+    const { brandId, name, size, tar, nicotine, co, flavor, packetStyle, fsp, capsules, color } = productData;
 
     try {
+        // ✅ Convert types correctly
+        const parsedTar = tar ? parseFloat(tar) : null;
+        const parsedNicotine = nicotine ? parseFloat(nicotine) : null;
+        const parsedCo = co ? parseFloat(co) : null;
+        const parsedFsp = fsp === "true"; // Convert "true"/"false" string to boolean
+        const parsedCapsules = capsules ? parseInt(capsules) : null;
+
         // ✅ Step 1: Create the product in Neon first
         const product = await prisma.product.create({
-            data: { name, size, tar, nicotine, co, flavor, fsp, corners, capsules, brand: { connect: { id: brandId } } },
+            data: {
+                name,
+                size,
+                tar: parsedTar, // ✅ Now matches Prisma schema
+                nicotine: parsedNicotine,
+                co: parsedCo,
+                flavor,
+                packetStyle,
+                fsp: parsedFsp, // ✅ Now a boolean
+                capsules: parsedCapsules, // ✅ Now an integer
+                color,
+                brand: { connect: { id: brandId } },
+            },
         });
 
         // ✅ Step 2: Return the product immediately (modal closes & UI updates)
