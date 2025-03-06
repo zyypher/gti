@@ -2,12 +2,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
-import { X, Filter } from 'lucide-react'
+import { X, Filter, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 
 interface FilterProps {
     onFilterChange: (filters: Record<string, string>) => void
+    onRefresh: () => void
 }
 
 interface IBrand {
@@ -15,7 +16,7 @@ interface IBrand {
     name: string
 }
 
-export default function ProductsFilters({ onFilterChange }: FilterProps) {
+export default function ProductsFilters({ onFilterChange, onRefresh }: FilterProps) {
     const [filters, setFilters] = useState<Record<string, string>>({})
     const [brands, setBrands] = useState<IBrand[]>([])
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
@@ -140,9 +141,18 @@ export default function ProductsFilters({ onFilterChange }: FilterProps) {
                     onChange={(e) => handleChange('color', e.target.value)}
                 />
 
-                <Button variant="outline" onClick={clearFilters}>
-                    <X size={20} />
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                    {/* Refresh Button */}
+                    <Button variant="outline" size="small" onClick={() => onRefresh()}>
+                        <RefreshCw size={18} />
+                    </Button>
+
+                    {/* Clear Filters (Small Button) */}
+                    <Button variant="outline" size="small" onClick={clearFilters}>
+                        <X size={18} />
+                    </Button>
+                </div>
             </div>
 
 

@@ -334,11 +334,18 @@ const Products = () => {
         }
     }
 
+    const handleRefresh = () => {
+        setFilters((prevFilters) => ({ ...prevFilters })); // ✅ Force re-render with existing filters
+        fetchProducts(); // ✅ Re-fetch products
+    };
+
+
     return (
         <div className="space-y-4">
             <PageHeading heading="Products" />
             <div className="flex items-center justify-between gap-4">
-                <ProductsFilters onFilterChange={handleFilterChange} />
+                <ProductsFilters onFilterChange={handleFilterChange} onRefresh={handleRefresh} />
+
                 <div className="flex gap-4">
                     <Button
                         variant="black"
