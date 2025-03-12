@@ -21,15 +21,6 @@ type Brand = {
     image: string
 }
 
-// ✅ Yup Schema Validation
-const brandSchema = yup.object().shape({
-    name: yup.string().required('Brand name is required'),
-    description: yup.string().required('Description is required'),
-    image: yup.mixed().test('fileRequired', 'Brand image is required', (value) => {
-        return value && (value as FileList).length > 0;
-    }),
-})
-
 const BrandsPage = () => {
     const [brands, setBrands] = useState<Brand[]>([])
     const [loading, setLoading] = useState(true)
@@ -39,6 +30,18 @@ const BrandsPage = () => {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null)
     const [isDeleting, setIsDeleting] = useState(false) // ✅ New state for delete button loading
+
+    // ✅ Yup Schema Validation
+    const brandSchema = yup.object().shape({
+        name: yup.string().required('Brand name is required'),
+        description: yup.string().required('Description is required'),
+        image: yup
+            .mixed()
+            .test('fileRequired', 'Brand image is required', function (value) {
+                if (selectedBrand) return true // ✅ Skip validation during edit
+                return value && (value as FileList).length > 0
+            }),
+    })
 
     const {
         register,
@@ -68,7 +71,7 @@ const BrandsPage = () => {
 
     const handleAddOrEditBrand = async (data: any) => {
         setButtonLoading(true)
-        setLoading(true)
+        // ❌ REMOVE THIS: setLoading(true)
         try {
             const formData = new FormData()
             formData.append('name', data.name)
@@ -97,6 +100,9 @@ const BrandsPage = () => {
                 setIsDialogOpen(false)
                 reset()
                 setSelectedBrand(null)
+
+                // ✅ Refresh brands with loading feedback (optional)
+                setLoading(true) // ← only before re-fetch
                 const refreshedBrands = await api.get('/api/brands')
                 setBrands(refreshedBrands.data)
             } else {
@@ -163,7 +169,7 @@ const BrandsPage = () => {
             </div>
 
             {/* ✅ Brand Grid Section with Conditional Loading */}
-            <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                 {loading ? (
                     Array.from({ length: 9 }).map((_, index) => (
                         <Card key={index} className="relative">
@@ -177,7 +183,7 @@ const BrandsPage = () => {
                     ))
                 ) : brands.length === 0 ? (
                     <div className="col-span-full flex flex-col items-center justify-center py-10">
-                        <p className="text-gray-500 text-lg">No brands found</p>
+                        <p className="text-lg text-gray-500">No brands found</p>
                     </div>
                 ) : (
                     brands.map((brand) => (
@@ -185,11 +191,11 @@ const BrandsPage = () => {
                             key={brand.id}
                             className="relative transition hover:shadow-lg"
                         >
-                            <CardContent className="space-y-3 p-4 relative">
+                            <CardContent className="relative space-y-3 p-4">
                                 {/* ✅ Delete Button */}
                                 <button
                                     onClick={() => openDeleteDialog(brand)}
-                                    className="absolute top-2 right-2 rounded-full bg-red-500 p-2 text-white hover:bg-red-600"
+                                    className="absolute right-2 top-2 rounded-full bg-red-500 p-2 text-white hover:bg-red-600"
                                 >
                                     <Trash2 size={16} />
                                 </button>
@@ -232,19 +238,25 @@ const BrandsPage = () => {
                 title="Confirm Deletion"
             >
                 <div className="space-y-4 p-4">
-                    <p className="text-lg font-medium text-gray-800">
+                    <p className="text-gray-800 text-lg font-medium">
                         Are you sure you want to delete the brand{' '}
-                        <strong className="text-black">{brandToDelete?.name}</strong>?
+                        <strong className="text-black">
+                            {brandToDelete?.name}
+                        </strong>
+                        ?
                     </p>
 
                     <p className="text-sm text-gray-600">
-                        This action cannot be undone. The brand and all related data will be
-                        permanently removed.
+                        This action cannot be undone. The brand and all related
+                        data will be permanently removed.
                     </p>
 
                     {/* 🔹 Buttons */}
                     <div className="mt-6 flex justify-end gap-4">
-                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsDeleteDialogOpen(false)}
+                        >
                             Cancel
                         </Button>
 
@@ -255,7 +267,8 @@ const BrandsPage = () => {
                         >
                             {isDeleting ? (
                                 <span className="flex items-center">
-                                    <span className="loader mr-2"></span> Deleting...
+                                    <span className="loader mr-2"></span>{' '}
+                                    Deleting...
                                 </span>
                             ) : (
                                 'Delete'
@@ -264,7 +277,6 @@ const BrandsPage = () => {
                     </div>
                 </div>
             </Dialog>
-
 
             {/* ✅ Add/Edit Brand Dialog */}
             <Dialog
@@ -276,7 +288,9 @@ const BrandsPage = () => {
                 <form onSubmit={handleSubmit(handleAddOrEditBrand)}>
                     <div className="space-y-4">
                         <div>
-                            <label className="block font-medium text-gray-700">Brand Name</label>
+                            <label className="block font-medium text-gray-700">
+                                Brand Name
+                            </label>
                             <Input
                                 placeholder="Enter brand name"
                                 {...register('name')}
@@ -288,7 +302,9 @@ const BrandsPage = () => {
                             )}
                         </div>
                         <div>
-                            <label className="block font-medium text-gray-700">Description</label>
+                            <label className="block font-medium text-gray-700">
+                                Description
+                            </label>
                             <Input
                                 placeholder="Enter brand description"
                                 {...register('description')}
@@ -300,7 +316,9 @@ const BrandsPage = () => {
                             )}
                         </div>
                         <div className="space-y-2">
-                            <label className="block font-medium text-gray-700">Select an Image</label>
+                            <label className="block font-medium text-gray-700">
+                                Select an Image
+                            </label>
                             <Input
                                 type="file"
                                 accept="image/*"
@@ -312,28 +330,48 @@ const BrandsPage = () => {
                                 </p>
                             )}
                         </div>
+                        {selectedBrand?.image && (
+                            <div className="mb-2">
+                                <img
+                                    src={selectedBrand.image}
+                                    alt="Current Brand"
+                                    className="h-20 rounded-lg object-cover"
+                                />
+                                <p className="text-xs text-gray-500">
+                                    Current image
+                                </p>
+                            </div>
+                        )}
 
                         {/* ✅ Submit Button with Loader (Maintains the Same Pattern) */}
-                        <div className="flex justify-end gap-4 mt-6">
-                            <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)}>
+                        <div className="mt-6 flex justify-end gap-4">
+                            <Button
+                                variant="outline"
+                                type="button"
+                                onClick={() => setIsDialogOpen(false)}
+                            >
                                 Cancel
                             </Button>
-                            <Button type="submit" variant="black" disabled={buttonLoading}>
+                            <Button
+                                type="submit"
+                                variant="black"
+                                disabled={buttonLoading}
+                            >
                                 {buttonLoading ? (
                                     <span className="flex items-center">
-                                        <span className="loader mr-2"></span> Saving...
+                                        <span className="loader mr-2"></span>{' '}
+                                        Saving...
                                     </span>
+                                ) : selectedBrand ? (
+                                    'Update Brand'
                                 ) : (
-                                    selectedBrand ? 'Update Brand' : 'Add Brand'
+                                    'Add Brand'
                                 )}
                             </Button>
                         </div>
                     </div>
                 </form>
             </Dialog>
-
-
-
         </div>
     )
 }
