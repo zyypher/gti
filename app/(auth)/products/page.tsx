@@ -47,9 +47,8 @@ const Products = () => {
     const [selectedProduct, setSelectedProduct] = useState<ITable | null>(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [deleteProductId, setDeleteProductId] = useState<string | null>(null)
-    const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-    const [shareableUrl, setShareableUrl] = useState('');
-
+    const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+    const [shareableUrl, setShareableUrl] = useState('')
 
     const isPWA = () => {
         if (typeof window !== 'undefined') {
@@ -187,8 +186,8 @@ const Products = () => {
                 setPdfStep(1)
                 setSelectedBanner(null)
                 setSelectedAdvertisement(null)
-                reset();
-                setSelectedRows([]);
+                reset()
+                setSelectedRows([])
 
                 if (isPWA() || isMobile()) {
                     // Mobile Share
@@ -224,19 +223,21 @@ const Products = () => {
                     downloadLink.click()
                     document.body.removeChild(downloadLink)
 
-                    const sharedPdfResponse = await api.post('/api/shared-pdf', {
-                        productIds: selectedRows.join(','), // ✅ Send only productIds, API generates slug
-                        expiresAt: expirationDate.toISOString(),
-                    });
+                    const sharedPdfResponse = await api.post(
+                        '/api/shared-pdf',
+                        {
+                            productIds: selectedRows.join(','), // ✅ Send only productIds, API generates slug
+                            expiresAt: expirationDate.toISOString(),
+                        },
+                    )
 
                     // ✅ Extract slug from API response
-                    const { slug } = sharedPdfResponse.data;
-                    const shareableUrl = `${process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL}/${slug}`; // ✅ Use API returned slug
+                    const { slug } = sharedPdfResponse.data
+                    const shareableUrl = `${process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL}/${slug}` // ✅ Use API returned slug
 
                     // Show shareable link
-                    setShareableUrl(shareableUrl);
-                    setIsShareDialogOpen(true); // ✅ Open the new dialog instead of toast
-
+                    setShareableUrl(shareableUrl)
+                    setIsShareDialogOpen(true) // ✅ Open the new dialog instead of toast
                 }
             } else {
                 toast.error('Failed to generate PDF.')
@@ -335,16 +336,18 @@ const Products = () => {
     }
 
     const handleRefresh = () => {
-        setFilters((prevFilters) => ({ ...prevFilters })); // ✅ Force re-render with existing filters
-        fetchProducts(); // ✅ Re-fetch products
-    };
-
+        setFilters((prevFilters) => ({ ...prevFilters })) // ✅ Force re-render with existing filters
+        fetchProducts() // ✅ Re-fetch products
+    }
 
     return (
         <div className="space-y-4">
             <PageHeading heading="Products" />
             <div className="flex items-center justify-between gap-4">
-                <ProductsFilters onFilterChange={handleFilterChange} onRefresh={handleRefresh} />
+                <ProductsFilters
+                    onFilterChange={handleFilterChange}
+                    onRefresh={handleRefresh}
+                />
 
                 <div className="flex gap-4">
                     <Button
@@ -365,26 +368,32 @@ const Products = () => {
             </div>
 
             {loading ? (
-                <div className="w-full border border-gray-300 rounded-md overflow-hidden">
+                <div className="w-full overflow-hidden rounded-md border border-gray-300">
                     {/* Table Header Skeleton */}
                     <div className="flex items-center bg-gray-200 p-3">
                         {Array.from({ length: 5 }).map((_, index) => (
-                            <Skeleton key={index} className="h-5 w-1/5 mx-2" />
+                            <Skeleton key={index} className="mx-2 h-5 w-1/5" />
                         ))}
                     </div>
 
                     {/* Table Rows Skeleton */}
                     {Array.from({ length: 5 }).map((_, index) => (
-                        <div key={index} className="flex items-center p-3 border-t border-gray-300">
+                        <div
+                            key={index}
+                            className="flex items-center border-t border-gray-300 p-3"
+                        >
                             {Array.from({ length: 5 }).map((_, subIndex) => (
-                                <Skeleton key={subIndex} className="h-5 w-1/5 mx-2" />
+                                <Skeleton
+                                    key={subIndex}
+                                    className="mx-2 h-5 w-1/5"
+                                />
                             ))}
                         </div>
                     ))}
                 </div>
             ) : products.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-10">
-                    <p className="text-gray-500 text-lg">No products found</p>
+                    <p className="text-lg text-gray-500">No products found</p>
                 </div>
             ) : (
                 <DataTable
@@ -399,16 +408,16 @@ const Products = () => {
             <Dialog
                 isOpen={isDialogOpen}
                 onClose={() => {
-                    reset();
-                    setSelectedProduct(null);
-                    setIsDialogOpen(false);
+                    reset()
+                    setSelectedProduct(null)
+                    setIsDialogOpen(false)
                 }}
                 title={selectedProduct ? 'Edit Product' : 'Add New Product'}
                 onSubmit={handleSubmit(handleAddOrUpdateProduct)}
                 buttonLoading={buttonLoading}
             >
                 {/* Scrollable Container */}
-                <div className="max-h-[70vh] overflow-y-auto space-y-4 p-2">
+                <div className="max-h-[70vh] space-y-4 overflow-y-auto p-2">
                     {/* Product Name */}
                     <div>
                         <Input
@@ -418,7 +427,9 @@ const Products = () => {
                             })}
                         />
                         {errors.name?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.name.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.name.message)}
+                            </p>
                         )}
                     </div>
 
@@ -428,7 +439,7 @@ const Products = () => {
                             {...register('brandId', {
                                 required: 'Brand is required',
                             })}
-                            className="block w-full rounded-lg border border-gray-300 p-2 focus:border-black focus:ring-1 focus:ring-black bg-white"
+                            className="block w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                         >
                             <option value="">Select a brand</option>
                             {brands.map((brand) => (
@@ -438,7 +449,9 @@ const Products = () => {
                             ))}
                         </select>
                         {errors.brandId?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.brandId.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.brandId.message)}
+                            </p>
                         )}
                     </div>
 
@@ -446,10 +459,14 @@ const Products = () => {
                     <div>
                         <Input
                             placeholder="Enter size"
-                            {...register('size', { required: 'Size is required' })}
+                            {...register('size', {
+                                required: 'Size is required',
+                            })}
                         />
                         {errors.size?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.size.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.size.message)}
+                            </p>
                         )}
                     </div>
 
@@ -457,10 +474,14 @@ const Products = () => {
                     <div>
                         <Input
                             placeholder="Flavor"
-                            {...register('flavor', { required: 'Flavor is required' })}
+                            {...register('flavor', {
+                                required: 'Flavor is required',
+                            })}
                         />
                         {errors.flavor?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.flavor.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.flavor.message)}
+                            </p>
                         )}
                     </div>
 
@@ -469,10 +490,14 @@ const Products = () => {
                         <Input
                             type="number"
                             placeholder="Enter tar (mg)"
-                            {...register('tar', { required: 'Tar is required' })}
+                            {...register('tar', {
+                                required: 'Tar is required',
+                            })}
                         />
                         {errors.tar?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.tar.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.tar.message)}
+                            </p>
                         )}
                     </div>
 
@@ -481,10 +506,14 @@ const Products = () => {
                         <Input
                             type="number"
                             placeholder="Enter nicotine (mg)"
-                            {...register('nicotine', { required: 'Nicotine is required' })}
+                            {...register('nicotine', {
+                                required: 'Nicotine is required',
+                            })}
                         />
                         {errors.nicotine?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.nicotine.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.nicotine.message)}
+                            </p>
                         )}
                     </div>
 
@@ -501,33 +530,43 @@ const Products = () => {
                     <div>
                         <Input
                             placeholder="Packet Style (e.g., Fan Pack, Slide Pack, Regular)"
-                            {...register('packetStyle', { required: 'Packet style is required' })}
+                            {...register('packetStyle', {
+                                required: 'Packet style is required',
+                            })}
                         />
                         {errors.packetStyle?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.packetStyle.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.packetStyle.message)}
+                            </p>
                         )}
                     </div>
 
                     {/* FSP (Firm Shell Pack) - Yes/No Dropdown */}
                     <div>
                         <select
-                            {...register('fsp', { required: 'FSP selection is required' })}
-                            className="block w-full rounded-lg border border-gray-300 p-2 focus:border-black focus:ring-1 focus:ring-black bg-white"
+                            {...register('fsp', {
+                                required: 'FSP selection is required',
+                            })}
+                            className="block w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                         >
                             <option value="">Select FSP</option>
                             <option value="true">Yes</option>
                             <option value="false">No</option>
                         </select>
                         {errors.fsp?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.fsp.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.fsp.message)}
+                            </p>
                         )}
                     </div>
 
                     {/* Number of Capsules - 0, 1, 2, 3 */}
                     <div>
                         <select
-                            {...register('capsules', { required: 'Select number of capsules' })}
-                            className="block w-full rounded-lg border border-gray-300 p-2 focus:border-black focus:ring-1 focus:ring-black bg-white"
+                            {...register('capsules', {
+                                required: 'Select number of capsules',
+                            })}
+                            className="block w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                         >
                             <option value="">Select Capsules</option>
                             <option value="0">0</option>
@@ -536,7 +575,9 @@ const Products = () => {
                             <option value="3">3</option>
                         </select>
                         {errors.capsules?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.capsules.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.capsules.message)}
+                            </p>
                         )}
                     </div>
 
@@ -544,14 +585,32 @@ const Products = () => {
                     <div>
                         <Input
                             placeholder="Enter Packet Color"
-                            {...register('color', { required: 'Packet color is required' })}
+                            {...register('color', {
+                                required: 'Packet color is required',
+                            })}
                         />
                         {errors.color?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.color.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.color.message)}
+                            </p>
                         )}
                     </div>
 
                     {/* Upload Product Image */}
+
+                    {/* ✅ Preview Existing Product Image */}
+                    {selectedProduct?.image && (
+                        <div className="mb-2">
+                            <p className="mb-1 text-sm text-gray-600">
+                                Current Image Preview:
+                            </p>
+                            <img
+                                src={selectedProduct.image}
+                                alt="Product Image"
+                                className="h-40 w-full rounded-lg border object-contain"
+                            />
+                        </div>
+                    )}
                     <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">
                             Upload Product Image
@@ -559,10 +618,14 @@ const Products = () => {
                         <Input
                             type="file"
                             accept="image/*"
-                            {...register('image', { required: 'Product image is required' })}
+                            {...register('image', {
+                                required: 'Product image is required',
+                            })}
                         />
                         {errors.image?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.image.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.image.message)}
+                            </p>
                         )}
                     </div>
 
@@ -574,16 +637,18 @@ const Products = () => {
                         <Input
                             type="file"
                             accept="application/pdf"
-                            {...register('pdf', { required: 'Product PDF is required' })}
+                            {...register('pdf', {
+                                required: 'Product PDF is required',
+                            })}
                         />
                         {errors.pdf?.message && (
-                            <p className="mt-1 text-sm text-red-500">{String(errors.pdf.message)}</p>
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.pdf.message)}
+                            </p>
                         )}
                     </div>
                 </div>
             </Dialog>
-
-
 
             <Dialog
                 isOpen={isPdfDialogOpen}
@@ -598,8 +663,8 @@ const Products = () => {
                     pdfStep === 1
                         ? 'Select Banner'
                         : pdfStep === 2
-                            ? 'Select Advertisement'
-                            : 'Confirm & Generate PDF'
+                          ? 'Select Advertisement'
+                          : 'Confirm & Generate PDF'
                 }
             >
                 <div className="space-y-4 p-4">
@@ -736,15 +801,17 @@ const Products = () => {
                 title="PDF Generated"
             >
                 <div className="space-y-4 p-4">
-                    <p className="text-gray-700">Your PDF has been generated successfully.</p>
+                    <p className="text-gray-700">
+                        Your PDF has been generated successfully.
+                    </p>
 
-                    <div className="flex items-center space-x-2 border rounded-md p-2 bg-gray-100">
+                    <div className="flex items-center space-x-2 rounded-md border bg-gray-100 p-2">
                         <span className="truncate">{shareableUrl}</span>
                         <Button
                             variant="outline"
                             onClick={() => {
-                                navigator.clipboard.writeText(shareableUrl);
-                                toast.success("Link copied to clipboard!");
+                                navigator.clipboard.writeText(shareableUrl)
+                                toast.success('Link copied to clipboard!')
                             }}
                         >
                             Copy Link
@@ -752,7 +819,6 @@ const Products = () => {
                     </div>
                 </div>
             </Dialog>
-
         </div>
     )
 }
