@@ -1,4 +1,10 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
@@ -16,7 +22,10 @@ interface IBrand {
     name: string
 }
 
-export default function ProductsFilters({ onFilterChange, onRefresh }: FilterProps) {
+export default function ProductsFilters({
+    onFilterChange,
+    onRefresh,
+}: FilterProps) {
     const [filters, setFilters] = useState<Record<string, string>>({})
     const [brands, setBrands] = useState<IBrand[]>([])
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
@@ -85,7 +94,9 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                 <Input
                     placeholder="Packet Style"
                     value={filters.packetStyle || ''}
-                    onChange={(e) => handleChange('packetStyle', e.target.value)}
+                    onChange={(e) =>
+                        handleChange('packetStyle', e.target.value)
+                    }
                 />
 
                 <Select
@@ -93,7 +104,7 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                     value={filters.fsp || ''}
                 >
                     <SelectTrigger>
-                        <SelectValue placeholder="FSP (Firm Shell Pack)" />
+                        <SelectValue placeholder="FSP" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="true">Yes</SelectItem>
@@ -117,20 +128,26 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                 </Select>
 
                 <Input
-                    placeholder="Tar (mg)"
                     type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="Tar (mg)"
                     value={filters.tar || ''}
                     onChange={(e) => handleChange('tar', e.target.value)}
                 />
                 <Input
-                    placeholder="Nicotine (mg)"
                     type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="Nicotine (mg)"
                     value={filters.nicotine || ''}
                     onChange={(e) => handleChange('nicotine', e.target.value)}
                 />
                 <Input
-                    placeholder="Carbon Monoxide (mg)"
                     type="number"
+                    step="1"
+                    min="0"
+                    placeholder="Carbon Monoxide (mg)"
                     value={filters.co || ''}
                     onChange={(e) => handleChange('co', e.target.value)}
                 />
@@ -144,19 +161,27 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                 {/* Action Buttons */}
                 <div className="flex gap-2">
                     {/* Refresh Button */}
-                    <Button variant="outline" size="small" onClick={() => onRefresh()}>
+                    <Button
+                        variant="outline"
+                        size="small"
+                        onClick={() => onRefresh()}
+                    >
                         <RefreshCw size={18} />
                     </Button>
 
                     {/* Clear Filters (Small Button) */}
-                    <Button variant="outline" size="small" onClick={clearFilters}>
+                    <Button
+                        variant="outline"
+                        size="small"
+                        onClick={clearFilters}
+                    >
                         <X size={18} />
                     </Button>
                 </div>
             </div>
 
             {/* Mobile Filters Button & Clear Filters Button */}
-            <div className="flex justify-end md:hidden gap-2">
+            <div className="flex justify-end gap-2 md:hidden">
                 {/* Mobile Filter Button */}
                 <Button
                     variant="outline"
@@ -170,8 +195,8 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                     variant="outline"
                     size="small"
                     onClick={() => {
-                        setFilters({}); // ✅ Clear filters
-                        onFilterChange({}); // ✅ Apply empty filters
+                        setFilters({}) // ✅ Clear filters
+                        onFilterChange({}) // ✅ Apply empty filters
                     }}
                 >
                     <X size={18} />
@@ -188,11 +213,15 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                     <Input
                         placeholder="Search by name"
                         value={filters.name || ''}
-                        onChange={(e) => setFilters({ ...filters, name: e.target.value })} // ✅ Do not apply instantly
+                        onChange={(e) =>
+                            setFilters({ ...filters, name: e.target.value })
+                        } // ✅ Do not apply instantly
                     />
 
                     <Select
-                        onValueChange={(value) => setFilters({ ...filters, brandId: value })}
+                        onValueChange={(value) =>
+                            setFilters({ ...filters, brandId: value })
+                        }
                         value={filters.brandId || ''}
                     >
                         <SelectTrigger>
@@ -210,27 +239,38 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                     <Input
                         placeholder="Enter Size"
                         value={filters.size || ''}
-                        onChange={(e) => setFilters({ ...filters, size: e.target.value })}
+                        onChange={(e) =>
+                            setFilters({ ...filters, size: e.target.value })
+                        }
                     />
 
                     <Input
                         placeholder="Enter Flavor"
                         value={filters.flavor || ''}
-                        onChange={(e) => setFilters({ ...filters, flavor: e.target.value })}
+                        onChange={(e) =>
+                            setFilters({ ...filters, flavor: e.target.value })
+                        }
                     />
 
                     <Input
                         placeholder="Enter Packet Style"
                         value={filters.packetStyle || ''}
-                        onChange={(e) => setFilters({ ...filters, packetStyle: e.target.value })}
+                        onChange={(e) =>
+                            setFilters({
+                                ...filters,
+                                packetStyle: e.target.value,
+                            })
+                        }
                     />
 
                     <Select
-                        onValueChange={(value) => setFilters({ ...filters, fsp: value })}
+                        onValueChange={(value) =>
+                            setFilters({ ...filters, fsp: value })
+                        }
                         value={filters.fsp || ''}
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder="FSP (Firm Shell Pack)" />
+                            <SelectValue placeholder="FSP" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="true">Yes</SelectItem>
@@ -239,7 +279,9 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                     </Select>
 
                     <Select
-                        onValueChange={(value) => setFilters({ ...filters, capsules: value })}
+                        onValueChange={(value) =>
+                            setFilters({ ...filters, capsules: value })
+                        }
                         value={filters.capsules || ''}
                     >
                         <SelectTrigger>
@@ -254,28 +296,42 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                     </Select>
 
                     <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
                         placeholder="Enter Tar (mg)"
-                        type="number"
                         value={filters.tar || ''}
-                        onChange={(e) => setFilters({ ...filters, tar: e.target.value })}
+                        onChange={(e) =>
+                            setFilters({ ...filters, tar: e.target.value })
+                        }
                     />
                     <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
                         placeholder="Enter Nicotine (mg)"
-                        type="number"
                         value={filters.nicotine || ''}
-                        onChange={(e) => setFilters({ ...filters, nicotine: e.target.value })}
+                        onChange={(e) =>
+                            setFilters({ ...filters, nicotine: e.target.value })
+                        }
                     />
                     <Input
-                        placeholder="Enter Carbon Monoxide (mg)"
                         type="number"
+                        step="1"
+                        min="0"
+                        placeholder="Enter Carbon Monoxide (mg)"
                         value={filters.co || ''}
-                        onChange={(e) => setFilters({ ...filters, co: e.target.value })}
+                        onChange={(e) =>
+                            setFilters({ ...filters, co: e.target.value })
+                        }
                     />
 
                     <Input
                         placeholder="Enter Color of Packet"
                         value={filters.color || ''}
-                        onChange={(e) => setFilters({ ...filters, color: e.target.value })}
+                        onChange={(e) =>
+                            setFilters({ ...filters, color: e.target.value })
+                        }
                     />
 
                     {/* Actions */}
@@ -283,8 +339,8 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                         <Button
                             variant="black"
                             onClick={() => {
-                                onFilterChange(filters); // ✅ Apply filters
-                                setIsMobileFilterOpen(false); // ✅ Close modal
+                                onFilterChange(filters) // ✅ Apply filters
+                                setIsMobileFilterOpen(false) // ✅ Close modal
                             }}
                         >
                             Apply
@@ -292,8 +348,6 @@ export default function ProductsFilters({ onFilterChange, onRefresh }: FilterPro
                     </div>
                 </div>
             </Dialog>
-
-
         </>
     )
 }

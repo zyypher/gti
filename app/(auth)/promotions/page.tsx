@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Trash2 } from 'lucide-react'
+import { Trash2, RefreshCw, Circle } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import PageHeading from '@/components/layout/page-heading'
 
@@ -33,25 +33,26 @@ const PromotionsPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [deleteId, setDeleteId] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
 
-    // Fetch promotions
-    useEffect(() => {
-        const fetchPromotions = async () => {
-            try {
-                const response = await api.get('/api/promotions')
-                const data: Promotion[] = response.data
-                setPromotions(data)
-                setFilteredPromotions(data)
-            } catch (error) {
-                toast.error('Failed to load promotions')
-            } finally {
-                setLoading(false)
-            }
+    const fetchPromotions = async () => {
+        setLoading(true)
+        try {
+            const response = await api.get('/api/promotions')
+            const data: Promotion[] = response.data
+            setPromotions(data)
+            setFilteredPromotions(data)
+        } catch (error) {
+            toast.error('Failed to load promotions')
+        } finally {
+            setLoading(false)
         }
+    }
+
+    useEffect(() => {
         fetchPromotions()
     }, [])
 
-    // Filter promotions
     useEffect(() => {
         if (filter === 'all') {
             setFilteredPromotions(promotions)
@@ -62,14 +63,12 @@ const PromotionsPage = () => {
         }
     }, [filter, promotions])
 
-    // Handle file selection
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files.length > 0) {
             setFile(event.target.files[0])
         }
     }
 
-    // Handle form submission
     const handleSubmit = async () => {
         if (!file) {
             toast.error('Please select a PDF file')
@@ -90,9 +89,7 @@ const PromotionsPage = () => {
                 toast.success('Promotion added successfully')
                 setIsDialogOpen(false)
                 setFile(null)
-                const updatedData = await api.get('/api/promotions')
-                const data: Promotion[] = updatedData.data
-                setPromotions(data)
+                await fetchPromotions()
             } else {
                 toast.error('Failed to add promotion')
             }
@@ -104,9 +101,9 @@ const PromotionsPage = () => {
         }
     }
 
-    // Handle delete confirmation
     const handleDelete = async () => {
         if (!deleteId) return
+        setIsDeleting(true)
         try {
             const response = await api.delete(`/api/promotions?id=${deleteId}`)
             if (response.status === 200) {
@@ -123,6 +120,7 @@ const PromotionsPage = () => {
         } finally {
             setDeleteDialogOpen(false)
             setDeleteId(null)
+            setIsDeleting(false)
         }
     }
 
@@ -130,31 +128,40 @@ const PromotionsPage = () => {
         <div className="space-y-6 p-4">
             <PageHeading heading="Promotions" />
 
-            {/* Add Promotion and Filter */}
-            <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-                <select
-                    value={filter}
-                    onChange={(e) =>
-                        setFilter(
-                            e.target.value as
-                            | 'all'
-                            | 'banner'
-                            | 'advertisement',
-                        )
-                    }
-                    className="rounded border p-2"
-                >
-                    <option value="all">All</option>
-                    <option value="banner">Banners</option>
-                    <option value="advertisement">Advertisements</option>
-                </select>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                    <select
+                        value={filter}
+                        onChange={(e) =>
+                            setFilter(
+                                e.target.value as
+                                    | 'all'
+                                    | 'banner'
+                                    | 'advertisement',
+                            )
+                        }
+                        className="rounded border p-2"
+                    >
+                        <option value="all">All</option>
+                        <option value="banner">Banners</option>
+                        <option value="advertisement">Advertisements</option>
+                    </select>
+                    <div className="flex items-center gap-4 text-sm text-gray-700">
+                    <div className="h-3 w-3 rounded-full bg-primary" />{' '}
+                        Banner
+                        <div className="h-3 w-3 rounded-full bg-success" />{' '}
+                        Advertisement
+                    </div>
 
+                    <Button variant="outline" onClick={fetchPromotions}>
+                        <RefreshCw size={18} className="mr-1" /> Refresh
+                    </Button>
+                </div>
                 <Button variant="black" onClick={() => setIsDialogOpen(true)}>
                     Add Promotion
                 </Button>
             </div>
 
-            {/* Promotions Grid with Skeleton & No Promotions Message */}
             {loading ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, index) => (
@@ -170,14 +177,14 @@ const PromotionsPage = () => {
                 </div>
             ) : filteredPromotions.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-10">
-                    <p className="text-gray-500 text-lg">No promotions found</p>
+                    <p className="text-lg text-gray-500">No promotions found</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     {filteredPromotions.map((item) => (
                         <div
                             key={item.id}
-                            className="relative rounded border bg-white p-2 shadow-md"
+                            className={`relative rounded border-4 bg-white p-2 shadow-md ${item.type === 'banner' ? 'border-primary' : 'border-success'}`}
                         >
                             {item.filePath ? (
                                 <iframe
@@ -209,7 +216,6 @@ const PromotionsPage = () => {
                 </div>
             )}
 
-            {/* Dialog for adding promotions */}
             <Dialog
                 isOpen={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
@@ -256,14 +262,30 @@ const PromotionsPage = () => {
                 </div>
             </Dialog>
 
-            {/* Dialog for delete confirmation */}
             <Dialog
                 isOpen={deleteDialogOpen}
                 onClose={() => setDeleteDialogOpen(false)}
                 title="Confirm Deletion"
-                onSubmit={handleDelete}
+                // onSubmit={handleDelete}
             >
-                <p>Are you sure you want to delete this promotion?</p>
+                <div className="space-y-4">
+                    <p>Are you sure you want to delete this promotion?</p>
+                    <div className="mt-6 flex justify-end gap-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeleteDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="black"
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    </div>
+                </div>
             </Dialog>
         </div>
     )

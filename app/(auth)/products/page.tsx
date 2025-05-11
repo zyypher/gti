@@ -542,7 +542,7 @@ const Products = () => {
                         )}
                     </div>
 
-                    {/* FSP (Firm Shell Pack) - Yes/No Dropdown */}
+                    {/* FSP - Yes/No Dropdown */}
                     <div>
                         <select
                             {...register('fsp', {
