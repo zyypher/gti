@@ -134,11 +134,11 @@ export async function POST(req: Request) {
 
     try {
         // ✅ Convert types correctly
-        const parsedTar = tar ? parseFloat(tar) : null;
-        const parsedNicotine = nicotine ? parseFloat(nicotine) : null;
-        const parsedCo = co ? parseFloat(co) : null;
+        const parsedTar = parseFloat(tar || '0');
+        const parsedNicotine = parseFloat(nicotine || '0');
+        const parsedCo = parseFloat(co || '0');
         const parsedFsp = fsp === "true"; // Convert "true"/"false" string to boolean
-        const parsedCapsules = capsules ? parseInt(capsules) : null;
+        const parsedCapsules = parseInt(capsules || '0');
 
         // ✅ Step 1: Create the product in Neon first
         const product = await prisma.product.create({
