@@ -14,7 +14,7 @@ import { useState } from 'react'
 import api from '../../../lib/api'
 import { toast } from 'react-hot-toast'
 
-export const dynamic = 'force-dynamic' // ✅ Prevents prerendering issues
+export const dynamic = 'force-dynamic'
 
 const setPasswordSchema = z.object({
     password: z.string().min(6, 'Password must be at least 6 characters long'),

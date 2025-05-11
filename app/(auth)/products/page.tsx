@@ -262,8 +262,9 @@ const Products = () => {
             formData.append('co', data.co || '')
             formData.append('flavor', data.flavor || '')
             formData.append('fsp', data.fsp || '')
-            formData.append('corners', data.corners || '')
             formData.append('capsules', data.capsules || '')
+            formData.append('packetStyle', data.packetStyle || '')
+            formData.append('color', data.color || '')
 
             // ✅ Append new image/PDF only if selected
             if (selectedProduct) {
@@ -619,7 +620,9 @@ const Products = () => {
                             type="file"
                             accept="image/*"
                             {...register('image', {
-                                required: 'Product image is required',
+                                required: !selectedProduct
+                                    ? 'Product image is required'
+                                    : false,
                             })}
                         />
                         {errors.image?.message && (
@@ -638,7 +641,9 @@ const Products = () => {
                             type="file"
                             accept="application/pdf"
                             {...register('pdf', {
-                                required: 'Product PDF is required',
+                                required: !selectedProduct
+                                    ? 'Product PDF is required'
+                                    : false,
                             })}
                         />
                         {errors.pdf?.message && (

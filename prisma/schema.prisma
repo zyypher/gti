@@ -51,25 +51,24 @@ model Brand {
 }
 
 model Product {
-  id           String   @id @default(uuid())
-  name         String
-  size         String?
-  tar          Float?
-  nicotine     Float?
-  co           Float?
-  flavor       String?
-  packetStyle  String?
-  fsp          Boolean?
-  capsules     Int?
-  color        String?
-  image        String?
-  pdfUrl       String?
-  brand        Brand     @relation(fields: [brandId], references: [id])
-  brandId      String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  size        String
+  tar         Float
+  nicotine    Float
+  co          Float
+  flavor      String
+  packetStyle String
+  fsp         Boolean
+  capsules    Int
+  color       String
+  image       String
+  pdfUrl      String
+  brand       Brand    @relation(fields: [brandId], references: [id])
+  brandId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
-
 
 enum Role {
   ADMIN
