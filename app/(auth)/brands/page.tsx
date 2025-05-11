@@ -13,6 +13,7 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { Pencil, Trash2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { RefreshCw } from 'lucide-react'
 
 type Brand = {
     id: string
@@ -152,10 +153,27 @@ const BrandsPage = () => {
         }
     }
 
+    const onRefresh = async () => {
+        setLoading(true)
+        try {
+            const response = await api.get('/api/brands')
+            setBrands(response.data)
+            toast.success('Brands refreshed')
+        } catch (error) {
+            toast.error('Failed to refresh brands')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
         <div className="space-y-4">
             <PageHeading heading="Brands" />
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={onRefresh}>
+                    <RefreshCw size={18} className="mr-1" />
+                    Refresh
+                </Button>
                 <Button
                     variant="black"
                     onClick={() => {
