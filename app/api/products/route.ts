@@ -66,42 +66,38 @@ export async function GET(req: NextRequest) {
 
         const filters: any = {}
 
-        if (searchParams.has('name')) {
-            filters.name = {
-                contains: searchParams.get('name'),
-                mode: 'insensitive',
+        const getTextFilter = (key: string) => {
+            const value = searchParams.get(key)
+            if (value && value.trim() !== '') {
+                return { contains: value, mode: 'insensitive' }
             }
+            return undefined
         }
-        if (searchParams.has('brandId')) {
-            filters.brandId = searchParams.get('brandId')
-        }
-        if (searchParams.has('size')) {
-            filters.size = searchParams.get('size')
-        }
-        if (searchParams.has('flavor')) {
-            filters.flavor = searchParams.get('flavor')
-        }
-        if (searchParams.has('packetStyle')) {
-            filters.packetStyle = searchParams.get('packetStyle')
-        }
-        if (searchParams.has('fsp')) {
-            filters.fsp = searchParams.get('fsp') === 'true' // Convert string to boolean
-        }
-        if (searchParams.has('capsules')) {
-            filters.capsules = parseInt(searchParams.get('capsules') || '0')
-        }
-        if (searchParams.has('tar')) {
-            filters.tar = parseFloat(searchParams.get('tar') || '0')
-        }
-        if (searchParams.has('nicotine')) {
-            filters.nicotine = parseFloat(searchParams.get('nicotine') || '0')
-        }
-        if (searchParams.has('co')) {
-            filters.co = parseFloat(searchParams.get('co') || '0')
-        }
-        if (searchParams.has('color')) {
-            filters.color = searchParams.get('color')
-        }
+
+        filters.name = getTextFilter('name')
+        filters.size = getTextFilter('size')
+        filters.flavor = getTextFilter('flavor')
+        filters.packetStyle = getTextFilter('packetStyle')
+        filters.color = getTextFilter('color')
+        filters.corners = getTextFilter('corners')
+
+        const brandId = searchParams.get('brandId')
+        if (brandId) filters.brandId = brandId
+
+        const fsp = searchParams.get('fsp')
+        if (fsp !== null) filters.fsp = fsp === 'true'
+
+        const capsules = searchParams.get('capsules')
+        if (capsules) filters.capsules = parseInt(capsules)
+
+        const tar = searchParams.get('tar')
+        if (tar) filters.tar = parseFloat(tar)
+
+        const nicotine = searchParams.get('nicotine')
+        if (nicotine) filters.nicotine = parseFloat(nicotine)
+
+        const co = searchParams.get('co')
+        if (co) filters.co = parseFloat(co)
 
         const products = await prisma.product.findMany({
             where: filters,

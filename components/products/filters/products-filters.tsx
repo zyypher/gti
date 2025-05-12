@@ -29,6 +29,7 @@ export default function ProductsFilters({
     const [filters, setFilters] = useState<Record<string, string>>({})
     const [brands, setBrands] = useState<IBrand[]>([])
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+    const [showAllFilters, setShowAllFilters] = useState(false)
 
     useEffect(() => {
         const fetchBrands = async () => {
@@ -43,7 +44,12 @@ export default function ProductsFilters({
     }, [])
 
     const handleChange = (key: string, value: string) => {
-        const updatedFilters = { ...filters, [key]: value }
+        const updatedFilters = { ...filters }
+        if (value.trim() === '') {
+            delete updatedFilters[key]
+        } else {
+            updatedFilters[key] = value
+        }
         setFilters(updatedFilters)
         onFilterChange(updatedFilters)
     }
@@ -57,12 +63,12 @@ export default function ProductsFilters({
         <>
             {/* Desktop Filters */}
             <div className="hidden grid-cols-2 gap-4 md:grid md:grid-cols-4 lg:grid-cols-6">
+                {/* Always visible filters */}
                 <Input
                     placeholder="Search by name"
                     value={filters.name || ''}
                     onChange={(e) => handleChange('name', e.target.value)}
                 />
-
                 <Select
                     onValueChange={(value) => handleChange('brandId', value)}
                     value={filters.brandId || ''}
@@ -78,19 +84,16 @@ export default function ProductsFilters({
                         ))}
                     </SelectContent>
                 </Select>
-
                 <Input
                     placeholder="Enter size"
                     value={filters.size || ''}
                     onChange={(e) => handleChange('size', e.target.value)}
                 />
-
                 <Input
                     placeholder="Flavor"
                     value={filters.flavor || ''}
                     onChange={(e) => handleChange('flavor', e.target.value)}
                 />
-
                 <Input
                     placeholder="Packet Style"
                     value={filters.packetStyle || ''}
@@ -99,77 +102,94 @@ export default function ProductsFilters({
                     }
                 />
 
-                <Select
-                    onValueChange={(value) => handleChange('fsp', value)}
-                    value={filters.fsp || ''}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="FSP" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="true">Yes</SelectItem>
-                        <SelectItem value="false">No</SelectItem>
-                    </SelectContent>
-                </Select>
+                {/* Conditionally visible filters */}
+                {showAllFilters && (
+                    <>
+                        <Select
+                            onValueChange={(value) =>
+                                handleChange('fsp', value)
+                            }
+                            value={filters.fsp || ''}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="FSP" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="true">Yes</SelectItem>
+                                <SelectItem value="false">No</SelectItem>
+                            </SelectContent>
+                        </Select>
 
-                <Select
-                    onValueChange={(value) => handleChange('capsules', value)}
-                    value={filters.capsules || ''}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Number of Capsules" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="0">0</SelectItem>
-                        <SelectItem value="1">1</SelectItem>
-                        <SelectItem value="2">2</SelectItem>
-                        <SelectItem value="3">3</SelectItem>
-                    </SelectContent>
-                </Select>
+                        <Select
+                            onValueChange={(value) =>
+                                handleChange('capsules', value)
+                            }
+                            value={filters.capsules || ''}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Number of Capsules" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="0">0</SelectItem>
+                                <SelectItem value="1">1</SelectItem>
+                                <SelectItem value="2">2</SelectItem>
+                                <SelectItem value="3">3</SelectItem>
+                            </SelectContent>
+                        </Select>
 
-                <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    placeholder="Tar (mg)"
-                    value={filters.tar || ''}
-                    onChange={(e) => handleChange('tar', e.target.value)}
-                />
-                <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    placeholder="Nicotine (mg)"
-                    value={filters.nicotine || ''}
-                    onChange={(e) => handleChange('nicotine', e.target.value)}
-                />
-                <Input
-                    type="number"
-                    step="1"
-                    min="0"
-                    placeholder="Carbon Monoxide (mg)"
-                    value={filters.co || ''}
-                    onChange={(e) => handleChange('co', e.target.value)}
-                />
+                        <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            placeholder="Tar (mg)"
+                            value={filters.tar || ''}
+                            onChange={(e) =>
+                                handleChange('tar', e.target.value)
+                            }
+                        />
+                        <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            placeholder="Nicotine (mg)"
+                            value={filters.nicotine || ''}
+                            onChange={(e) =>
+                                handleChange('nicotine', e.target.value)
+                            }
+                        />
+                        <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder="Carbon Monoxide (mg)"
+                            value={filters.co || ''}
+                            onChange={(e) => handleChange('co', e.target.value)}
+                        />
 
-                <Input
-                    placeholder="Color of Packet"
-                    value={filters.color || ''}
-                    onChange={(e) => handleChange('color', e.target.value)}
-                />
+                        <Input
+                            placeholder="Color of Packet"
+                            value={filters.color || ''}
+                            onChange={(e) =>
+                                handleChange('color', e.target.value)
+                            }
+                        />
+                    </>
+                )}
 
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                    {/* Refresh Button */}
+                {/* Button to toggle */}
+                <div className="col-span-full flex gap-2">
                     <Button
                         variant="outline"
                         size="small"
-                        onClick={() => onRefresh()}
+                        onClick={() => setShowAllFilters(!showAllFilters)}
                     >
+                        {showAllFilters ? 'Hide Filters' : 'View All Filters'}
+                    </Button>
+
+                    <Button variant="outline" size="small" onClick={onRefresh}>
                         <RefreshCw size={18} />
                     </Button>
 
-                    {/* Clear Filters (Small Button) */}
                     <Button
                         variant="outline"
                         size="small"

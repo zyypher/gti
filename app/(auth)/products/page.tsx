@@ -265,6 +265,7 @@ const Products = () => {
             formData.append('capsules', data.capsules || '')
             formData.append('packetStyle', data.packetStyle || '')
             formData.append('color', data.color || '')
+            // formData.append('corners', data.corners || '')
 
             // ✅ Append new image/PDF only if selected
             if (selectedProduct) {
@@ -541,6 +542,21 @@ const Products = () => {
                             </p>
                         )}
                     </div>
+
+                     {/* Corners */}
+                     {/* <div>
+                        <Input
+                            placeholder="Corners"
+                            {...register('corners', {
+                                required: 'Corners is required',
+                            })}
+                        />
+                        {errors.corners?.message && (
+                            <p className="mt-1 text-sm text-red-500">
+                                {String(errors.corners.message)}
+                            </p>
+                        )}
+                    </div> */}
 
                     {/* FSP - Yes/No Dropdown */}
                     <div>

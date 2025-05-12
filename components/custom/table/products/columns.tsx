@@ -116,10 +116,20 @@ export const columns = (
             )
         },
     },
+    // {
+    //     accessorKey: 'corners',
+    //     header: 'Corners',
+    //     cell: ({ row }) => <div>{row.getValue('corners')}</div>,
+    // },
     {
-        accessorKey: 'corners',
-        header: 'Corners',
-        cell: ({ row }) => <div>{row.getValue('corners')}</div>,
+        accessorKey: 'packetStyle',
+        header: 'Packet style',
+        cell: ({ row }) => <div>{row.getValue('packetStyle')}</div>,
+    },
+    {
+        accessorKey: 'color',
+        header: 'Color',
+        cell: ({ row }) => <div>{row.getValue('color')}</div>,
     },
     {
         accessorKey: 'capsules',
