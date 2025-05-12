@@ -11,6 +11,8 @@ import {
     ListOrdered,
     MessageCircle,
     LogOut,
+    Megaphone,
+    Bell,
 } from 'lucide-react'
 import { useEffect } from 'react'
 import { Card } from '@/components/ui/card'
@@ -78,7 +80,7 @@ const Sidebar = () => {
                         <span>Products</span>
                     </NavLink>
                     <NavLink href="/promotions" className={`nav-link`}>
-                        <FileText className="size-[18px] shrink-0" />
+                        <Megaphone className="size-[18px] shrink-0" />
                         <span>Promotions</span>
                     </NavLink>
                     <NavLink href="/generated-pdfs" className={`nav-link`}>
@@ -90,7 +92,7 @@ const Sidebar = () => {
                         <span>Orders</span>
                     </NavLink>
                     <NavLink href="/notifications" className={`nav-link`}>
-                        <MessageCircle className="size-[18px] shrink-0" />
+                        <Bell className="size-[18px] shrink-0" />
                         <span>Notifications</span>
                     </NavLink>
 
