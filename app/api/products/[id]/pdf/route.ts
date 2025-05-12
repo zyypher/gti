@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import {
     S3Client,
-    DeleteObjectCommand,
-    PutObjectCommand,
+    DeleteObjectCommand
 } from '@aws-sdk/client-s3'
 import { Readable } from 'stream'
 import { Upload } from '@aws-sdk/lib-storage'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 const s3 = new S3Client({
     region: process.env.AWS_REGION,

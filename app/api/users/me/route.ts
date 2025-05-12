@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
-
-const prisma = new PrismaClient()
 
 async function getUserIdFromToken() {
     try {

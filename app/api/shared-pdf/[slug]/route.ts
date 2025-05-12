@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma'
 import { nanoid } from 'nanoid';
 import { cookies } from 'next/headers'
 import { jwtVerify } from 'jose'
-
-const prisma = new PrismaClient();
 
 // ✅ Extract User ID from JWT Token
 async function getUserIdFromToken(req: Request): Promise<string | null> {

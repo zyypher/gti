@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { getUserIdFromToken } from '@/lib/getUserIdFromToken'
 import webpush from 'web-push';
-
-const prisma = new PrismaClient()
 
 webpush.setVapidDetails(
     process.env.VAPID_EMAIL!,

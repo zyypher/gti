@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { S3Client } from '@aws-sdk/client-s3'
 import { Upload } from '@aws-sdk/lib-storage'
 import { Readable } from 'stream'
-import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
-
-const prisma = new PrismaClient()
+import { DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { prisma } from '@/lib/prisma'
 
 // AWS S3 Configuration
 const s3 = new S3Client({

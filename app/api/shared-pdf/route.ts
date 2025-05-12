@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { nanoid } from 'nanoid'
 import { jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // ✅ Middleware to Extract User ID (Example - Adjust for Auth System)
 async function getUserIdFromToken(req: Request): Promise<string | null> {

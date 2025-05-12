@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { Readable } from 'stream';
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient();
 const BUCKET_NAME = process.env.AWS_BUCKET_NAME!;
 const s3 = new S3Client({
     region: process.env.AWS_REGION,

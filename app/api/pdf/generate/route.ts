@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { PDFDocument } from 'pdf-lib'
-import fetch from 'node-fetch'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // ✅ Define Product Type
 interface ProductWithPDF {

@@ -1,11 +1,10 @@
 import bcrypt from 'bcrypt'
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
 export async function PATCH(req: Request) {
-    const prisma = new PrismaClient()
 
     async function getUserIdFromToken() {
         try {

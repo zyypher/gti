@@ -1,10 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { promises as fs } from 'fs'
-import path from 'path'
-import { nanoid } from 'nanoid'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export async function GET(req: Request) {
     try {
