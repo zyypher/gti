@@ -207,7 +207,7 @@ const BrandsPage = () => {
                     brands.map((brand) => (
                         <Card
                             key={brand.id}
-                            className="relative transition hover:shadow-lg"
+                            className="relative w-full max-w-[300px] transition hover:shadow-lg"
                         >
                             <CardContent className="relative space-y-3 p-4">
                                 {/* ✅ Delete Button */}

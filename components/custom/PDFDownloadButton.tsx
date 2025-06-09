@@ -1,62 +1,64 @@
+'use client'
+
 import { useState } from 'react'
 import { FileText } from 'lucide-react'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
-import { AxiosError } from 'axios'
+import { Dialog } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
-interface PDFDownloadButtonProps {
+interface PDFPreviewButtonProps {
     productId: string
     productName: string
 }
 
-const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({ productId, productName }) => {
+const PDFPreviewButton: React.FC<PDFPreviewButtonProps> = ({ productId, productName }) => {
     const [loading, setLoading] = useState(false)
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null)
 
-    const handleDownloadPDF = async () => {
+    const handlePreview = async () => {
         setLoading(true)
         try {
-            const response = await api.get(`/api/products/${productId}/pdf`, {
-                responseType: 'blob',
-            })
+            const response = await api.get(`/api/products/${productId}/pdf`)
+            const url = response.data?.url
 
-            if (response.status === 200) {
-                if (!response.data || response.data.size === 0) {
-                    toast.error('No PDF available for this product')
-                    return
-                }
-
-                const blob = new Blob([response.data], { type: 'application/pdf' })
-                const url = window.URL.createObjectURL(blob)
-                const link = document.createElement('a')
-
-                link.href = url
-                link.download = `${productName}.pdf`
-                document.body.appendChild(link)
-                link.click()
-
-                document.body.removeChild(link)
-                window.URL.revokeObjectURL(url)
-            } else {
-                toast.error('No PDF available for this product')
+            if (!url) {
+                toast.error('PDF URL not found')
+                return
             }
+
+            setPdfUrl(url)
+            setIsModalOpen(true)
         } catch (error) {
-            const axiosError = error as AxiosError;
-        
-            if (axiosError.response?.status === 404) {
-                toast.error('No PDF available for this product');
-            } else {
-                toast.error('Error fetching PDF');
-            }
+            toast.error('Failed to fetch PDF')
+            console.error('PDF preview error:', error)
         } finally {
             setLoading(false)
         }
     }
 
     return (
-        <button onClick={handleDownloadPDF} disabled={loading}>
-            {loading ? 'Loading...' : <FileText className="h-5 w-5" />}
-        </button>
+        <>
+            <button onClick={handlePreview} disabled={loading} title="Preview PDF">
+                {loading ? 'Loading...' : <FileText className="h-5 w-5 text-black" />}
+            </button>
+
+            <Dialog isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="PDF Preview">
+                <div className="max-h-[80vh] w-full overflow-auto">
+                    {pdfUrl ? (
+                        <embed
+                            src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                            type="application/pdf"
+                            className="h-[80vh] w-full"
+                        />
+                    ) : (
+                        <p className="text-center text-gray-600">No preview available</p>
+                    )}
+                </div>
+            </Dialog>
+        </>
     )
 }
 
-export default PDFDownloadButton
+export default PDFPreviewButton
