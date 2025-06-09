@@ -147,7 +147,7 @@ const PromotionsPage = () => {
                         <option value="advertisement">Advertisements</option>
                     </select>
                     <div className="flex items-center gap-4 text-sm text-gray-700">
-                    <div className="h-3 w-3 rounded-full bg-primary" />{' '}
+                        <div className="h-3 w-3 rounded-full bg-primary" />{' '}
                         Banner
                         <div className="h-3 w-3 rounded-full bg-success" />{' '}
                         Advertisement
@@ -180,28 +180,30 @@ const PromotionsPage = () => {
                     <p className="text-lg text-gray-500">No promotions found</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="grid grid-cols-1 justify-center gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {filteredPromotions.map((item) => (
                         <div
                             key={item.id}
-                            className={`relative rounded border-4 bg-white p-2 shadow-md ${item.type === 'banner' ? 'border-primary' : 'border-success'}`}
+                            className={`relative aspect-square w-full max-w-[250px] overflow-hidden rounded border-4 bg-white shadow-md ${
+                                item.type === 'banner'
+                                    ? 'border-primary'
+                                    : 'border-success'
+                            }`}
                         >
-                            {item.filePath ? (
-                                <iframe
-                                    src={item.filePath}
-                                    className="h-48 w-full"
-                                    title={item.title}
-                                />
-                            ) : (
-                                <p className="text-center text-red-500">
-                                    No PDF preview available
-                                </p>
-                            )}
-                            <p className="mt-2 w-full overflow-hidden text-ellipsis whitespace-nowrap text-center font-medium">
+                            <embed
+                                src={`${item.filePath}#zoom=Fit`}
+                                type="application/pdf"
+                                className="h-full w-full object-contain"
+                            />
+
+                            {/* Title at bottom overlay */}
+                            <div className="absolute bottom-0 w-full truncate bg-white bg-opacity-90 px-1 py-1 text-center text-sm font-medium">
                                 {item.title.length > 20
                                     ? item.title.slice(0, 20) + '...'
                                     : item.title}
-                            </p>
+                            </div>
+
+                            {/* Delete button at top-right */}
                             <button
                                 className="absolute right-2 top-2 text-red-500"
                                 onClick={() => {
