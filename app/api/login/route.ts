@@ -39,14 +39,14 @@ export async function POST(req: Request) {
         })
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()
-            .setExpirationTime('1h')
+            .setExpirationTime('1d')
             .sign(secret)
 
         // Set the token in a cookie
         const response = NextResponse.json({ message: 'Login successful' })
         response.cookies.set('token', token, {
             httpOnly: true,
-            maxAge: 3600,
+            maxAge: 86400,
             path: '/',
             secure: process.env.NODE_ENV === 'production',
         })
