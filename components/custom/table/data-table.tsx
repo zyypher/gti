@@ -38,6 +38,7 @@ interface DataTableProps<TData extends { id: string; status?: string }> {
     isAllRowKey?: string
     loading?: boolean
     rowSelectionCallback?: (selectedIds: string[]) => void
+    selectedRowIds?: string[]
 }
 
 export function DataTable<TData extends { id: string; status?: string }>({
@@ -50,13 +51,16 @@ export function DataTable<TData extends { id: string; status?: string }>({
     isAllRowKey,
     loading = false,
     rowSelectionCallback,
+    selectedRowIds,
 }: DataTableProps<TData>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] =
         React.useState<ColumnFiltersState>([])
     const [columnVisibility, setColumnVisibility] =
         React.useState<VisibilityState>({})
-    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
+        {},
+    )
 
     const table = useReactTable({
         data,
@@ -84,11 +88,40 @@ export function DataTable<TData extends { id: string; status?: string }>({
               .rows.filter((rowItems) =>
                   isFilterRowBasedOnValue === isAllRowKey
                       ? rowItems
-                      : rowItems.original.status === isFilterRowBasedOnValue
+                      : rowItems.original.status === isFilterRowBasedOnValue,
               )
         : table.getRowModel().rows
 
     const [mounted, setMounted] = React.useState<boolean>(false)
+
+    useEffect(() => {
+        if (selectedRowIds && selectedRowIds.length > 0) {
+            const currentSelected = Object.keys(rowSelection)
+            const currentSet = new Set(currentSelected)
+            const incomingSet = new Set<string>()
+    
+            selectedRowIds.forEach((id) => {
+                const matchingRow = table
+                    .getRowModel()
+                    .rows.find((row) => row.original.id === id)
+                if (matchingRow) {
+                    incomingSet.add(matchingRow.id)
+                }
+            })
+    
+            const areEqual =
+                currentSet.size === incomingSet.size &&
+                Array.from(currentSet).every((id) => incomingSet.has(id)) // ✅ fix here
+    
+            if (!areEqual) {
+                const newSelectionState: RowSelectionState = {}
+                incomingSet.forEach((id) => (newSelectionState[id] = true))
+                setRowSelection(newSelectionState)
+            }
+        }
+    }, [selectedRowIds, table.getRowModel().rows])
+    
+    
 
     useEffect(() => {
         setMounted(true)
@@ -97,9 +130,9 @@ export function DataTable<TData extends { id: string; status?: string }>({
 
     // Track row selection changes
     useEffect(() => {
-        const selectedIds = Object.keys(rowSelection).map(
-            (key) => table.getRow(key)?.original.id
-        ).filter(Boolean)
+        const selectedIds = Object.keys(rowSelection)
+            .map((key) => table.getRow(key)?.original.id)
+            .filter(Boolean)
         console.log('Row selection updated. Selected IDs:', selectedIds)
         if (rowSelectionCallback) rowSelectionCallback(selectedIds)
     }, [rowSelection, table])

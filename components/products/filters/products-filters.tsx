@@ -15,6 +15,7 @@ import { Dialog } from '@/components/ui/dialog'
 interface FilterProps {
     onFilterChange: (filters: Record<string, string>) => void
     onRefresh: () => void
+    onClearSelection?: () => void 
 }
 
 interface IBrand {
@@ -25,6 +26,7 @@ interface IBrand {
 export default function ProductsFilters({
     onFilterChange,
     onRefresh,
+    onClearSelection
 }: FilterProps) {
     const [filters, setFilters] = useState<Record<string, string>>({})
     const [brands, setBrands] = useState<IBrand[]>([])
@@ -57,6 +59,7 @@ export default function ProductsFilters({
     const clearFilters = () => {
         setFilters({})
         onFilterChange({})
+        if (onClearSelection) onClearSelection()
     }
 
     return (

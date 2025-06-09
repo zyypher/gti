@@ -102,14 +102,34 @@ const Products = () => {
         formState: { errors },
     } = useForm()
 
+    // Add this helper to preserve previously selected items
+    const mergeWithSelectedProducts = (fetched: ITable[]) => {
+        const selectedSet = new Set(selectedRows)
+        const merged = [...fetched]
+
+        // Ensure selected items not in the new filter result are kept
+        products.forEach((prod) => {
+            if (
+                selectedSet.has(prod.id) &&
+                !fetched.find((p) => p.id === prod.id)
+            ) {
+                merged.push(prod)
+            }
+        })
+
+        return merged
+    }
+
     // Fetch products
     const fetchProducts = async () => {
         setLoading(true)
         try {
             const queryParams = new URLSearchParams(filters).toString()
             const response = await fetch(`/api/products?${queryParams}`)
-            const data = await response.json()
-            setProducts(data)
+            const data: ITable[] = await response.json()
+
+            const mergedData = mergeWithSelectedProducts(data)
+            setProducts(mergedData)
         } catch (error) {
             console.error('Failed to fetch products:', error)
         } finally {
@@ -151,9 +171,13 @@ const Products = () => {
     }
 
     const handleRowSelection = (ids: string[]) => {
-        setSelectedRows(ids)
-        console.log('##Selected rows in Products page:', ids)
+        setSelectedRows((prev) => {
+            const updated = new Set(prev)
+            ids.forEach((id) => updated.add(id))
+            return Array.from(updated)
+        })
     }
+    
 
     // Handle Create PDF
 
@@ -342,6 +366,10 @@ const Products = () => {
         fetchProducts() // ✅ Re-fetch products
     }
 
+    const handleClearSelection = () => {
+        setSelectedRows([]) // ✅ Clears checkboxes
+    }
+
     return (
         <div className="space-y-4">
             <PageHeading heading="Products" />
@@ -349,6 +377,7 @@ const Products = () => {
                 <ProductsFilters
                     onFilterChange={handleFilterChange}
                     onRefresh={handleRefresh}
+                    onClearSelection={handleClearSelection}
                 />
 
                 <div className="flex gap-4">
@@ -404,6 +433,7 @@ const Products = () => {
                     filterField="product"
                     loading={loading}
                     rowSelectionCallback={handleRowSelection}
+                    selectedRowIds={selectedRows}
                 />
             )}
 
@@ -543,8 +573,8 @@ const Products = () => {
                         )}
                     </div>
 
-                     {/* Corners */}
-                     {/* <div>
+                    {/* Corners */}
+                    {/* <div>
                         <Input
                             placeholder="Corners"
                             {...register('corners', {
