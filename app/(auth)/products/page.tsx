@@ -561,9 +561,9 @@ const Products = () => {
                     {/* Packet Style */}
                     <div>
                         <Input
-                            placeholder="Packet Style (e.g., Fan Pack, Slide Pack, Regular)"
+                            placeholder="Packet Type (e.g., Fan Pack, Slide Pack, Regular)"
                             {...register('packetStyle', {
-                                required: 'Packet style is required',
+                                required: 'Packet type is required',
                             })}
                         />
                         {errors.packetStyle?.message && (
