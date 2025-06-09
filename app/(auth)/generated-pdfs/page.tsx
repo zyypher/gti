@@ -22,6 +22,7 @@ const GeneratedPDFs = () => {
     const [pdfs, setPdfs] = useState<IGeneratedPDF[]>([])
     const [loading, setLoading] = useState(true)
     const [activePdfUrl, setActivePdfUrl] = useState<string | null>(null)
+    const [currentShareableUrl, setCurrentShareableUrl] = useState<string | null>(null)
 
     useEffect(() => {
         const fetchPdfs = async () => {
@@ -46,9 +47,15 @@ const GeneratedPDFs = () => {
         }
 
         const shareLink = `${ORDER_HUB_BASE_URL}/${pdf.uniqueSlug}`
-        await navigator.clipboard.writeText(shareLink)
-        toast.success('Link copied to clipboard!')
+        setCurrentShareableUrl(shareLink)
         setActivePdfUrl(firstPdf.pdfUrl)
+    }
+
+    const handleCopyLink = () => {
+        if (currentShareableUrl) {
+            navigator.clipboard.writeText(currentShareableUrl)
+            toast.success('Link copied to clipboard!')
+        }
     }
 
     return (
@@ -118,16 +125,24 @@ const GeneratedPDFs = () => {
             {/* Modal for PDF preview */}
             <Dialog
                 isOpen={!!activePdfUrl}
-                onClose={() => setActivePdfUrl(null)}
+                onClose={() => {
+                    setActivePdfUrl(null)
+                    setCurrentShareableUrl(null)
+                }}
                 title="PDF Preview"
             >
-                <div className="max-h-[90vh] w-full overflow-auto">
+                <div className="space-y-4 p-4">
                     {activePdfUrl && (
                         <embed
                             src={`${activePdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
                             type="application/pdf"
                             className="h-[80vh] w-full"
                         />
+                    )}
+                    {currentShareableUrl && (
+                        <Button onClick={handleCopyLink} variant="black" className="w-full">
+                            Copy Shareable Link
+                        </Button>
                     )}
                 </div>
             </Dialog>
