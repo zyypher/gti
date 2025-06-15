@@ -92,7 +92,7 @@ export default function ProductsFilters({
                     </SelectContent>
                 </Select>
                 <Input
-                    placeholder="Enter size"
+                    placeholder="Enter Stick Format"
                     value={filters.size || ''}
                     onChange={(e) => handleChange('size', e.target.value)}
                 />
@@ -268,7 +268,7 @@ export default function ProductsFilters({
                     </Select>
 
                     <Input
-                        placeholder="Enter Size"
+                        placeholder="Enter Stick Format"
                         value={filters.size || ''}
                         onChange={(e) =>
                             setFilters({ ...filters, size: e.target.value })

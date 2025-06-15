@@ -81,7 +81,7 @@ export const columns = (
     },
     {
         accessorKey: 'size',
-        header: 'Size',
+        header: 'Stick Format',
         cell: ({ row }) => <div>{row.getValue('size')}</div>,
     },
     {

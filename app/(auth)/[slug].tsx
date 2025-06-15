@@ -34,7 +34,7 @@ const SharedProductsPage = () => {
                         <li key={product.id} className="border p-2 my-2">
                             <h2 className="text-lg font-semibold">{product.name}</h2>
                             <p>Brand: {product.brand?.name || 'N/A'}</p>
-                            <p>Size: {product.size || 'N/A'}</p>
+                            <p>Stick Format: {product.size || 'N/A'}</p>
                             <p>Flavor: {product.flavor || 'N/A'}</p>
                         </li>
                     ))}

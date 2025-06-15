@@ -490,9 +490,9 @@ const Products = () => {
                     {/* Size */}
                     <div>
                         <Input
-                            placeholder="Enter size"
+                            placeholder="Enter Stick Format"
                             {...register('size', {
-                                required: 'Size is required',
+                                required: 'Stick Format is required',
                             })}
                         />
                         {errors.size?.message && (
