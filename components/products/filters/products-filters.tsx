@@ -171,7 +171,7 @@ export default function ProductsFilters({
                         />
                         <Input
                             type="number"
-                            step="0.1"
+                            step="1"
                             min="0"
                             placeholder="Nicotine (mg)"
                             value={filters.nicotine || ''}
@@ -363,7 +363,7 @@ export default function ProductsFilters({
                     />
                     <Input
                         type="number"
-                        step="0.1"
+                        step="1"
                         min="0"
                         placeholder="Enter Nicotine (mg)"
                         value={filters.nicotine || ''}
