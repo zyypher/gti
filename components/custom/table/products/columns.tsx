@@ -123,7 +123,7 @@ export const columns = (
     // },
     {
         accessorKey: 'packetStyle',
-        header: 'Packet type',
+        header: 'Pack format',
         cell: ({ row }) => <div>{row.getValue('packetStyle')}</div>,
     },
     {

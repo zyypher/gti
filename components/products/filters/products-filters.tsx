@@ -102,7 +102,7 @@ export default function ProductsFilters({
                     onChange={(e) => handleChange('flavor', e.target.value)}
                 />
                 <Input
-                    placeholder="Packet Type"
+                    placeholder="Pack Format"
                     value={filters.packetStyle || ''}
                     onChange={(e) =>
                         handleChange('packetStyle', e.target.value)
@@ -284,7 +284,7 @@ export default function ProductsFilters({
                     />
 
                     <Input
-                        placeholder="Enter Packet Type"
+                        placeholder="Enter Pack Format"
                         value={filters.packetStyle || ''}
                         onChange={(e) =>
                             setFilters({
