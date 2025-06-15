@@ -8,14 +8,14 @@ import {
 import { Input } from '@/components/ui/input'
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
-import { X, Filter, RefreshCw } from 'lucide-react'
+import { X, Filter, RefreshCw, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 
 interface FilterProps {
     onFilterChange: (filters: Record<string, string>) => void
     onRefresh: () => void
-    onClearSelection?: () => void 
+    onClearSelection?: () => void
 }
 
 interface IBrand {
@@ -26,7 +26,7 @@ interface IBrand {
 export default function ProductsFilters({
     onFilterChange,
     onRefresh,
-    onClearSelection
+    onClearSelection,
 }: FilterProps) {
     const [filters, setFilters] = useState<Record<string, string>>({})
     const [brands, setBrands] = useState<IBrand[]>([])
@@ -67,11 +67,15 @@ export default function ProductsFilters({
             {/* Desktop Filters */}
             <div className="hidden grid-cols-2 gap-4 md:grid md:grid-cols-4 lg:grid-cols-6">
                 {/* Always visible filters */}
-                <Input
-                    placeholder="Search by name"
-                    value={filters.name || ''}
-                    onChange={(e) => handleChange('name', e.target.value)}
-                />
+                <div className="relative col-span-2">
+                    <Search className="text-muted-foreground absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2" />
+                    <Input
+                        placeholder="Search by name"
+                        value={filters.name || ''}
+                        onChange={(e) => handleChange('name', e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
                 <Select
                     onValueChange={(value) => handleChange('brandId', value)}
                     value={filters.brandId || ''}
@@ -233,13 +237,17 @@ export default function ProductsFilters({
                 title="Filters"
             >
                 <div className="space-y-4 p-4">
-                    <Input
-                        placeholder="Search by name"
-                        value={filters.name || ''}
-                        onChange={(e) =>
-                            setFilters({ ...filters, name: e.target.value })
-                        } // ✅ Do not apply instantly
-                    />
+                    <div className="relative">
+                        <Search className="text-muted-foreground absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2" />
+                        <Input
+                            placeholder="Search by name"
+                            value={filters.name || ''}
+                            onChange={(e) =>
+                                setFilters({ ...filters, name: e.target.value })
+                            }
+                            className="pl-9"
+                        />
+                    </div>
 
                     <Select
                         onValueChange={(value) =>
