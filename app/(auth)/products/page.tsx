@@ -84,11 +84,11 @@ const Products = () => {
     // Handle Next Step in PDF modal
     const handleNextStep = () => {
         if (pdfStep === 1 && !selectedBanner) {
-            toast.error('Please select a banner')
+            toast.error('Please select a Corporate Info')
             return
         }
         if (pdfStep === 2 && !selectedAdvertisement) {
-            toast.error('Please select an advertisement')
+            toast.error('Please select an Advertisement')
             return
         }
         setPdfStep((prevStep) => prevStep + 1)
@@ -712,7 +712,7 @@ const Products = () => {
                 // onSubmit={() => {}}
                 title={
                     pdfStep === 1
-                        ? 'Select Banner'
+                        ? 'Select Corporate Info'
                         : pdfStep === 2
                           ? 'Select Advertisement'
                           : 'Confirm & Generate PDF'
@@ -721,7 +721,7 @@ const Products = () => {
                 <div className="space-y-4 p-4">
                     {pdfStep === 1 && (
                         <>
-                            <p>Select a Banner for the PDF:</p>
+                            <p>Select a Corporate Info for the PDF:</p>
                             <select
                                 className="w-full rounded border p-2"
                                 value={selectedBanner || ''}
@@ -729,7 +729,7 @@ const Products = () => {
                                     setSelectedBanner(e.target.value)
                                 }
                             >
-                                <option value="">Select Banner</option>
+                                <option value="">Select Corporate Info</option>
                                 {banners.map((banner) => (
                                     <option key={banner.id} value={banner.id}>
                                         {banner.title}
@@ -766,7 +766,7 @@ const Products = () => {
                             </p>
                             <ul className="space-y-2">
                                 <li>
-                                    <strong>Banner:</strong>{' '}
+                                    <strong>Corporate Info:</strong>{' '}
                                     {banners.find(
                                         (b) => b.id === selectedBanner,
                                     )?.title || 'Not selected'}

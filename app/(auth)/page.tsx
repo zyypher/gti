@@ -52,7 +52,7 @@ const Home = () => {
         { name: 'Users', value: stats.totalUsers },
         { name: 'Brands', value: stats.totalBrands },
         { name: 'Products', value: stats.totalProducts },
-        { name: 'Banners', value: stats.totalBanners },
+        { name: 'Corporate Info', value: stats.totalBanners },
         { name: 'Ads', value: stats.totalAds },
         { name: 'Generated PDFs', value: stats.totalSharedPdfs },
         { name: 'Orders', value: stats.totalOrders },
@@ -120,7 +120,7 @@ const Home = () => {
                                         className="text-yellow-700"
                                         size={24}
                                     />
-                                    <h3 className="leading-tight">Banners</h3>
+                                    <h3 className="leading-tight">Corporate Info</h3>
                                 </div>
                                 <h4 className="text-3xl font-bold text-black">
                                     {stats.totalBanners}

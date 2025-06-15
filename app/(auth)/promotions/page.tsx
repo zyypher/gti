@@ -143,12 +143,12 @@ const PromotionsPage = () => {
                         className="rounded border p-2"
                     >
                         <option value="all">All</option>
-                        <option value="banner">Banners</option>
+                        <option value="banner">Corporate Infos</option>
                         <option value="advertisement">Advertisements</option>
                     </select>
                     <div className="flex items-center gap-4 text-sm text-gray-700">
                         <div className="h-3 w-3 rounded-full bg-primary" />{' '}
-                        Banner
+                        Corporate Info
                         <div className="h-3 w-3 rounded-full bg-success" />{' '}
                         Advertisement
                     </div>
@@ -238,7 +238,7 @@ const PromotionsPage = () => {
                                 checked={type === 'banner'}
                                 onChange={() => setType('banner')}
                             />
-                            Banner
+                            Corporate Info
                         </label>
                         <label className="flex items-center gap-2">
                             <input

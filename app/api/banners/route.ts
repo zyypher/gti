@@ -10,9 +10,9 @@ export async function GET() {
         })
         return NextResponse.json(banners)
     } catch (error) {
-        console.error('Error fetching banners:', error)
+        console.error('Error fetching Corporate Infos:', error)
         return NextResponse.json(
-            { error: 'Failed to fetch banners' },
+            { error: 'Failed to fetch Corporate Infos' },
             { status: 500 },
         )
     }
