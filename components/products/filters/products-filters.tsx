@@ -8,7 +8,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
-import { X, Filter, RefreshCw, Search } from 'lucide-react'
+import { X, Filter, RefreshCw, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 
@@ -33,21 +33,38 @@ export default function ProductsFilters({
     const [sizes, setSizes] = useState<string[]>([])
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
     const [showAllFilters, setShowAllFilters] = useState(false)
+    const [isLoadingBrands, setIsLoadingBrands] = useState(true)
+    const [isLoadingSizes, setIsLoadingSizes] = useState(true)
 
     useEffect(() => {
-        const fetchBrandsAndSizes = async () => {
+        const fetchBrands = async () => {
             try {
-                const [brandsResponse, sizesResponse] = await Promise.all([
-                    api.get('/api/brands'),
-                    api.get('/api/products/sizes'),
-                ])
-                setBrands(brandsResponse.data)
-                setSizes(sizesResponse.data)
+                const response = await api.get('/api/brands')
+                setBrands(
+                    response.data.sort((a: IBrand, b: IBrand) =>
+                        a.name.localeCompare(b.name),
+                    ),
+                )
             } catch (error) {
-                console.error('Failed to fetch brands or sizes:', error)
+                console.error('Failed to fetch brands:', error)
+            } finally {
+                setIsLoadingBrands(false)
             }
         }
-        fetchBrandsAndSizes()
+
+        const fetchSizes = async () => {
+            try {
+                const response = await api.get('/api/products/sizes')
+                setSizes(response.data)
+            } catch (error) {
+                console.error('Failed to fetch sizes:', error)
+            } finally {
+                setIsLoadingSizes(false)
+            }
+        }
+
+        fetchBrands()
+        fetchSizes()
     }, [])
 
     const handleChange = (key: string, value: string) => {
@@ -86,7 +103,15 @@ export default function ProductsFilters({
                     value={filters.brandId || ''}
                 >
                     <SelectTrigger>
-                        <SelectValue placeholder="Select Brand" />
+                        <SelectValue placeholder={
+                            isLoadingBrands ? (
+                                <span className="flex items-center">
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                                </span>
+                            ) : (
+                                'Select Brand'
+                            )
+                        } />
                     </SelectTrigger>
                     <SelectContent>
                         {brands.map((brand) => (
@@ -101,7 +126,15 @@ export default function ProductsFilters({
                     value={filters.size || ''}
                 >
                     <SelectTrigger>
-                        <SelectValue placeholder="Select Stick Format" />
+                        <SelectValue placeholder={
+                            isLoadingSizes ? (
+                                <span className="flex items-center">
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                                </span>
+                            ) : (
+                                'Select Stick Format'
+                            )
+                        } />
                     </SelectTrigger>
                     <SelectContent>
                         {sizes.map((size) => (
@@ -271,7 +304,15 @@ export default function ProductsFilters({
                         value={filters.brandId || ''}
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder="Select Brand" />
+                            <SelectValue placeholder={
+                                isLoadingBrands ? (
+                                    <span className="flex items-center">
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                                    </span>
+                                ) : (
+                                    'Select Brand'
+                                )
+                            } />
                         </SelectTrigger>
                         <SelectContent>
                             {brands.map((brand) => (
@@ -289,7 +330,15 @@ export default function ProductsFilters({
                         value={filters.size || ''}
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder="Select Stick Format" />
+                            <SelectValue placeholder={
+                                isLoadingSizes ? (
+                                    <span className="flex items-center">
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                                    </span>
+                                ) : (
+                                    'Select Stick Format'
+                                )
+                            } />
                         </SelectTrigger>
                         <SelectContent>
                             {sizes.map((size) => (
