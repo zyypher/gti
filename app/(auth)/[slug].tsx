@@ -35,7 +35,7 @@ const SharedProductsPage = () => {
                             <h2 className="text-lg font-semibold">{product.name}</h2>
                             <p>Brand: {product.brand?.name || 'N/A'}</p>
                             <p>Stick Format: {product.size || 'N/A'}</p>
-                            <p>Flavor: {product.flavor || 'N/A'}</p>
+                            <p>Flavour: {product.flavor || 'N/A'}</p>
                         </li>
                     ))}
                 </ul>

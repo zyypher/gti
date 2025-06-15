@@ -502,12 +502,12 @@ const Products = () => {
                         )}
                     </div>
 
-                    {/* Flavor */}
+                    {/* Flavour */}
                     <div>
                         <Input
                             placeholder="Flavor"
                             {...register('flavor', {
-                                required: 'Flavor is required',
+                                required: 'Flavour is required',
                             })}
                         />
                         {errors.flavor?.message && (

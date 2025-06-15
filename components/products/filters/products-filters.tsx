@@ -97,7 +97,7 @@ export default function ProductsFilters({
                     onChange={(e) => handleChange('size', e.target.value)}
                 />
                 <Input
-                    placeholder="Flavor"
+                    placeholder="Flavour"
                     value={filters.flavor || ''}
                     onChange={(e) => handleChange('flavor', e.target.value)}
                 />
@@ -276,7 +276,7 @@ export default function ProductsFilters({
                     />
 
                     <Input
-                        placeholder="Enter Flavor"
+                        placeholder="Enter Flavour"
                         value={filters.flavor || ''}
                         onChange={(e) =>
                             setFilters({ ...filters, flavor: e.target.value })

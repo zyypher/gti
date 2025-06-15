@@ -101,7 +101,7 @@ export const columns = (
     },
     {
         accessorKey: 'flavor',
-        header: 'Flavor',
+        header: 'Flavour',
         cell: ({ row }) => <div>{row.getValue('flavor')}</div>,
     },
     {
