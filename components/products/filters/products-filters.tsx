@@ -30,19 +30,24 @@ export default function ProductsFilters({
 }: FilterProps) {
     const [filters, setFilters] = useState<Record<string, string>>({})
     const [brands, setBrands] = useState<IBrand[]>([])
+    const [sizes, setSizes] = useState<string[]>([])
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
     const [showAllFilters, setShowAllFilters] = useState(false)
 
     useEffect(() => {
-        const fetchBrands = async () => {
+        const fetchBrandsAndSizes = async () => {
             try {
-                const response = await api.get('/api/brands')
-                setBrands(response.data)
+                const [brandsResponse, sizesResponse] = await Promise.all([
+                    api.get('/api/brands'),
+                    api.get('/api/products/sizes'),
+                ])
+                setBrands(brandsResponse.data)
+                setSizes(sizesResponse.data)
             } catch (error) {
-                console.error('Failed to fetch brands:', error)
+                console.error('Failed to fetch brands or sizes:', error)
             }
         }
-        fetchBrands()
+        fetchBrandsAndSizes()
     }, [])
 
     const handleChange = (key: string, value: string) => {
@@ -91,11 +96,21 @@ export default function ProductsFilters({
                         ))}
                     </SelectContent>
                 </Select>
-                <Input
-                    placeholder="Enter Stick Format"
+                <Select
+                    onValueChange={(value) => handleChange('size', value)}
                     value={filters.size || ''}
-                    onChange={(e) => handleChange('size', e.target.value)}
-                />
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select Stick Format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {sizes.map((size) => (
+                            <SelectItem key={size} value={size}>
+                                {size}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
                 <Input
                     placeholder="Flavour"
                     value={filters.flavor || ''}
@@ -267,13 +282,23 @@ export default function ProductsFilters({
                         </SelectContent>
                     </Select>
 
-                    <Input
-                        placeholder="Enter Stick Format"
-                        value={filters.size || ''}
-                        onChange={(e) =>
-                            setFilters({ ...filters, size: e.target.value })
+                    <Select
+                        onValueChange={(value) =>
+                            setFilters({ ...filters, size: value })
                         }
-                    />
+                        value={filters.size || ''}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select Stick Format" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {sizes.map((size) => (
+                                <SelectItem key={size} value={size}>
+                                    {size}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
 
                     <Input
                         placeholder="Enter Flavour"
