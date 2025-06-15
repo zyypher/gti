@@ -15,6 +15,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { nanoid } from 'nanoid'
 import PageHeading from '@/components/layout/page-heading'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FloatingLabelInput } from '@/components/ui/floating-label-input'
 
 interface IBrand {
     id: string
@@ -99,6 +100,7 @@ const Products = () => {
         handleSubmit,
         reset,
         setValue,
+        watch,
         formState: { errors },
     } = useForm()
 
@@ -452,14 +454,15 @@ const Products = () => {
                 <div className="max-h-[70vh] space-y-4 overflow-y-auto p-2">
                     {/* Product Name */}
                     <div>
-                        <Input
-                            placeholder="Enter product name"
-                            {...register('name', {
-                                required: 'Product name is required',
-                            })}
+                        <FloatingLabelInput
+                            label="Enter product name"
+                            name="name"
+                            value={watch('name') || ''}
+                            onChange={(val) => setValue('name', val)}
+                            error={String(errors.name?.message || '')}
                         />
                         {errors.name?.message && (
-                            <p className="mt-1 text-sm text-red-500">
+                            <p className="mt-1 text-sm text-red-500 hidden">
                                 {String(errors.name.message)}
                             </p>
                         )}
@@ -489,14 +492,15 @@ const Products = () => {
 
                     {/* Size */}
                     <div>
-                        <Input
-                            placeholder="Enter Stick Format"
-                            {...register('size', {
-                                required: 'Stick Format is required',
-                            })}
+                        <FloatingLabelInput
+                            label="Enter Stick Format"
+                            name="size"
+                            value={watch('size') || ''}
+                            onChange={(val) => setValue('size', val)}
+                            error={String(errors.size?.message || '')}
                         />
                         {errors.size?.message && (
-                            <p className="mt-1 text-sm text-red-500">
+                            <p className="mt-1 text-sm text-red-500 hidden">
                                 {String(errors.size.message)}
                             </p>
                         )}
@@ -504,14 +508,15 @@ const Products = () => {
 
                     {/* Flavour */}
                     <div>
-                        <Input
-                            placeholder="Flavor"
-                            {...register('flavor', {
-                                required: 'Flavour is required',
-                            })}
+                        <FloatingLabelInput
+                            label="Flavour"
+                            name="flavor"
+                            value={watch('flavor') || ''}
+                            onChange={(val) => setValue('flavor', val)}
+                            error={String(errors.flavor?.message || '')}
                         />
                         {errors.flavor?.message && (
-                            <p className="mt-1 text-sm text-red-500">
+                            <p className="mt-1 text-sm text-red-500 hidden">
                                 {String(errors.flavor.message)}
                             </p>
                         )}
@@ -519,15 +524,16 @@ const Products = () => {
 
                     {/* Tar (mg) */}
                     <div>
-                        <Input
+                        <FloatingLabelInput
                             type="number"
-                            placeholder="Enter tar (mg)"
-                            {...register('tar', {
-                                required: 'Tar is required',
-                            })}
+                            label="Enter Tar (mg)"
+                            name="tar"
+                            value={watch('tar') || ''}
+                            onChange={(val) => setValue('tar', val)}
+                            error={String(errors.tar?.message || '')}
                         />
                         {errors.tar?.message && (
-                            <p className="mt-1 text-sm text-red-500">
+                            <p className="mt-1 text-sm text-red-500 hidden">
                                 {String(errors.tar.message)}
                             </p>
                         )}
@@ -535,15 +541,16 @@ const Products = () => {
 
                     {/* Nicotine (mg) */}
                     <div>
-                        <Input
+                        <FloatingLabelInput
                             type="number"
-                            placeholder="Enter nicotine (mg)"
-                            {...register('nicotine', {
-                                required: 'Nicotine is required',
-                            })}
+                            label="Enter Nicotine (mg)"
+                            name="nicotine"
+                            value={watch('nicotine') || ''}
+                            onChange={(val) => setValue('nicotine', val)}
+                            error={String(errors.nicotine?.message || '')}
                         />
                         {errors.nicotine?.message && (
-                            <p className="mt-1 text-sm text-red-500">
+                            <p className="mt-1 text-sm text-red-500 hidden">
                                 {String(errors.nicotine.message)}
                             </p>
                         )}
@@ -551,42 +558,36 @@ const Products = () => {
 
                     {/* Carbon Monoxide (CO) - Optional */}
                     <div>
-                        <Input
+                        <FloatingLabelInput
                             type="number"
-                            placeholder="Enter CO (mg) (optional)"
-                            {...register('co')}
+                            label="Enter CO (mg) (optional)"
+                            name="co"
+                            value={watch('co') || ''}
+                            onChange={(val) => setValue('co', val)}
+                            error={String(errors.co?.message || '')}
                         />
+                        {errors.co?.message && (
+                            <p className="mt-1 text-sm text-red-500 hidden">
+                                {String(errors.co.message)}
+                            </p>
+                        )}
                     </div>
 
                     {/* Packet Style */}
                     <div>
-                        <Input
-                            placeholder="Pack Format (e.g., Fan Pack, Slide Pack, Regular)"
-                            {...register('packetStyle', {
-                                required: 'Pack format is required',
-                            })}
+                        <FloatingLabelInput
+                            label="Pack Format (e.g., Fan Pack, Slide Pack, Regular)"
+                            name="packetStyle"
+                            value={watch('packetStyle') || ''}
+                            onChange={(val) => setValue('packetStyle', val)}
+                            error={String(errors.packetStyle?.message || '')}
                         />
                         {errors.packetStyle?.message && (
-                            <p className="mt-1 text-sm text-red-500">
+                            <p className="mt-1 text-sm text-red-500 hidden">
                                 {String(errors.packetStyle.message)}
                             </p>
                         )}
                     </div>
-
-                    {/* Corners */}
-                    {/* <div>
-                        <Input
-                            placeholder="Corners"
-                            {...register('corners', {
-                                required: 'Corners is required',
-                            })}
-                        />
-                        {errors.corners?.message && (
-                            <p className="mt-1 text-sm text-red-500">
-                                {String(errors.corners.message)}
-                            </p>
-                        )}
-                    </div> */}
 
                     {/* FSP - Yes/No Dropdown */}
                     <div>
@@ -630,14 +631,15 @@ const Products = () => {
 
                     {/* Color of the Packet */}
                     <div>
-                        <Input
-                            placeholder="Enter Packet Color"
-                            {...register('color', {
-                                required: 'Packet color is required',
-                            })}
+                        <FloatingLabelInput
+                            label="Enter Packet Color"
+                            name="color"
+                            value={watch('color') || ''}
+                            onChange={(val) => setValue('color', val)}
+                            error={String(errors.color?.message || '')}
                         />
                         {errors.color?.message && (
-                            <p className="mt-1 text-sm text-red-500">
+                            <p className="mt-1 text-sm text-red-500 hidden">
                                 {String(errors.color.message)}
                             </p>
                         )}

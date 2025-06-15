@@ -11,6 +11,7 @@ import api from '@/lib/api'
 import { X, Filter, RefreshCw, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { FloatingLabelInput } from '@/components/ui/floating-label-input'
 
 interface FilterProps {
     onFilterChange: (filters: Record<string, string>) => void
@@ -90,12 +91,12 @@ export default function ProductsFilters({
             <div className="hidden grid-cols-2 gap-4 md:grid md:grid-cols-4 lg:grid-cols-6">
                 {/* Always visible filters */}
                 <div className="relative col-span-2">
-                    <Search className="text-muted-foreground absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2" />
-                    <Input
-                        placeholder="Search by name"
+                    <FloatingLabelInput
+                        label="Search by name"
+                        name="searchByName"
                         value={filters.name || ''}
-                        onChange={(e) => handleChange('name', e.target.value)}
-                        className="pl-9"
+                        onChange={(value) => handleChange('name', value)}
+                        iconLeft={<Search className="h-4 w-4" />}
                     />
                 </div>
                 <Select
@@ -144,16 +145,18 @@ export default function ProductsFilters({
                         ))}
                     </SelectContent>
                 </Select>
-                <Input
-                    placeholder="Flavour"
+                <FloatingLabelInput
+                    label="Flavour"
+                    name="flavor"
                     value={filters.flavor || ''}
-                    onChange={(e) => handleChange('flavor', e.target.value)}
+                    onChange={(value) => handleChange('flavor', value)}
                 />
-                <Input
-                    placeholder="Pack Format"
+                <FloatingLabelInput
+                    label="Pack Format"
+                    name="packFormat"
                     value={filters.packetStyle || ''}
-                    onChange={(e) =>
-                        handleChange('packetStyle', e.target.value)
+                    onChange={(value) =>
+                        handleChange('packetStyle', value)
                     }
                 />
 
@@ -192,40 +195,44 @@ export default function ProductsFilters({
                             </SelectContent>
                         </Select>
 
-                        <Input
+                        <FloatingLabelInput
                             type="number"
                             step="0.1"
                             min="0"
-                            placeholder="Tar (mg)"
+                            label="Tar (mg)"
+                            name="tar"
                             value={filters.tar || ''}
-                            onChange={(e) =>
-                                handleChange('tar', e.target.value)
+                            onChange={(value) =>
+                                handleChange('tar', value)
                             }
                         />
-                        <Input
+                        <FloatingLabelInput
                             type="number"
                             step="1"
                             min="0"
-                            placeholder="Nicotine (mg)"
+                            label="Nicotine (mg)"
+                            name="nicotine"
                             value={filters.nicotine || ''}
-                            onChange={(e) =>
-                                handleChange('nicotine', e.target.value)
+                            onChange={(value) =>
+                                handleChange('nicotine', value)
                             }
                         />
-                        <Input
+                        <FloatingLabelInput
                             type="number"
                             step="1"
                             min="0"
-                            placeholder="Carbon Monoxide (mg)"
+                            label="Carbon Monoxide (mg)"
+                            name="co"
                             value={filters.co || ''}
-                            onChange={(e) => handleChange('co', e.target.value)}
+                            onChange={(value) => handleChange('co', value)}
                         />
 
-                        <Input
-                            placeholder="Color of Packet"
+                        <FloatingLabelInput
+                            label="Color of Packet"
+                            name="color"
                             value={filters.color || ''}
-                            onChange={(e) =>
-                                handleChange('color', e.target.value)
+                            onChange={(value) =>
+                                handleChange('color', value)
                             }
                         />
                     </>
@@ -242,7 +249,7 @@ export default function ProductsFilters({
                     </Button>
 
                     <Button variant="outline" size="small" onClick={onRefresh}>
-                        <RefreshCw size={18} />
+                        <RefreshCw size={18} /> Refresh
                     </Button>
 
                     <Button
@@ -250,7 +257,7 @@ export default function ProductsFilters({
                         size="small"
                         onClick={clearFilters}
                     >
-                        <X size={18} />
+                        <X size={18} /> Clear
                     </Button>
                 </div>
             </div>
@@ -262,7 +269,7 @@ export default function ProductsFilters({
                     variant="outline"
                     onClick={() => setIsMobileFilterOpen(true)}
                 >
-                    <Filter size={20} />
+                    <Filter size={20} /> Filters
                 </Button>
 
                 {/* Clear Filters Button */}
@@ -274,7 +281,7 @@ export default function ProductsFilters({
                         onFilterChange({}) // ✅ Apply empty filters
                     }}
                 >
-                    <X size={18} />
+                    <X size={18} /> Clear
                 </Button>
             </div>
 
@@ -286,14 +293,14 @@ export default function ProductsFilters({
             >
                 <div className="space-y-4 p-4">
                     <div className="relative">
-                        <Search className="text-muted-foreground absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2" />
-                        <Input
-                            placeholder="Search by name"
+                        <FloatingLabelInput
+                            label="Search by name"
+                            name="searchByNameMobile"
                             value={filters.name || ''}
-                            onChange={(e) =>
-                                setFilters({ ...filters, name: e.target.value })
+                            onChange={(value) =>
+                                setFilters({ ...filters, name: value })
                             }
-                            className="pl-9"
+                            iconLeft={<Search className="h-4 w-4" />}
                         />
                     </div>
 
@@ -349,21 +356,23 @@ export default function ProductsFilters({
                         </SelectContent>
                     </Select>
 
-                    <Input
-                        placeholder="Enter Flavour"
+                    <FloatingLabelInput
+                        label="Flavour"
+                        name="flavor"
                         value={filters.flavor || ''}
-                        onChange={(e) =>
-                            setFilters({ ...filters, flavor: e.target.value })
+                        onChange={(value) =>
+                            setFilters({ ...filters, flavor: value })
                         }
                     />
 
-                    <Input
-                        placeholder="Enter Pack Format"
+                    <FloatingLabelInput
+                        label="Pack Format"
+                        name="packFormat"
                         value={filters.packetStyle || ''}
-                        onChange={(e) =>
+                        onChange={(value) =>
                             setFilters({
                                 ...filters,
-                                packetStyle: e.target.value,
+                                packetStyle: value,
                             })
                         }
                     />
@@ -400,42 +409,46 @@ export default function ProductsFilters({
                         </SelectContent>
                     </Select>
 
-                    <Input
+                    <FloatingLabelInput
                         type="number"
                         step="0.1"
                         min="0"
-                        placeholder="Enter Tar (mg)"
+                        label="Tar (mg)"
+                        name="tar"
                         value={filters.tar || ''}
-                        onChange={(e) =>
-                            setFilters({ ...filters, tar: e.target.value })
+                        onChange={(value) =>
+                            setFilters({ ...filters, tar: value })
                         }
                     />
-                    <Input
+                    <FloatingLabelInput
                         type="number"
                         step="1"
                         min="0"
-                        placeholder="Enter Nicotine (mg)"
+                        label="Nicotine (mg)"
+                        name="nicotine"
                         value={filters.nicotine || ''}
-                        onChange={(e) =>
-                            setFilters({ ...filters, nicotine: e.target.value })
+                        onChange={(value) =>
+                            setFilters({ ...filters, nicotine: value })
                         }
                     />
-                    <Input
+                    <FloatingLabelInput
                         type="number"
                         step="1"
                         min="0"
-                        placeholder="Enter Carbon Monoxide (mg)"
+                        label="Carbon Monoxide (mg)"
+                        name="co"
                         value={filters.co || ''}
-                        onChange={(e) =>
-                            setFilters({ ...filters, co: e.target.value })
+                        onChange={(value) =>
+                            setFilters({ ...filters, co: value })
                         }
                     />
 
-                    <Input
-                        placeholder="Enter Color of Packet"
+                    <FloatingLabelInput
+                        label="Color of Packet"
+                        name="color"
                         value={filters.color || ''}
-                        onChange={(e) =>
-                            setFilters({ ...filters, color: e.target.value })
+                        onChange={(value) =>
+                            setFilters({ ...filters, color: value })
                         }
                     />
 
