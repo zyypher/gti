@@ -20,6 +20,7 @@ export type ITable = {
     packetStyle?: string
     color?: string
     pdfUrl?: string
+    status?: string
 }
 
 export const columns = (

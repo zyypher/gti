@@ -8,13 +8,21 @@ interface ProductWithPDF {
     pdfUrl: string | null
 }
 
+interface AdditionalPage {
+    id: string
+    position: number
+}
+
 export async function POST(req: Request) {
     const {
         bannerId,
-        advertisementId,
         productIds,
-    }: { bannerId: string; advertisementId: string; productIds: string[] } =
-        await req.json()
+        additionalPages,
+    }: {
+        bannerId: string
+        productIds: string[]
+        additionalPages: AdditionalPage[]
+    } = await req.json()
 
     try {
         // ✅ Fetch Banner
@@ -23,11 +31,12 @@ export async function POST(req: Request) {
             select: { filePath: true },
         })
 
-        // ✅ Fetch Advertisement
-        const advertisement = await prisma.promotion.findUnique({
-            where: { id: advertisementId, type: 'advertisement' },
-            select: { filePath: true },
-        })
+        if (!banner?.filePath) {
+            return NextResponse.json(
+                { error: 'Banner PDF is missing.' },
+                { status: 400 },
+            )
+        }
 
         // ✅ Fetch Product PDFs
         const products: ProductWithPDF[] = await prisma.product.findMany({
@@ -35,26 +44,20 @@ export async function POST(req: Request) {
             select: { id: true, pdfUrl: true },
         })
 
-        // ✅ Preserve order of selected products
         const orderedProducts: ProductWithPDF[] = productIds
-            .map((productId: string): ProductWithPDF | null => {
-                return products.find((p) => p.id === productId) ?? null
-            })
-            .filter((product): product is ProductWithPDF => product !== null) // ✅ Ensure TypeScript knows this is a ProductWithPDF
+            .map((id) => products.find((p) => p.id === id) || null)
+            .filter((p): p is ProductWithPDF => p !== null && p.pdfUrl !== null)
+
+        const additionalPageIds = additionalPages.map((p) => p.id)
+        const additionalPageDetails = await prisma.promotion.findMany({
+            where: { id: { in: additionalPageIds } },
+            select: { id: true, filePath: true },
+        })
 
         console.log('## Banner:', banner)
-        console.log('## Advertisement:', advertisement)
         console.log('## Ordered Products:', orderedProducts)
 
         // ✅ Validate Inputs
-        if (!banner?.filePath || !advertisement?.filePath) {
-            console.error('🚨 Missing banner or advertisement PDF.')
-            return NextResponse.json(
-                { error: 'Missing banner or advertisement PDF' },
-                { status: 400 },
-            )
-        }
-
         if (orderedProducts.some((product) => !product.pdfUrl)) {
             console.error('🚨 Some products are missing PDFs.')
         }
@@ -65,17 +68,32 @@ export async function POST(req: Request) {
         await addPdfToDocument(pdfDoc, banner.filePath)
         console.log('✅ Banner Added')
 
-        // ✅ Add Product PDFs in order & Confirm
-        for (const product of orderedProducts) {
+        // ✅ Prepare all pages to be inserted
+        const allPages: { position: number; url: string }[] = []
+        
+        // Add product pages starting from position 2
+        orderedProducts.forEach((product, index) => {
             if (product.pdfUrl) {
-                await addPdfToDocument(pdfDoc, product.pdfUrl)
-                console.log(`✅ Product PDF Added: ${product.id}`)
+                allPages.push({ position: index + 2, url: product.pdfUrl })
             }
-        }
+        })
+        
+        // Add additional pages
+        additionalPages.forEach(page => {
+            const detail = additionalPageDetails.find(d => d.id === page.id)
+            if (detail?.filePath) {
+                allPages.push({ position: page.position, url: detail.filePath })
+            }
+        })
+        
+        // Sort all pages by position
+        allPages.sort((a, b) => a.position - b.position)
 
-        // ✅ Add Advertisement Last & Confirm
-        await addPdfToDocument(pdfDoc, advertisement.filePath)
-        console.log('✅ Advertisement Added')
+        // ✅ Add all sorted pages to the document & Confirm
+        for (const page of allPages) {
+            await addPdfToDocument(pdfDoc, page.url)
+            console.log(`✅ Page Added: ${page.position}`)
+        }
 
         // ✅ Save and Return Merged PDF
         const mergedPdfBytes = await pdfDoc.save()

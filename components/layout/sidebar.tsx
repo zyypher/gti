@@ -81,9 +81,9 @@ const Sidebar = () => {
                         <Cigarette className="size-[18px] shrink-0" />
                         <span>Products</span>
                     </NavLink>
-                    <NavLink href="/promotions" className={`nav-link`}>
+                    <NavLink href="/non-product-pages" className={`nav-link`}>
                         <Megaphone className="size-[18px] shrink-0" />
-                        <span>Promotions</span>
+                        <span>Non Product Pages</span>
                     </NavLink>
                     <NavLink href="/generated-pdfs" className={`nav-link`}>
                         <FileText className="size-[18px] shrink-0" />
