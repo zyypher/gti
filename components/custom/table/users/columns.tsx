@@ -1,5 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table'
 import { Edit, Trash } from 'lucide-react'
+import { Role } from '@/hooks/useUserRole'
 
 export interface IUser {
     id: string
@@ -8,7 +9,7 @@ export interface IUser {
     createdAt: string
 }
 
-export const columns: ColumnDef<IUser>[] = [
+export const columns = (role: Role | null): ColumnDef<IUser>[] => [
     {
         accessorKey: 'email',
         header: 'Email',
@@ -32,30 +33,33 @@ export const columns: ColumnDef<IUser>[] = [
             const user = row.original
             return (
                 <div className="flex gap-3">
-                    {/* Edit Button */}
-
-                    <button
-                        onClick={() =>
-                            window.dispatchEvent(
-                                new CustomEvent('openEditUser', {
-                                    detail: user,
-                                }),
-                            )
-                        }
-                    >
-                        <Edit className="h-5 w-5" />
-                    </button>
-                    <button
-                        onClick={() =>
-                            window.dispatchEvent(
-                                new CustomEvent('confirmDeleteUser', {
-                                    detail: user.id,
-                                }),
-                            )
-                        }
-                    >
-                        <Trash className="h-5 w-5" />
-                    </button>
+                    {role === 'ADMIN' && (
+                        <>
+                            {/* Edit Button */}
+                            <button
+                                onClick={() =>
+                                    window.dispatchEvent(
+                                        new CustomEvent('openEditUser', {
+                                            detail: user,
+                                        }),
+                                    )
+                                }
+                            >
+                                <Edit className="h-5 w-5" />
+                            </button>
+                            <button
+                                onClick={() =>
+                                    window.dispatchEvent(
+                                        new CustomEvent('confirmDeleteUser', {
+                                            detail: user.id,
+                                        }),
+                                    )
+                                }
+                            >
+                                <Trash className="h-5 w-5" />
+                            </button>
+                        </>
+                    )}
                 </div>
             )
         },

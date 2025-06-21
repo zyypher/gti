@@ -16,17 +16,23 @@ import { nanoid } from 'nanoid'
 import PageHeading from '@/components/layout/page-heading'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FloatingLabelInput } from '@/components/ui/floating-label-input'
+import { useUserRole } from '@/hooks/useUserRole'
 
 interface IBrand {
     id: string
     name: string
 }
 
-export type IPromotion = {
+export type INonProductPageItem = {
     id: string
     title: string
-    type: 'banner' | 'advertisement'
+    type: 'banner' | 'advertisement' | 'promotion'
     filePath: string
+}
+
+interface AdditionalPage {
+    id: string
+    position: number
 }
 
 const Products = () => {
@@ -40,16 +46,27 @@ const Products = () => {
     const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false)
     const [pdfStep, setPdfStep] = useState(1) // Tracks modal steps
     const [selectedBanner, setSelectedBanner] = useState<string | null>(null)
-    const [selectedAdvertisement, setSelectedAdvertisement] = useState<
-        string | null
-    >(null)
-    const [banners, setBanners] = useState<IPromotion[]>([])
-    const [advertisements, setAdvertisements] = useState<IPromotion[]>([])
+
+    const [banners, setBanners] = useState<INonProductPageItem[]>([])
+    const [advertisements, setAdvertisements] = useState<INonProductPageItem[]>(
+        [],
+    )
+    const [promotions, setPromotions] = useState<INonProductPageItem[]>([])
+
+    const [selectedAdverts, setSelectedAdverts] = useState<AdditionalPage[]>([])
+    const [selectedPromotions, setSelectedPromotions] = useState<
+        AdditionalPage[]
+    >([])
+
+    const [currentAdvertSelection, setCurrentAdvertSelection] = useState<string>('');
+    const [currentPromotionSelection, setCurrentPromotionSelection] = useState<string>('');
+
     const [selectedProduct, setSelectedProduct] = useState<ITable | null>(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [deleteProductId, setDeleteProductId] = useState<string | null>(null)
     const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
     const [shareableUrl, setShareableUrl] = useState('')
+    const role = useUserRole()
 
     const isPWA = () => {
         if (typeof window !== 'undefined') {
@@ -65,32 +82,31 @@ const Products = () => {
         return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
     }
 
-    // Fetch banners and advertisements
     useEffect(() => {
-        const fetchPromotions = async () => {
+        const fetchNonProductPageItems = async () => {
             try {
-                const response = await api.get('/api/promotions')
-                const data: IPromotion[] = response.data
+                const response = await api.get('/api/non-product-pages')
+                const data: INonProductPageItem[] = response.data
                 setBanners(data.filter((item) => item.type === 'banner'))
                 setAdvertisements(
                     data.filter((item) => item.type === 'advertisement'),
                 )
+                setPromotions(data.filter((item) => item.type === 'promotion'))
             } catch (error) {
-                console.error('Failed to load promotions:', error)
+                console.error('Failed to load non-product page items:', error)
             }
         }
-        fetchPromotions()
+        fetchNonProductPageItems()
     }, [])
 
-    // Handle Next Step in PDF modal
     const handleNextStep = () => {
         if (pdfStep === 1 && !selectedBanner) {
             toast.error('Please select a Corporate Info')
             return
         }
-        if (pdfStep === 2 && !selectedAdvertisement) {
-            toast.error('Please select an Advertisement')
-            return
+        if (pdfStep === 2 && (selectedAdverts.length === 0 || selectedPromotions.length === 0)) {
+            toast.error('Please select at least one Advert and one Promotion.');
+            return;
         }
         setPdfStep((prevStep) => prevStep + 1)
     }
@@ -104,12 +120,9 @@ const Products = () => {
         formState: { errors },
     } = useForm()
 
-    // Add this helper to preserve previously selected items
     const mergeWithSelectedProducts = (fetched: ITable[]) => {
         const selectedSet = new Set(selectedRows)
         const merged = [...fetched]
-
-        // Ensure selected items not in the new filter result are kept
         products.forEach((prod) => {
             if (
                 selectedSet.has(prod.id) &&
@@ -118,18 +131,15 @@ const Products = () => {
                 merged.push(prod)
             }
         })
-
         return merged
     }
 
-    // Fetch products
     const fetchProducts = async () => {
         setLoading(true)
         try {
             const queryParams = new URLSearchParams(filters).toString()
             const response = await fetch(`/api/products?${queryParams}`)
             const data: ITable[] = await response.json()
-
             const mergedData = mergeWithSelectedProducts(data)
             setProducts(mergedData)
         } catch (error) {
@@ -139,7 +149,6 @@ const Products = () => {
         }
     }
 
-    // Function to fetch brands
     const fetchBrands = async () => {
         try {
             const response = await fetch('/api/brands')
@@ -164,7 +173,7 @@ const Products = () => {
         setIsDialogOpen(true)
         Object.keys(item).forEach((key) =>
             setValue(key as any, (item as any)[key]),
-        ) // Auto-fill form
+        )
     }
 
     const handleDelete = (id: string) => {
@@ -172,24 +181,21 @@ const Products = () => {
         setIsDeleteDialogOpen(true)
     }
 
-    const handleRowSelection = (ids: string[]) => {
-        setSelectedRows((prev) => {
-            const updated = new Set(prev)
-            ids.forEach((id) => updated.add(id))
-            return Array.from(updated)
-        })
-    }
-    
+    const _columns = columns(role, handleEdit, handleDelete)
 
-    // Handle Create PDF
+    const handleRowSelection = (ids: string[]) => {
+        setSelectedRows(ids)
+    }
 
     const handleGeneratePDF = async () => {
         setButtonLoading(true)
         try {
+            const additionalPages = [...selectedAdverts, ...selectedPromotions]
+
             const response = await api.post('/api/pdf/generate', {
                 bannerId: selectedBanner,
-                advertisementId: selectedAdvertisement,
                 productIds: selectedRows,
+                additionalPages: additionalPages,
             })
 
             if (response.status === 200) {
@@ -197,26 +203,25 @@ const Products = () => {
                 const pdfUrl = response.data.url
                 const fileName = `Merged_Document_${new Date().toISOString()}.pdf`
 
-                // Generate a unique short URL slug
                 const uniqueSlug = nanoid(10)
                 const expirationDate = new Date()
-                expirationDate.setDate(expirationDate.getDate() + 30) // Expires in 30 days
+                expirationDate.setDate(expirationDate.getDate() + 30)
 
-                // Save the URL mapping in the database
                 await api.post('/api/shared-pdf', {
                     uniqueSlug,
-                    productIds: selectedRows.join(','), // Store as CSV
+                    productIds: selectedRows.join(','),
                     expiresAt: expirationDate.toISOString(),
                 })
+
                 setIsPdfDialogOpen(false)
                 setPdfStep(1)
                 setSelectedBanner(null)
-                setSelectedAdvertisement(null)
+                setSelectedAdverts([])
+                setSelectedPromotions([])
                 reset()
                 setSelectedRows([])
 
                 if (isPWA() || isMobile()) {
-                    // Mobile Share
                     if (navigator.share) {
                         const blob = await fetch(pdfUrl).then((res) =>
                             res.blob(),
@@ -224,16 +229,12 @@ const Products = () => {
                         const file = new File([blob], fileName, {
                             type: 'application/pdf',
                         })
-
-                        const shareData = {
-                            title: 'Shared PDF',
-                            text: `View the products here: ${shareableUrl}`,
-                            files: [file],
-                        }
-
                         navigator
-                            .share(shareData)
-                            .then(() => console.log('Shared successfully'))
+                            .share({
+                                title: 'Shared PDF',
+                                text: `View the products here: ${shareableUrl}`,
+                                files: [file],
+                            })
                             .catch((err) =>
                                 console.error('Error sharing:', err),
                             )
@@ -241,7 +242,6 @@ const Products = () => {
                         toast.error('Sharing not supported')
                     }
                 } else {
-                    // Desktop Mode: Download & Show URL
                     const downloadLink = document.createElement('a')
                     downloadLink.href = pdfUrl
                     downloadLink.download = fileName
@@ -249,77 +249,59 @@ const Products = () => {
                     downloadLink.click()
                     document.body.removeChild(downloadLink)
 
-                    const sharedPdfResponse = await api.post(
-                        '/api/shared-pdf',
-                        {
-                            productIds: selectedRows.join(','), // ✅ Send only productIds, API generates slug
+                    const { slug } = await api
+                        .post('/api/shared-pdf', {
+                            productIds: selectedRows.join(','),
                             expiresAt: expirationDate.toISOString(),
-                        },
-                    )
+                        })
+                        .then((res) => res.data)
 
-                    // ✅ Extract slug from API response
-                    const { slug } = sharedPdfResponse.data
-                    const shareableUrl = `${process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL}/${slug}` // ✅ Use API returned slug
-
-                    // Show shareable link
-                    setShareableUrl(shareableUrl)
-                    setIsShareDialogOpen(true) // ✅ Open the new dialog instead of toast
+                    const newShareableUrl = `${window.location.origin}/shared-pdf/${slug}`
+                    setShareableUrl(newShareableUrl)
+                    setIsShareDialogOpen(true)
                 }
             } else {
-                toast.error('Failed to generate PDF.')
+                toast.error(
+                    `Error: ${response.data.error || 'Failed to generate PDF'}`,
+                )
             }
         } catch (error) {
-            toast.error('Error generating PDF.')
-            console.error('Error:', error)
+            console.error('Failed to generate PDF:', error)
+            toast.error('Failed to generate PDF.')
         } finally {
             setButtonLoading(false)
         }
     }
 
     const handleAddOrUpdateProduct = async (data: any) => {
+        if (role !== 'ADMIN') {
+            toast.error('You are not authorized to perform this action.')
+            return
+        }
         setButtonLoading(true)
+        const formData = new FormData()
+        Object.keys(data).forEach((key) => {
+            if (key === 'image' && data.image[0]) {
+                formData.append('image', data.image[0])
+            } else if (key === 'pdf' && data.pdf[0]) {
+                formData.append('pdf', data.pdf[0])
+            } else {
+                formData.append(key, data[key])
+            }
+        })
+
         try {
-            const formData = new FormData()
-            formData.append('name', data.name)
-            formData.append('brandId', data.brandId)
-            formData.append('size', data.size || '')
-            formData.append('tar', data.tar || '')
-            formData.append('nicotine', data.nicotine || '')
-            formData.append('co', data.co || '')
-            formData.append('flavor', data.flavor || '')
-            formData.append('fsp', data.fsp || '')
-            formData.append('capsules', data.capsules || '')
-            formData.append('packetStyle', data.packetStyle || '')
-            formData.append('color', data.color || '')
-            // formData.append('corners', data.corners || '')
+            const url = selectedProduct
+                ? `/api/products/${selectedProduct.id}/pdf`
+                : routes.addProduct
+            const method = selectedProduct ? 'PUT' : 'POST'
 
-            // ✅ Append new image/PDF only if selected
-            if (selectedProduct) {
-                if (data.image?.[0]) {
-                    formData.append('image', data.image[0])
-                }
-                if (data.pdf?.[0]) {
-                    formData.append('pdf', data.pdf[0])
-                }
-            } else {
-                if (data.image?.[0]) formData.append('image', data.image[0])
-                if (data.pdf?.[0]) formData.append('pdf', data.pdf[0])
-            }
-
-            let response
-            if (selectedProduct) {
-                response = await api.put(
-                    `/api/products/${selectedProduct.id}/pdf`,
-                    formData,
-                    {
-                        headers: { 'Content-Type': 'multipart/form-data' },
-                    },
-                ) // Update product
-            } else {
-                response = await api.post(routes.addProduct, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                }) // Create product
-            }
+            const response = await api({
+                method,
+                url,
+                data: formData,
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
 
             if (response.status === 200 || response.status === 201) {
                 toast.success(
@@ -345,6 +327,10 @@ const Products = () => {
     }
 
     const handleDeleteProduct = async () => {
+        if (role !== 'ADMIN') {
+            toast.error('You are not authorized to perform this action.')
+            return
+        }
         if (!deleteProductId) return
         try {
             const response = await api.delete(
@@ -364,12 +350,65 @@ const Products = () => {
     }
 
     const handleRefresh = () => {
-        setFilters((prevFilters) => ({ ...prevFilters })) // ✅ Force re-render with existing filters
-        fetchProducts() // ✅ Re-fetch products
+        setFilters((prevFilters) => ({ ...prevFilters }))
+        fetchProducts()
     }
 
     const handleClearSelection = () => {
-        setSelectedRows([]) // ✅ Clears checkboxes
+        setSelectedRows([])
+    }
+
+    const addAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
+        if (!id) return; 
+
+        if (type === 'advert') {
+            if (selectedAdverts.some(a => a.id === id)) return; 
+            setSelectedAdverts(prev => [...prev, { id: id, position: 2 }]);
+        } else {
+            if (selectedPromotions.some(p => p.id === id)) return;
+            setSelectedPromotions(prev => [...prev, { id: id, position: 2 }]);
+        }
+    }
+
+    const removeAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
+        if (type === 'advert') {
+            setSelectedAdverts(prev => prev.filter(p => p.id !== id));
+        } else {
+            setSelectedPromotions(prev => prev.filter(p => p.id !== id));
+        }
+    }
+    
+    const updateAdditionalPagePosition = (type: 'advert' | 'promotion', id: string, position: number) => {
+        const updater = (pages: AdditionalPage[]) => pages.map(p => p.id === id ? { ...p, position } : p);
+
+        if (type === 'advert') {
+            setSelectedAdverts(updater);
+        } else {
+            setSelectedPromotions(updater);
+        }
+    }
+
+    const renderPositionDropdown = (type: 'advert' | 'promotion', page: AdditionalPage) => {
+        const totalProductPages = selectedRows.length;
+        const options = [];
+
+        options.push(<option key="pos-2" value={2}>After Corporate Info</option>);
+
+        for(let i = 0; i < totalProductPages; i++) {
+            options.push(<option key={`pos-${i+3}`} value={i + 3}>{`After Product ${i + 1}`}</option>)
+        }
+
+        options.push(<option key={`pos-end`} value={totalProductPages + 2}>At the end</option>);
+        
+        return (
+            <select
+                value={page.position}
+                onChange={(e) => updateAdditionalPagePosition(type, page.id, parseInt(e.target.value, 10))}
+                className="rounded border p-1"
+            >
+                {options}
+            </select>
+        )
     }
 
     return (
@@ -383,13 +422,19 @@ const Products = () => {
                 />
 
                 <div className="flex gap-4">
-                    <Button
-                        variant="black"
-                        onClick={() => setIsDialogOpen(true)}
-                    >
-                        <Plus />
-                        New Product
-                    </Button>
+                    {role === 'ADMIN' && (
+                        <Button
+                            variant="black"
+                            onClick={() => {
+                                setSelectedProduct(null)
+                                reset()
+                                setIsDialogOpen(true)
+                            }}
+                        >
+                            <Plus />
+                            New Product
+                        </Button>
+                    )}
                     <Button
                         variant="outline-black"
                         disabled={selectedRows.length === 0}
@@ -402,14 +447,11 @@ const Products = () => {
 
             {loading ? (
                 <div className="w-full overflow-hidden rounded-md border border-gray-300">
-                    {/* Table Header Skeleton */}
                     <div className="flex items-center bg-gray-200 p-3">
                         {Array.from({ length: 5 }).map((_, index) => (
                             <Skeleton key={index} className="mx-2 h-5 w-1/5" />
                         ))}
                     </div>
-
-                    {/* Table Rows Skeleton */}
                     {Array.from({ length: 5 }).map((_, index) => (
                         <div
                             key={index}
@@ -430,7 +472,7 @@ const Products = () => {
                 </div>
             ) : (
                 <DataTable
-                    columns={columns(handleEdit, handleDelete)}
+                    columns={_columns}
                     data={products}
                     filterField="product"
                     loading={loading}
@@ -450,9 +492,7 @@ const Products = () => {
                 onSubmit={handleSubmit(handleAddOrUpdateProduct)}
                 buttonLoading={buttonLoading}
             >
-                {/* Scrollable Container */}
                 <div className="max-h-[70vh] space-y-4 overflow-y-auto p-2">
-                    {/* Product Name */}
                     <div>
                         <FloatingLabelInput
                             label="Enter product name"
@@ -462,13 +502,12 @@ const Products = () => {
                             error={String(errors.name?.message || '')}
                         />
                         {errors.name?.message && (
-                            <p className="mt-1 text-sm text-red-500 hidden">
+                            <p className="mt-1 hidden text-sm text-red-500">
                                 {String(errors.name.message)}
                             </p>
                         )}
                     </div>
 
-                    {/* Brand Selection */}
                     <div>
                         <select
                             {...register('brandId', {
@@ -490,7 +529,6 @@ const Products = () => {
                         )}
                     </div>
 
-                    {/* Size */}
                     <div>
                         <FloatingLabelInput
                             label="Enter Stick Format"
@@ -500,13 +538,12 @@ const Products = () => {
                             error={String(errors.size?.message || '')}
                         />
                         {errors.size?.message && (
-                            <p className="mt-1 text-sm text-red-500 hidden">
+                            <p className="mt-1 hidden text-sm text-red-500">
                                 {String(errors.size.message)}
                             </p>
                         )}
                     </div>
 
-                    {/* Flavour */}
                     <div>
                         <FloatingLabelInput
                             label="Flavour"
@@ -516,13 +553,11 @@ const Products = () => {
                             error={String(errors.flavor?.message || '')}
                         />
                         {errors.flavor?.message && (
-                            <p className="mt-1 text-sm text-red-500 hidden">
+                            <p className="mt-1 hidden text-sm text-red-500">
                                 {String(errors.flavor.message)}
                             </p>
                         )}
                     </div>
-
-                    {/* Tar (mg) */}
                     <div>
                         <FloatingLabelInput
                             type="number"
@@ -533,13 +568,12 @@ const Products = () => {
                             error={String(errors.tar?.message || '')}
                         />
                         {errors.tar?.message && (
-                            <p className="mt-1 text-sm text-red-500 hidden">
+                            <p className="mt-1 hidden text-sm text-red-500">
                                 {String(errors.tar.message)}
                             </p>
                         )}
                     </div>
 
-                    {/* Nicotine (mg) */}
                     <div>
                         <FloatingLabelInput
                             type="number"
@@ -550,13 +584,11 @@ const Products = () => {
                             error={String(errors.nicotine?.message || '')}
                         />
                         {errors.nicotine?.message && (
-                            <p className="mt-1 text-sm text-red-500 hidden">
+                            <p className="mt-1 hidden text-sm text-red-500">
                                 {String(errors.nicotine.message)}
                             </p>
                         )}
                     </div>
-
-                    {/* Carbon Monoxide (CO) - Optional */}
                     <div>
                         <FloatingLabelInput
                             type="number"
@@ -567,13 +599,12 @@ const Products = () => {
                             error={String(errors.co?.message || '')}
                         />
                         {errors.co?.message && (
-                            <p className="mt-1 text-sm text-red-500 hidden">
+                            <p className="mt-1 hidden text-sm text-red-500">
                                 {String(errors.co.message)}
                             </p>
                         )}
                     </div>
 
-                    {/* Packet Style */}
                     <div>
                         <FloatingLabelInput
                             label="Pack Format (e.g., Fan Pack, Slide Pack, Regular)"
@@ -583,13 +614,12 @@ const Products = () => {
                             error={String(errors.packetStyle?.message || '')}
                         />
                         {errors.packetStyle?.message && (
-                            <p className="mt-1 text-sm text-red-500 hidden">
+                            <p className="mt-1 hidden text-sm text-red-500">
                                 {String(errors.packetStyle.message)}
                             </p>
                         )}
                     </div>
 
-                    {/* FSP - Yes/No Dropdown */}
                     <div>
                         <select
                             {...register('fsp', {
@@ -607,8 +637,6 @@ const Products = () => {
                             </p>
                         )}
                     </div>
-
-                    {/* Number of Capsules - 0, 1, 2, 3 */}
                     <div>
                         <select
                             {...register('capsules', {
@@ -629,7 +657,6 @@ const Products = () => {
                         )}
                     </div>
 
-                    {/* Color of the Packet */}
                     <div>
                         <FloatingLabelInput
                             label="Enter Packet Color"
@@ -639,15 +666,12 @@ const Products = () => {
                             error={String(errors.color?.message || '')}
                         />
                         {errors.color?.message && (
-                            <p className="mt-1 text-sm text-red-500 hidden">
+                            <p className="mt-1 hidden text-sm text-red-500">
                                 {String(errors.color.message)}
                             </p>
                         )}
                     </div>
 
-                    {/* Upload Product Image */}
-
-                    {/* ✅ Preview Existing Product Image */}
                     {selectedProduct?.image && (
                         <div className="mb-2">
                             <p className="mb-1 text-sm text-gray-600">
@@ -680,7 +704,6 @@ const Products = () => {
                         )}
                     </div>
 
-                    {/* Upload Product PDF */}
                     <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">
                             Upload Product PDF
@@ -709,16 +732,16 @@ const Products = () => {
                     setIsPdfDialogOpen(false)
                     setPdfStep(1)
                     setSelectedBanner(null)
-                    setSelectedAdvertisement(null)
+                    setSelectedAdverts([])
+                    setSelectedPromotions([])
                 }}
-                // onSubmit={() => {}}
-                title={
+                title={`Step ${pdfStep}: ${
                     pdfStep === 1
                         ? 'Select Corporate Info'
                         : pdfStep === 2
-                          ? 'Select Advertisement'
-                          : 'Confirm & Generate PDF'
-                }
+                          ? 'Add Adverts & Promotions'
+                          : 'Confirm & Generate'
+                }`}
             >
                 <div className="space-y-4 p-4">
                     {pdfStep === 1 && (
@@ -742,67 +765,81 @@ const Products = () => {
                     )}
 
                     {pdfStep === 2 && (
-                        <>
-                            <p>Select an Advertisement for the PDF:</p>
-                            <select
-                                className="w-full rounded border p-2"
-                                value={selectedAdvertisement || ''}
-                                onChange={(e) =>
-                                    setSelectedAdvertisement(e.target.value)
-                                }
-                            >
-                                <option value="">Select Advertisement</option>
-                                {advertisements.map((ad) => (
-                                    <option key={ad.id} value={ad.id}>
-                                        {ad.title}
-                                    </option>
-                                ))}
-                            </select>
-                        </>
+                        <div>
+                            {/* Advertisements Selection */}
+                            <div className="mb-4">
+                                <h3 className='font-semibold mb-2'>Adverts</h3>
+                                <div className="flex items-center gap-2">
+                                    <select 
+                                        className="w-full rounded border p-2" 
+                                        value=""
+                                        onChange={(e) => addAdditionalPage('advert', e.target.value)}
+                                    >
+                                        <option value="">Select an Advert to add</option>
+                                        {advertisements.map(advert => (
+                                            <option key={advert.id} value={advert.id}>{advert.title}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="mt-2 space-y-1">
+                                    {selectedAdverts.map(ad => (
+                                        <div key={ad.id} className="flex items-center justify-between text-sm">
+                                            <span>{advertisements.find(item => item.id === ad.id)?.title}</span>
+                                            <Button size="small" variant="outline" onClick={() => removeAdditionalPage('advert', ad.id)}>Remove</Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* Promotions Selection */}
+                            <div>
+                                <h3 className='font-semibold mb-2'>Promotions</h3>
+                                 <div className="flex items-center gap-2">
+                                    <select 
+                                        className="w-full rounded border p-2" 
+                                        value=""
+                                        onChange={(e) => addAdditionalPage('promotion', e.target.value)}
+                                    >
+                                        <option value="">Select a Promotion to add</option>
+                                        {promotions.map(promo => (
+                                            <option key={promo.id} value={promo.id}>{promo.title}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="mt-2 space-y-1">
+                                    {selectedPromotions.map(promo => (
+                                        <div key={promo.id} className="flex items-center justify-between text-sm">
+                                            <span>{promotions.find(item => item.id === promo.id)?.title}</span>
+                                            <Button size="small" variant="outline" onClick={() => removeAdditionalPage('promotion', promo.id)}>Remove</Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     )}
 
                     {pdfStep === 3 && (
-                        <>
-                            <p className="text-lg font-medium">
-                                Confirm the selection and generate PDF:
-                            </p>
-                            <ul className="space-y-2">
-                                <li>
-                                    <strong>Corporate Info:</strong>{' '}
-                                    {banners.find(
-                                        (b) => b.id === selectedBanner,
-                                    )?.title || 'Not selected'}
-                                </li>
-                                <li>
-                                    <strong>Advertisement:</strong>{' '}
-                                    {advertisements.find(
-                                        (a) => a.id === selectedAdvertisement,
-                                    )?.title || 'Not selected'}
-                                </li>
-                                <li>
-                                    <strong>Products Selected:</strong>
-                                    <ul className="ml-4 list-disc">
-                                        {products
-                                            .filter((product) =>
-                                                selectedRows.includes(
-                                                    product.id,
-                                                ),
-                                            )
-                                            .map((product) => (
-                                                <li
-                                                    key={product.id}
-                                                    className="text-gray-700"
-                                                >
-                                                    {product.name}
-                                                </li>
-                                            ))}
-                                    </ul>
-                                </li>
-                            </ul>
-                        </>
+                         <div>
+                            {selectedAdverts.length > 0 && <div className='space-y-2'>
+                                 <h3 className='font-semibold'>Selected Adverts</h3>
+                                {selectedAdverts.map(advert => (
+                                    <div key={advert.id} className='flex items-center justify-between'>
+                                        <p>{advertisements.find(a => a.id === advert.id)?.title}</p>
+                                        {renderPositionDropdown('advert', advert)}
+                                    </div>
+                                ))}
+                            </div>}
+                            {selectedPromotions.length > 0 && <div className='mt-4 space-y-2'>
+                                 <h3 className='font-semibold'>Selected Promotions</h3>
+                                {selectedPromotions.map(promo => (
+                                    <div key={promo.id} className='flex items-center justify-between'>
+                                        <p>{promotions.find(p => p.id === promo.id)?.title}</p>
+                                        {renderPositionDropdown('promotion', promo)}
+                                    </div>
+                                ))}
+                            </div>}
+                        </div>
                     )}
 
-                    {/* Navigation Buttons & Generate PDF Button in One Row */}
                     <div className="mt-6 flex justify-end gap-4">
                         {pdfStep > 1 && (
                             <Button
@@ -825,14 +862,9 @@ const Products = () => {
                                 onClick={handleGeneratePDF}
                                 disabled={buttonLoading}
                             >
-                                {buttonLoading ? (
-                                    <span className="flex items-center">
-                                        <span className="loader mr-2"></span>{' '}
-                                        Generating...
-                                    </span>
-                                ) : (
-                                    'Generate PDF'
-                                )}
+                                {buttonLoading
+                                    ? 'Generating...'
+                                    : 'Generate PDF'}
                             </Button>
                         )}
                     </div>
