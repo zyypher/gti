@@ -36,10 +36,19 @@ export default function Login() {
     const onSubmit = async (data: LoginFormData) => {
         setLoading(true)
         try {
-            const response = await api.post(routes.login, data)
+            await api.post(routes.login, data)
             toast.success('Login Successful!')
+
+            const res = await fetch('/api/users/me')
+            const user = await res.json()
+
+            if (res.ok && user.role) {
+                localStorage.setItem('userRole', user.role)
+            }
+
             router.push('/')
         } catch (error: any) {
+            toast.error('Login failed')
         } finally {
             setLoading(false)
         }

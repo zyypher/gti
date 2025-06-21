@@ -14,6 +14,7 @@ import * as yup from 'yup'
 import { Pencil, Trash2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw } from 'lucide-react'
+import { useUserRole } from '@/hooks/useUserRole'
 
 type Brand = {
     id: string
@@ -31,6 +32,7 @@ const BrandsPage = () => {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null)
     const [isDeleting, setIsDeleting] = useState(false) // ✅ New state for delete button loading
+    const role = useUserRole()
 
     // ✅ Yup Schema Validation
     const brandSchema = yup.object().shape({
@@ -174,16 +176,18 @@ const BrandsPage = () => {
                     <RefreshCw size={18} className="mr-1" />
                     Refresh
                 </Button>
-                <Button
-                    variant="black"
-                    onClick={() => {
-                        setSelectedBrand(null)
-                        reset()
-                        setIsDialogOpen(true)
-                    }}
-                >
-                    Add Brand
-                </Button>
+                {role === 'ADMIN' && (
+                    <Button
+                        variant="black"
+                        onClick={() => {
+                            setSelectedBrand(null)
+                            reset()
+                            setIsDialogOpen(true)
+                        }}
+                    >
+                        Add Brand
+                    </Button>
+                )}
             </div>
 
             {/* ✅ Brand Grid Section with Conditional Loading */}
@@ -210,22 +214,6 @@ const BrandsPage = () => {
                             className="relative w-full max-w-[300px] transition hover:shadow-lg"
                         >
                             <CardContent className="relative space-y-3 p-4">
-                                {/* ✅ Delete Button */}
-                                <button
-                                    onClick={() => openDeleteDialog(brand)}
-                                    className="absolute right-2 top-2 rounded-full bg-red-500 p-2 text-white hover:bg-red-600"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-
-                                {/* ✅ Edit Button */}
-                                <button
-                                    onClick={() => openEditDialog(brand)}
-                                    className="absolute bottom-2 right-2 rounded-full bg-gray-200 p-2 hover:bg-gray-300"
-                                >
-                                    <Pencil size={16} />
-                                </button>
-
                                 {brand.image ? (
                                     <img
                                         src={brand.image}
@@ -243,6 +231,22 @@ const BrandsPage = () => {
                                 <p className="text-sm text-gray-600">
                                     {brand.description}
                                 </p>
+                                {role === 'ADMIN' && (
+                                    <div className="absolute bottom-2 right-2 flex gap-2">
+                                        <button
+                                            className="rounded-full bg-blue-100 p-2 text-blue-600 hover:bg-blue-200"
+                                            onClick={() => openEditDialog(brand)}
+                                        >
+                                            <Pencil size={16} />
+                                        </button>
+                                        <button
+                                            className="rounded-full bg-red-100 p-2 text-red-600 hover:bg-red-200"
+                                            onClick={() => openDeleteDialog(brand)}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     ))

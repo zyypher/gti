@@ -21,10 +21,12 @@ import { usePathname } from 'next/navigation'
 import NavLink from '@/components/layout/nav-link'
 import { useRouter } from 'next/navigation'
 import { logout } from '@/lib/auth'
+import { useUserRole } from '@/hooks/useUserRole'
 
 const Sidebar = () => {
     const pathName = usePathname()
     const router = useRouter()
+    const role = useUserRole()
 
     const toggleSidebarResponsive = () => {
         document.getElementById('sidebar')?.classList.remove('open')
@@ -103,10 +105,12 @@ const Sidebar = () => {
                         <Settings className="size-[18px] shrink-0" />
                         <span>Settings</span>
                     </NavLink>
-                    <NavLink href="/users" className={`nav-link`}>
-                        <CircleUserRound className="size-[18px] shrink-0" />
-                        <span>Users</span>
-                    </NavLink>
+                    {role === 'ADMIN' && (
+                        <NavLink href="/users" className={`nav-link`}>
+                            <CircleUserRound className="size-[18px] shrink-0" />
+                            <span>Users</span>
+                        </NavLink>
+                    )}
                 </div>
 
                 {/* MOBILE ONLY PROFILE & LOGOUT */}

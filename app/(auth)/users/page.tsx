@@ -11,6 +11,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { useForm } from 'react-hook-form'
 import { columns } from '@/components/custom/table/users/columns'
 import PageHeading from '@/components/layout/page-heading'
+import { useUserRole } from '@/hooks/useUserRole'
 
 type User = {
     id: string
@@ -27,6 +28,7 @@ const UsersPage = () => {
     const [userToDelete, setUserToDelete] = useState<string | null>(null)
     const [buttonLoading, setButtonLoading] = useState(false)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
+    const role = useUserRole()
 
     const {
         register,
@@ -124,14 +126,19 @@ const UsersPage = () => {
         <div className="space-y-4">
             <PageHeading heading="Users" />
             <div className="flex items-center justify-end">
-                <Button variant="black" onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="mr-2" />
-                    Add User
-                </Button>
+                {role === 'ADMIN' && (
+                    <Button
+                        variant="black"
+                        onClick={() => setIsDialogOpen(true)}
+                    >
+                        <Plus className="mr-2" />
+                        Add User
+                    </Button>
+                )}
             </div>
 
             <DataTable
-                columns={columns}
+                columns={columns(role)}
                 data={users}
                 filterField="email"
                 loading={loading}

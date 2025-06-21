@@ -7,6 +7,7 @@ export const logout = async () => {
     try {
         await api.post(routes.logout)
         localStorage.removeItem('token')
+        localStorage.removeItem('userRole')
         // showToast('Logout Successful', 'You have been logged out.', true)
     } catch (error) {
         // showToast('Error', 'Unable to log out. Please try again.', false)

@@ -16,6 +16,7 @@ import { nanoid } from 'nanoid'
 import PageHeading from '@/components/layout/page-heading'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FloatingLabelInput } from '@/components/ui/floating-label-input'
+import { useUserRole } from '@/hooks/useUserRole'
 
 interface IBrand {
     id: string
@@ -50,6 +51,7 @@ const Products = () => {
     const [deleteProductId, setDeleteProductId] = useState<string | null>(null)
     const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
     const [shareableUrl, setShareableUrl] = useState('')
+    const role = useUserRole()
 
     const isPWA = () => {
         if (typeof window !== 'undefined') {
@@ -172,6 +174,8 @@ const Products = () => {
         setIsDeleteDialogOpen(true)
     }
 
+    const _columns = columns(role, handleEdit, handleDelete)
+
     const handleRowSelection = (ids: string[]) => {
         setSelectedRows((prev) => {
             const updated = new Set(prev)
@@ -277,6 +281,10 @@ const Products = () => {
     }
 
     const handleAddOrUpdateProduct = async (data: any) => {
+        if (role !== 'ADMIN') {
+            toast.error('You are not authorized to perform this action.')
+            return
+        }
         setButtonLoading(true)
         try {
             const formData = new FormData()
@@ -345,6 +353,10 @@ const Products = () => {
     }
 
     const handleDeleteProduct = async () => {
+        if (role !== 'ADMIN') {
+            toast.error('You are not authorized to perform this action.')
+            return
+        }
         if (!deleteProductId) return
         try {
             const response = await api.delete(
@@ -383,13 +395,19 @@ const Products = () => {
                 />
 
                 <div className="flex gap-4">
-                    <Button
-                        variant="black"
-                        onClick={() => setIsDialogOpen(true)}
-                    >
-                        <Plus />
-                        New Product
-                    </Button>
+                    {role === 'ADMIN' && (
+                        <Button
+                            variant="black"
+                            onClick={() => {
+                                setSelectedProduct(null)
+                                reset()
+                                setIsDialogOpen(true)
+                            }}
+                        >
+                            <Plus />
+                            New Product
+                        </Button>
+                    )}
                     <Button
                         variant="outline-black"
                         disabled={selectedRows.length === 0}
@@ -430,7 +448,7 @@ const Products = () => {
                 </div>
             ) : (
                 <DataTable
-                    columns={columns(handleEdit, handleDelete)}
+                    columns={_columns}
                     data={products}
                     filterField="product"
                     loading={loading}

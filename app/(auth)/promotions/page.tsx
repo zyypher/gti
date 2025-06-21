@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Trash2, RefreshCw, Circle } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import PageHeading from '@/components/layout/page-heading'
+import { useUserRole } from '@/hooks/useUserRole'
 
 // Define type for promotions
 type Promotion = {
@@ -34,6 +35,7 @@ const PromotionsPage = () => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [deleteId, setDeleteId] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    const role = useUserRole()
 
     const fetchPromotions = async () => {
         setLoading(true)
@@ -157,9 +159,14 @@ const PromotionsPage = () => {
                         <RefreshCw size={18} className="mr-1" /> Refresh
                     </Button>
                 </div>
-                <Button variant="black" onClick={() => setIsDialogOpen(true)}>
-                    Add Promotion
-                </Button>
+                {role === 'ADMIN' && (
+                    <Button
+                        variant="black"
+                        onClick={() => setIsDialogOpen(true)}
+                    >
+                        Add Promotion
+                    </Button>
+                )}
             </div>
 
             {loading ? (
@@ -198,21 +205,21 @@ const PromotionsPage = () => {
 
                             {/* Title at bottom overlay */}
                             <div className="absolute bottom-0 w-full truncate bg-white bg-opacity-90 px-1 py-1 text-center text-sm font-medium">
-                                {item.title.length > 20
-                                    ? item.title.slice(0, 20) + '...'
-                                    : item.title}
+                                {item.title.split('.').slice(0, -1).join('.')}
                             </div>
 
-                            {/* Delete button at top-right */}
-                            <button
-                                className="absolute right-2 top-2 text-red-500"
-                                onClick={() => {
-                                    setDeleteId(item.id)
-                                    setDeleteDialogOpen(true)
-                                }}
-                            >
-                                <Trash2 size={20} />
-                            </button>
+                            {/* Delete Button */}
+                            {role === 'ADMIN' && (
+                                <button
+                                    className="absolute right-2 top-2 rounded-full bg-red-100 p-2 text-red-600 hover:bg-red-200"
+                                    onClick={() => {
+                                        setDeleteId(item.id)
+                                        setDeleteDialogOpen(true)
+                                    }}
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
                         </div>
                     ))}
                 </div>

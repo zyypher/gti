@@ -2,6 +2,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ColumnDef } from '@tanstack/react-table'
 import { Edit, Trash } from 'lucide-react'
 import PDFDownloadButton from '../../PDFDownloadButton'
+import { Role } from '@/hooks/useUserRole'
 
 export type ITable = {
     id: string
@@ -22,6 +23,7 @@ export type ITable = {
 }
 
 export const columns = (
+    role: Role | null,
     handleEdit: (item: ITable) => void,
     handleDelete: (id: string) => void,
 ): ColumnDef<ITable>[] => [
@@ -150,12 +152,16 @@ export const columns = (
         header: 'Actions',
         cell: ({ row }) => (
             <div className="flex space-x-2">
-                <button onClick={() => handleEdit(row.original)}>
-                    <Edit className="h-5 w-5" />
-                </button>
-                <button onClick={() => handleDelete(row.original.id)}>
-                    <Trash className="h-5 w-5" />
-                </button>
+                {role === 'ADMIN' && (
+                    <>
+                        <button onClick={() => handleEdit(row.original)}>
+                            <Edit className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => handleDelete(row.original.id)}>
+                            <Trash className="h-5 w-5" />
+                        </button>
+                    </>
+                )}
             </div>
         ),
     },
