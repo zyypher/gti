@@ -819,6 +819,15 @@ const Products = () => {
 
                     {pdfStep === 3 && (
                          <div>
+                            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                                <h4 className="font-semibold text-blue-800 mb-2">What are you doing here?</h4>
+                                <p className="text-sm text-blue-700">
+                                    You're arranging where your selected Adverts and Promotions will appear in the final PDF. 
+                                    The Corporate Info will always be the first page, followed by your selected products. 
+                                    Use the dropdowns below to choose where each Advert and Promotion should be inserted between these pages.
+                                </p>
+                            </div>
+                            
                             {selectedAdverts.length > 0 && <div className='space-y-2'>
                                  <h3 className='font-semibold'>Selected Adverts</h3>
                                 {selectedAdverts.map(advert => (
