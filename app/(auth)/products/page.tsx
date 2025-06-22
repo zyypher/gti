@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { columns, ITable } from '@/components/custom/table/products/columns'
 import { DataTable } from '@/components/custom/table/data-table'
 import ProductsFilters from '@/components/products/filters/products-filters'
@@ -12,15 +12,22 @@ import toast from 'react-hot-toast'
 import { Plus } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Dialog } from '@/components/ui/dialog'
-import { nanoid } from 'nanoid'
 import PageHeading from '@/components/layout/page-heading'
-import { Skeleton } from '@/components/ui/skeleton'
 import { FloatingLabelInput } from '@/components/ui/floating-label-input'
 import { useUserRole } from '@/hooks/useUserRole'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import 'react-quill/dist/quill.snow.css'
 
 interface IBrand {
     id: string
     name: string
+    position: number
 }
 
 export type INonProductPageItem = {
@@ -33,6 +40,20 @@ export type INonProductPageItem = {
 interface AdditionalPage {
     id: string
     position: number
+}
+
+type NonProductPageItem = {
+    id: string
+    filePath: string
+    title: string
+    type: 'banner' | 'advertisement' | 'promotion'
+}
+
+type Client = {
+    id: string
+    nickname: string
+    firstName: string
+    lastName: string
 }
 
 const Products = () => {
@@ -58,9 +79,6 @@ const Products = () => {
         AdditionalPage[]
     >([])
 
-    const [currentAdvertSelection, setCurrentAdvertSelection] = useState<string>('');
-    const [currentPromotionSelection, setCurrentPromotionSelection] = useState<string>('');
-
     const [selectedProduct, setSelectedProduct] = useState<ITable | null>(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [deleteProductId, setDeleteProductId] = useState<string | null>(null)
@@ -68,14 +86,22 @@ const Products = () => {
     const [shareableUrl, setShareableUrl] = useState('')
     const role = useUserRole()
 
+    const [nonProductItems, setNonProductItems] = useState<
+        NonProductPageItem[]
+    >([])
+    const [clients, setClients] = useState<Client[]>([])
+    const [selectedCorporateInfo, setSelectedCorporateInfo] = useState<
+        string | undefined
+    >(undefined)
+    const [addedPromotions, setAddedPromotions] = useState<
+        { id: string; position: number }[]
+    >([])
+    const [selectedClient, setSelectedClient] = useState<string | undefined>(
+        undefined,
+    )
+
     const isPWA = () => {
-        if (typeof window !== 'undefined') {
-            return (
-                window.matchMedia('(display-mode: standalone)').matches ||
-                (navigator as any).standalone === true
-            )
-        }
-        return false
+        return window.matchMedia('(display-mode: standalone)').matches
     }
 
     const isMobile = () => {
@@ -104,9 +130,12 @@ const Products = () => {
             toast.error('Please select a Corporate Info')
             return
         }
-        if (pdfStep === 2 && (selectedAdverts.length === 0 || selectedPromotions.length === 0)) {
-            toast.error('Please select at least one Advert and one Promotion.');
-            return;
+        if (
+            pdfStep === 2 &&
+            (selectedAdverts.length === 0 || selectedPromotions.length === 0)
+        ) {
+            toast.error('Please select at least one Advert and one Promotion.')
+            return
         }
         setPdfStep((prevStep) => prevStep + 1)
     }
@@ -159,9 +188,31 @@ const Products = () => {
         }
     }
 
+    const fetchNonProductItems = async () => {
+        try {
+            const response = await api.get('/api/non-product-pages')
+            setNonProductItems(response.data)
+        } catch (error) {
+            console.error('Failed to fetch non-product items', error)
+            toast.error('Failed to fetch non-product items.')
+        }
+    }
+
+    const fetchClients = async () => {
+        try {
+            const response = await api.get('/api/clients')
+            setClients(response.data)
+        } catch (error) {
+            console.error('Failed to fetch clients', error)
+            toast.error('Failed to fetch clients.')
+        }
+    }
+
     useEffect(() => {
         fetchProducts()
         fetchBrands()
+        fetchNonProductItems()
+        fetchClients()
     }, [filters])
 
     const handleFilterChange = (newFilters: { [key: string]: string }) => {
@@ -190,12 +241,22 @@ const Products = () => {
     const handleGeneratePDF = async () => {
         setButtonLoading(true)
         try {
-            const additionalPages = [...selectedAdverts, ...selectedPromotions]
+            const additionalPages = [
+                ...selectedAdverts.map((a) => ({
+                    id: a.id,
+                    position: a.position,
+                })),
+                ...selectedPromotions.map((p) => ({
+                    id: p.id,
+                    position: p.position,
+                })),
+            ]
 
             const response = await api.post('/api/pdf/generate', {
                 bannerId: selectedBanner,
                 productIds: selectedRows,
-                additionalPages: additionalPages,
+                additionalPages,
+                clientId: selectedClient,
             })
 
             if (response.status === 200) {
@@ -203,15 +264,18 @@ const Products = () => {
                 const pdfUrl = response.data.url
                 const fileName = `Merged_Document_${new Date().toISOString()}.pdf`
 
-                const uniqueSlug = nanoid(10)
                 const expirationDate = new Date()
                 expirationDate.setDate(expirationDate.getDate() + 30)
 
-                await api.post('/api/shared-pdf', {
-                    uniqueSlug,
-                    productIds: selectedRows.join(','),
-                    expiresAt: expirationDate.toISOString(),
-                })
+                const { slug } = await api
+                    .post('/api/shared-pdf', {
+                        productIds: selectedRows.join(','),
+                        expiresAt: expirationDate.toISOString(),
+                        clientId: selectedClient,
+                    })
+                    .then((res) => res.data)
+
+                const shareableUrl = `${window.location.origin}/shared-pdf/${slug}`
 
                 setIsPdfDialogOpen(false)
                 setPdfStep(1)
@@ -220,6 +284,7 @@ const Products = () => {
                 setSelectedPromotions([])
                 reset()
                 setSelectedRows([])
+                setSelectedClient(undefined)
 
                 if (isPWA() || isMobile()) {
                     if (navigator.share) {
@@ -242,22 +307,7 @@ const Products = () => {
                         toast.error('Sharing not supported')
                     }
                 } else {
-                    const downloadLink = document.createElement('a')
-                    downloadLink.href = pdfUrl
-                    downloadLink.download = fileName
-                    document.body.appendChild(downloadLink)
-                    downloadLink.click()
-                    document.body.removeChild(downloadLink)
-
-                    const { slug } = await api
-                        .post('/api/shared-pdf', {
-                            productIds: selectedRows.join(','),
-                            expiresAt: expirationDate.toISOString(),
-                        })
-                        .then((res) => res.data)
-
-                    const newShareableUrl = `${window.location.origin}/shared-pdf/${slug}`
-                    setShareableUrl(newShareableUrl)
+                    setShareableUrl(shareableUrl)
                     setIsShareDialogOpen(true)
                 }
             } else {
@@ -359,51 +409,78 @@ const Products = () => {
     }
 
     const addAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
-        if (!id) return; 
+        if (!id) return
 
         if (type === 'advert') {
-            if (selectedAdverts.some(a => a.id === id)) return; 
-            setSelectedAdverts(prev => [...prev, { id: id, position: 2 }]);
+            if (selectedAdverts.some((a) => a.id === id)) return
+            setSelectedAdverts((prev) => [...prev, { id: id, position: 2 }])
         } else {
-            if (selectedPromotions.some(p => p.id === id)) return;
-            setSelectedPromotions(prev => [...prev, { id: id, position: 2 }]);
+            if (selectedPromotions.some((p) => p.id === id)) return
+            setSelectedPromotions((prev) => [...prev, { id: id, position: 2 }])
         }
     }
 
     const removeAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
         if (type === 'advert') {
-            setSelectedAdverts(prev => prev.filter(p => p.id !== id));
+            setSelectedAdverts((prev) => prev.filter((p) => p.id !== id))
         } else {
-            setSelectedPromotions(prev => prev.filter(p => p.id !== id));
+            setSelectedPromotions((prev) => prev.filter((p) => p.id !== id))
         }
     }
-    
-    const updateAdditionalPagePosition = (type: 'advert' | 'promotion', id: string, position: number) => {
-        const updater = (pages: AdditionalPage[]) => pages.map(p => p.id === id ? { ...p, position } : p);
+
+    const updateAdditionalPagePosition = (
+        type: 'advert' | 'promotion',
+        id: string,
+        position: number,
+    ) => {
+        const updater = (pages: AdditionalPage[]) =>
+            pages.map((p) => (p.id === id ? { ...p, position } : p))
 
         if (type === 'advert') {
-            setSelectedAdverts(updater);
+            setSelectedAdverts(updater)
         } else {
-            setSelectedPromotions(updater);
+            setSelectedPromotions(updater)
         }
     }
 
-    const renderPositionDropdown = (type: 'advert' | 'promotion', page: AdditionalPage) => {
-        const totalProductPages = selectedRows.length;
-        const options = [];
+    const renderPositionDropdown = (
+        type: 'advert' | 'promotion',
+        page: AdditionalPage,
+    ) => {
+        const totalProductPages = selectedRows.length
+        const options = []
 
-        options.push(<option key="pos-2" value={2}>After Corporate Info</option>);
+        options.push(
+            <option key="pos-2" value={2}>
+                After Corporate Info
+            </option>,
+        )
 
-        for(let i = 0; i < totalProductPages; i++) {
-            options.push(<option key={`pos-${i+3}`} value={i + 3}>{`After Product ${i + 1}`}</option>)
+        for (let i = 0; i < totalProductPages; i++) {
+            options.push(
+                <option
+                    key={`pos-${i + 3}`}
+                    value={i + 3}
+                >{`After Product ${i + 1}`}</option>,
+            )
         }
 
-        options.push(<option key={`pos-end`} value={totalProductPages + 2}>At the end</option>);
-        
+        options.push(
+            <option key={`pos-end`} value={totalProductPages + 2}>
+                At the end
+            </option>,
+        )
+
         return (
             <select
                 value={page.position}
-                onChange={(e) => updateAdditionalPagePosition(type, page.id, parseInt(e.target.value, 10))}
+                onChange={(e) =>
+                    updateAdditionalPagePosition(
+                        type,
+                        page.id,
+                        parseInt(e.target.value, 10),
+                    )
+                }
                 className="rounded border p-1"
             >
                 {options}
@@ -445,41 +522,13 @@ const Products = () => {
                 </div>
             </div>
 
-            {loading ? (
-                <div className="w-full overflow-hidden rounded-md border border-gray-300">
-                    <div className="flex items-center bg-gray-200 p-3">
-                        {Array.from({ length: 5 }).map((_, index) => (
-                            <Skeleton key={index} className="mx-2 h-5 w-1/5" />
-                        ))}
-                    </div>
-                    {Array.from({ length: 5 }).map((_, index) => (
-                        <div
-                            key={index}
-                            className="flex items-center border-t border-gray-300 p-3"
-                        >
-                            {Array.from({ length: 5 }).map((_, subIndex) => (
-                                <Skeleton
-                                    key={subIndex}
-                                    className="mx-2 h-5 w-1/5"
-                                />
-                            ))}
-                        </div>
-                    ))}
-                </div>
-            ) : products.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-10">
-                    <p className="text-lg text-gray-500">No products found</p>
-                </div>
-            ) : (
-                <DataTable
-                    columns={_columns}
-                    data={products}
-                    filterField="product"
-                    loading={loading}
-                    rowSelectionCallback={handleRowSelection}
-                    selectedRowIds={selectedRows}
-                />
-            )}
+            <DataTable<ITable>
+                columns={_columns}
+                data={products}
+                filterField="product"
+                loading={loading}
+                rowSelectionCallback={handleRowSelection}
+            />
 
             <Dialog
                 isOpen={isDialogOpen}
@@ -768,48 +817,117 @@ const Products = () => {
                         <div>
                             {/* Advertisements Selection */}
                             <div className="mb-4">
-                                <h3 className='font-semibold mb-2'>Adverts</h3>
+                                <h3 className="mb-2 font-semibold">Adverts</h3>
                                 <div className="flex items-center gap-2">
-                                    <select 
-                                        className="w-full rounded border p-2" 
+                                    <select
+                                        className="w-full rounded border p-2"
                                         value=""
-                                        onChange={(e) => addAdditionalPage('advert', e.target.value)}
+                                        onChange={(e) =>
+                                            addAdditionalPage(
+                                                'advert',
+                                                e.target.value,
+                                            )
+                                        }
                                     >
-                                        <option value="">Select an Advert to add</option>
-                                        {advertisements.map(advert => (
-                                            <option key={advert.id} value={advert.id}>{advert.title}</option>
+                                        <option value="">
+                                            Select an Advert to add
+                                        </option>
+                                        {advertisements.map((advert) => (
+                                            <option
+                                                key={advert.id}
+                                                value={advert.id}
+                                            >
+                                                {advert.title}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
                                 <div className="mt-2 space-y-1">
-                                    {selectedAdverts.map(ad => (
-                                        <div key={ad.id} className="flex items-center justify-between text-sm">
-                                            <span>{advertisements.find(item => item.id === ad.id)?.title}</span>
-                                            <Button size="small" variant="outline" onClick={() => removeAdditionalPage('advert', ad.id)}>Remove</Button>
+                                    {selectedAdverts.map((ad) => (
+                                        <div
+                                            key={ad.id}
+                                            className="flex items-center justify-between text-sm"
+                                        >
+                                            <span>
+                                                {
+                                                    advertisements.find(
+                                                        (item) =>
+                                                            item.id === ad.id,
+                                                    )?.title
+                                                }
+                                            </span>
+                                            <Button
+                                                size="small"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    removeAdditionalPage(
+                                                        'advert',
+                                                        ad.id,
+                                                    )
+                                                }
+                                            >
+                                                Remove
+                                            </Button>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                             {/* Promotions Selection */}
                             <div>
-                                <h3 className='font-semibold mb-2'>Promotions</h3>
-                                 <div className="flex items-center gap-2">
-                                    <select 
-                                        className="w-full rounded border p-2" 
+                                <h3 className="mb-2 font-semibold">
+                                    Promotions
+                                </h3>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        className="w-full rounded border p-2"
                                         value=""
-                                        onChange={(e) => addAdditionalPage('promotion', e.target.value)}
+                                        onChange={(e) =>
+                                            addAdditionalPage(
+                                                'promotion',
+                                                e.target.value,
+                                            )
+                                        }
                                     >
-                                        <option value="">Select a Promotion to add</option>
-                                        {promotions.map(promo => (
-                                            <option key={promo.id} value={promo.id}>{promo.title}</option>
+                                        <option value="">
+                                            Select a Promotion to add
+                                        </option>
+                                        {promotions.map((promo) => (
+                                            <option
+                                                key={promo.id}
+                                                value={promo.id}
+                                            >
+                                                {promo.title}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
                                 <div className="mt-2 space-y-1">
-                                    {selectedPromotions.map(promo => (
-                                        <div key={promo.id} className="flex items-center justify-between text-sm">
-                                            <span>{promotions.find(item => item.id === promo.id)?.title}</span>
-                                            <Button size="small" variant="outline" onClick={() => removeAdditionalPage('promotion', promo.id)}>Remove</Button>
+                                    {selectedPromotions.map((promo) => (
+                                        <div
+                                            key={promo.id}
+                                            className="flex items-center justify-between text-sm"
+                                        >
+                                            <span>
+                                                {
+                                                    promotions.find(
+                                                        (item) =>
+                                                            item.id ===
+                                                            promo.id,
+                                                    )?.title
+                                                }
+                                            </span>
+                                            <Button
+                                                size="small"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    removeAdditionalPage(
+                                                        'promotion',
+                                                        promo.id,
+                                                    )
+                                                }
+                                            >
+                                                Remove
+                                            </Button>
                                         </div>
                                     ))}
                                 </div>
@@ -818,25 +936,109 @@ const Products = () => {
                     )}
 
                     {pdfStep === 3 && (
-                         <div>
-                            {selectedAdverts.length > 0 && <div className='space-y-2'>
-                                 <h3 className='font-semibold'>Selected Adverts</h3>
-                                {selectedAdverts.map(advert => (
-                                    <div key={advert.id} className='flex items-center justify-between'>
-                                        <p>{advertisements.find(a => a.id === advert.id)?.title}</p>
-                                        {renderPositionDropdown('advert', advert)}
-                                    </div>
-                                ))}
-                            </div>}
-                            {selectedPromotions.length > 0 && <div className='mt-4 space-y-2'>
-                                 <h3 className='font-semibold'>Selected Promotions</h3>
-                                {selectedPromotions.map(promo => (
-                                    <div key={promo.id} className='flex items-center justify-between'>
-                                        <p>{promotions.find(p => p.id === promo.id)?.title}</p>
-                                        {renderPositionDropdown('promotion', promo)}
-                                    </div>
-                                ))}
-                            </div>}
+                        <div>
+                            <div className="bg-blue-50 mb-4 rounded-lg p-3">
+                                <h4 className="text-blue-800 mb-2 font-semibold">
+                                    What are you doing here?
+                                </h4>
+                                <p className="text-blue-700 text-sm">
+                                    You're arranging where your selected Adverts
+                                    and Promotions will appear in the final PDF.
+                                    The Corporate Info will always be the first
+                                    page, followed by your selected products.
+                                    Use the dropdowns below to choose where each
+                                    Advert and Promotion should be inserted
+                                    between these pages.
+                                </p>
+                            </div>
+
+                            {selectedAdverts.length > 0 && (
+                                <div className="space-y-2">
+                                    <h3 className="font-semibold">
+                                        Selected Adverts
+                                    </h3>
+                                    {selectedAdverts.map((advert) => (
+                                        <div
+                                            key={advert.id}
+                                            className="flex items-center justify-between"
+                                        >
+                                            <p>
+                                                {
+                                                    advertisements.find(
+                                                        (a) =>
+                                                            a.id === advert.id,
+                                                    )?.title
+                                                }
+                                            </p>
+                                            {renderPositionDropdown(
+                                                'advert',
+                                                advert,
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {selectedPromotions.length > 0 && (
+                                <div className="mt-4 space-y-2">
+                                    <h3 className="font-semibold">
+                                        Selected Promotions
+                                    </h3>
+                                    {selectedPromotions.map((promo) => (
+                                        <div
+                                            key={promo.id}
+                                            className="flex items-center justify-between"
+                                        >
+                                            <p>
+                                                {
+                                                    promotions.find(
+                                                        (p) =>
+                                                            p.id === promo.id,
+                                                    )?.title
+                                                }
+                                            </p>
+                                            {renderPositionDropdown(
+                                                'promotion',
+                                                promo,
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {clients.length > 0 && (
+                                <div className="mt-4">
+                                    <h3 className="mb-2 font-semibold">
+                                        Select Client (Optional)
+                                    </h3>
+                                    <Select
+                                        onValueChange={(value) =>
+                                            setSelectedClient(
+                                                value === 'none'
+                                                    ? undefined
+                                                    : value,
+                                            )
+                                        }
+                                        value={selectedClient}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select a client" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">
+                                                No Client
+                                            </SelectItem>
+                                            {clients.map((client) => (
+                                                <SelectItem
+                                                    key={client.id}
+                                                    value={client.id}
+                                                >
+                                                    {`${client.firstName} ${client.lastName}`}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                         </div>
                     )}
 

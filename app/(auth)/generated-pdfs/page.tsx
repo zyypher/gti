@@ -16,6 +16,12 @@ interface IGeneratedPDF {
     createdAt: string
     expiresAt: string
     products: { id: string; name: string; pdfUrl: string }[]
+    client: {
+        id: string
+        firstName: string
+        lastName: string
+        nickname: string
+    } | null
 }
 
 const GeneratedPDFs = () => {
@@ -87,6 +93,12 @@ const GeneratedPDFs = () => {
                             className="rounded-lg bg-white p-6 shadow-lg"
                         >
                             <CardContent>
+                                {pdf.client && (
+                                    <p className="mb-2 text-sm font-semibold text-blue-600">
+                                        Client:{' '}
+                                        {`${pdf.client.firstName} ${pdf.client.lastName}`}
+                                    </p>
+                                )}
                                 <p className="text-gray-900 text-sm font-semibold">
                                     Products:
                                 </p>

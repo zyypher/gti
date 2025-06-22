@@ -13,6 +13,7 @@ import {
     LogOut,
     Megaphone,
     Bell,
+    Briefcase,
 } from 'lucide-react'
 import { useEffect } from 'react'
 import { Card } from '@/components/ui/card'
@@ -111,6 +112,10 @@ const Sidebar = () => {
                             <span>Users</span>
                         </NavLink>
                     )}
+                    <NavLink href="/clients" className={`nav-link`}>
+                        <Briefcase className="size-[18px] shrink-0" />
+                        <span>Clients</span>
+                    </NavLink>
                 </div>
 
                 {/* MOBILE ONLY PROFILE & LOGOUT */}

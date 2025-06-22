@@ -137,7 +137,7 @@ const UsersPage = () => {
                 )}
             </div>
 
-            <DataTable
+            <DataTable<User>
                 columns={columns(role)}
                 data={users}
                 filterField="email"

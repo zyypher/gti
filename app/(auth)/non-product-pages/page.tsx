@@ -82,9 +82,13 @@ const NonProductPages = () => {
         formData.append('title', file.name)
 
         try {
-            const response = await api.post('/api/non-product-pages', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            })
+            const response = await api.post(
+                '/api/non-product-pages',
+                formData,
+                {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                },
+            )
             if (response.status === 201) {
                 toast.success('Item added successfully')
                 setIsDialogOpen(false)
@@ -153,7 +157,7 @@ const NonProductPages = () => {
                         Corporate Info
                         <div className="h-3 w-3 rounded-full bg-success" />{' '}
                         Advert
-                        <div className="h-3 w-3 rounded-full bg-yellow-500" />{' '}
+                        <div className="bg-yellow-500 h-3 w-3 rounded-full" />{' '}
                         Promotion
                     </div>
 
@@ -190,42 +194,47 @@ const NonProductPages = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 justify-center gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                    {filteredItems.map((item) => (
-                        <div
-                            key={item.id}
-                            className={`relative aspect-square w-full max-w-[250px] overflow-hidden rounded border-4 bg-white shadow-md ${
-                                item.type === 'banner'
-                                    ? 'border-primary'
-                                    : item.type === 'advertisement'
-                                      ? 'border-success'
-                                      : 'border-yellow-500'
-                            }`}
-                        >
-                            <embed
-                                src={`${item.filePath}#zoom=Fit`}
-                                type="application/pdf"
-                                className="h-full w-full object-contain"
-                            />
+                    {filteredItems.map((item) => {
+                        return (
+                            <div
+                                key={item.id}
+                                className={`relative aspect-square w-full max-w-[250px] overflow-hidden rounded border-4 bg-white shadow-md ${
+                                    item.type === 'banner'
+                                        ? 'border-primary'
+                                        : item.type === 'advertisement'
+                                          ? 'border-success'
+                                          : 'border-yellow-500'
+                                }`}
+                            >
+                                <embed
+                                    src={`${item.filePath}#zoom=Fit`}
+                                    type="application/pdf"
+                                    className="h-full w-full object-contain"
+                                />
 
-                            {/* Title at bottom overlay */}
-                            <div className="absolute bottom-0 w-full truncate bg-white bg-opacity-90 px-1 py-1 text-center text-sm font-medium">
-                                {item.title.split('.').slice(0, -1).join('.')}
+                                {/* Title at bottom overlay */}
+                                <div className="absolute bottom-0 w-full truncate bg-white bg-opacity-90 px-1 py-1 text-center text-sm font-medium">
+                                    {item.title
+                                        .split('.')
+                                        .slice(0, -1)
+                                        .join('.')}
+                                </div>
+
+                                {/* Delete Button */}
+                                {role === 'ADMIN' && (
+                                    <button
+                                        className="absolute right-2 top-2 rounded-full bg-red-100 p-2 text-red-600 hover:bg-red-200"
+                                        onClick={() => {
+                                            setDeleteId(item.id)
+                                            setDeleteDialogOpen(true)
+                                        }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
                             </div>
-
-                            {/* Delete Button */}
-                            {role === 'ADMIN' && (
-                                <button
-                                    className="absolute right-2 top-2 rounded-full bg-red-100 p-2 text-red-600 hover:bg-red-200"
-                                    onClick={() => {
-                                        setDeleteId(item.id)
-                                        setDeleteDialogOpen(true)
-                                    }}
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            )}
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             )}
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromToken } from '@/lib/getUserIdFromToken'
 
 // ✅ Define Product Type
 interface ProductWithPDF {
@@ -13,15 +14,66 @@ interface AdditionalPage {
     position: number
 }
 
+async function createCoverPage(
+    client: {
+        firstName: string
+        lastName: string
+        company: string
+        primaryNumber: string
+    } | null,
+) {
+    const pdfDoc = await PDFDocument.create()
+    const page = pdfDoc.addPage()
+    const { width, height } = page.getSize()
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    const fontSize = 12
+
+    let y = height - 40
+    const addText = (text: string) => {
+        if (text) {
+            page.drawText(text, {
+                x: 50,
+                y,
+                font,
+                size: fontSize,
+                color: rgb(0, 0, 0),
+            })
+            y -= 20
+        }
+    }
+
+    addText('Generated For:')
+    y -= 10
+
+    if (client) {
+        addText(`Client: ${client.firstName} ${client.lastName}`)
+        addText(`Company: ${client.company}`)
+        addText(`Contact: ${client.primaryNumber}`)
+    } else {
+        addText('Internal Use')
+    }
+
+    return pdfDoc
+}
+
 export async function POST(req: Request) {
+    const userId = getUserIdFromToken(req)
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const {
         bannerId,
         productIds,
         additionalPages,
+        clientId,
+        corporateInfoId,
     }: {
         bannerId: string
         productIds: string[]
         additionalPages: AdditionalPage[]
+        clientId?: string
+        corporateInfoId?: string
     } = await req.json()
 
     try {
@@ -62,11 +114,31 @@ export async function POST(req: Request) {
             console.error('🚨 Some products are missing PDFs.')
         }
 
-        const pdfDoc = await PDFDocument.create()
+        let client = null
+        if (clientId) {
+            client = await prisma.client.findUnique({
+                where: { id: clientId },
+            })
+        }
 
-        // ✅ Add Banner First & Confirm
-        await addPdfToDocument(pdfDoc, banner.filePath)
-        console.log('✅ Banner Added')
+        const mainPdfDoc = await PDFDocument.create()
+
+        const coverPdf = await createCoverPage(client)
+        const copiedCoverPages = await mainPdfDoc.copyPages(
+            coverPdf,
+            coverPdf.getPageIndices(),
+        )
+        copiedCoverPages.forEach((page) => mainPdfDoc.addPage(page))
+
+        // Add Corporate Info as the first page (after cover) if selected
+        if (corporateInfoId) {
+            const corporateInfo = await prisma.promotion.findUnique({
+                where: { id: corporateInfoId },
+            })
+            if (corporateInfo?.filePath) {
+                await addPdfToDocument(mainPdfDoc, corporateInfo.filePath)
+            }
+        }
 
         // ✅ Prepare all pages to be inserted
         const allPages: { position: number; url: string }[] = []
@@ -91,12 +163,12 @@ export async function POST(req: Request) {
 
         // ✅ Add all sorted pages to the document & Confirm
         for (const page of allPages) {
-            await addPdfToDocument(pdfDoc, page.url)
+            await addPdfToDocument(mainPdfDoc, page.url)
             console.log(`✅ Page Added: ${page.position}`)
         }
 
         // ✅ Save and Return Merged PDF
-        const mergedPdfBytes = await pdfDoc.save()
+        const mergedPdfBytes = await mainPdfDoc.save()
         const pdfBase64 = Buffer.from(mergedPdfBytes).toString('base64')
         const pdfUrl = `data:application/pdf;base64,${pdfBase64}`
 
