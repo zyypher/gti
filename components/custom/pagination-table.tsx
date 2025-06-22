@@ -7,7 +7,7 @@ import {
     PaginationPrevious,
 } from '@/components/ui/pagination'
 
-export default function PaginationTable({ table, data }: any) {
+export default function PaginationTable({ table }: any) {
     return (
         <div className="flex flex-col items-center justify-end gap-2 py-3 sm:flex-row sm:gap-4">
             <div className="rounded-lg bg-white px-3 py-[7px] text-xs font-medium text-[#707079] shadow-sm">
@@ -17,7 +17,7 @@ export default function PaginationTable({ table, data }: any) {
                     {table.getRowModel().rows.length}
                 </span>
                 &nbsp;of&nbsp;
-                <span className="text-black">{data.length}</span>
+                <span className="text-black">{table.getRowCount()}</span>
                  Entries
             </div>
             <div className="rounded-lg shadow-sm">

@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid'
 import { jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
+import { SharedPDF, Client } from '@prisma/client'
 
 // ✅ Middleware to Extract User ID (Example - Adjust for Auth System)
 async function getUserIdFromToken(req: Request): Promise<string | null> {
@@ -52,26 +53,40 @@ export async function GET(req: Request) {
         }
 
         const sharedPdfs = await prisma.sharedPDF.findMany({
-            where: { createdById: userId }, // ✅ Fetch only PDFs created by the user
+            where: { createdById: userId },
+            orderBy: { createdAt: 'desc' }, // Sort by creation date descending
+            include: {
+                client: true, // Include client data
+            },
         })
 
         const pdfsWithDetails = await Promise.all(
-            sharedPdfs.map(async (pdf) => {
-                const productIdsArray = pdf.productIds.split(',')
+            sharedPdfs.map(
+                async (pdf: SharedPDF & { client: Client | null }) => {
+                    const productIdsArray = pdf.productIds.split(',')
 
-                const products = await prisma.product.findMany({
-                    where: { id: { in: productIdsArray } },
-                    select: { id: true, name: true, pdfUrl: true },
-                })
+                    const products = await prisma.product.findMany({
+                        where: { id: { in: productIdsArray } },
+                        select: { id: true, name: true, pdfUrl: true },
+                    })
 
-                return {
-                    id: pdf.id,
-                    uniqueSlug: pdf.uniqueSlug,
-                    products,
-                    createdAt: pdf.createdAt,
-                    expiresAt: pdf.expiresAt,
+                    return {
+                        id: pdf.id,
+                        uniqueSlug: pdf.uniqueSlug,
+                        products,
+                        createdAt: pdf.createdAt,
+                        expiresAt: pdf.expiresAt,
+                        client: pdf.client
+                            ? {
+                                  id: pdf.client.id,
+                                  firstName: pdf.client.firstName,
+                                  lastName: pdf.client.lastName,
+                                  nickname: pdf.client.nickname,
+                              }
+                            : null,
+                    }
                 }
-            }),
+            ),
         )
 
         return NextResponse.json(pdfsWithDetails)
@@ -87,7 +102,7 @@ export async function GET(req: Request) {
 // ✅ POST Method: Create a New Shared PDF & Assign Creator
 export async function POST(req: Request) {
     try {
-        let { productIds, expiresAt } = await req.json()
+        let { productIds, expiresAt, clientId } = await req.json()
         const userId = await getUserIdFromToken(req)
 
         if (!userId) {
@@ -128,13 +143,14 @@ export async function POST(req: Request) {
 
         const uniqueSlug = nanoid(10)
 
-        // ✅ Step 2: Create SharedPDF Entry
+        // ✅ Step 2: Create SharedPdf Entry
         const sharedPdf = await prisma.sharedPDF.create({
             data: {
                 uniqueSlug,
                 productIds: productIds.join(','),
                 expiresAt: new Date(expiresAt),
                 createdById: userId, // ✅ Assign creator ID
+                ...(clientId && { clientId }), // Conditionally add clientId
             },
         })
 

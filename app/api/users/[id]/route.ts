@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromToken } from '@/lib/getUserIdFromToken'
 
 // Update user
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-    const userId = params.id
+    const loggedInUserId = await getUserIdFromToken(req)
+    if (!loggedInUserId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check if the logged-in user is an admin
+    const loggedInUser = await prisma.user.findUnique({
+        where: { id: loggedInUserId },
+    })
+    if (loggedInUser?.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const userIdToUpdate = params.id
 
     try {
         const { email, password, role } = await req.json()
@@ -14,7 +28,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         }
 
         const updatedUser = await prisma.user.update({
-            where: { id: userId },
+            where: { id: userIdToUpdate },
             data: { email, password, role },
         })
 
@@ -27,11 +41,24 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 // Delete user
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-    const userId = params.id
+    const loggedInUserId = await getUserIdFromToken(req)
+    if (!loggedInUserId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check if the logged-in user is an admin
+    const loggedInUser = await prisma.user.findUnique({
+        where: { id: loggedInUserId },
+    })
+    if (loggedInUser?.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const userIdToDelete = params.id
 
     try {
         await prisma.user.delete({
-            where: { id: userId },
+            where: { id: userIdToDelete },
         })
 
         return NextResponse.json({ message: 'User deleted successfully' }, { status: 200 })
