@@ -193,7 +193,7 @@ const NonProductPages = () => {
                     <p className="text-lg text-gray-500">No items found</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 justify-center gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                <div className="mx-auto grid max-w-6xl grid-cols-1 justify-center gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 px-2">
                     {filteredItems.map((item) => {
                         return (
                             <div
