@@ -97,12 +97,23 @@ export async function GET(req: NextRequest) {
         const co = searchParams.get('co')
         if (co) filters.co = parseFloat(co)
 
+        // Pagination
+        const page = parseInt(searchParams.get('page') || '1', 10)
+        const pageSize = parseInt(searchParams.get('pageSize') || '10', 10)
+        const skip = (page - 1) * pageSize
+        const take = pageSize
+
+        // Get total count for pagination
+        const total = await prisma.product.count({ where: filters })
+
         const products = await prisma.product.findMany({
             where: filters,
             include: { brand: true },
+            skip,
+            take,
         })
 
-        return NextResponse.json(products)
+        return NextResponse.json({ products, total })
     } catch (error) {
         console.error('Error fetching products:', error)
         return NextResponse.json(

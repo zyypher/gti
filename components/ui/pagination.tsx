@@ -104,6 +104,61 @@ const PaginationNext = ({
 )
 PaginationNext.displayName = 'PaginationNext'
 
+// Server-side PaginationBar
+export function PaginationBar({
+    currentPage,
+    totalPages,
+    onPageChange,
+    className,
+}: {
+    currentPage: number
+    totalPages: number
+    onPageChange: (page: number) => void
+    className?: string
+}) {
+    if (totalPages <= 1) return null;
+    return (
+        <nav className={cn('flex justify-center mt-4', className)}>
+            <ul className="flex items-center gap-1">
+                <li>
+                    <button
+                        className="px-2 py-1 rounded disabled:opacity-50"
+                        onClick={() => onPageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                    >
+                        <ChevronLeft className="inline-block" />
+                    </button>
+                </li>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <li key={page}>
+                        <button
+                            className={cn(
+                                'px-3 py-1 rounded',
+                                page === currentPage
+                                    ? 'bg-black text-white'
+                                    : 'bg-white text-black border border-gray-300',
+                            )}
+                            onClick={() => onPageChange(page)}
+                            disabled={page === currentPage}
+                        >
+                            {page}
+                        </button>
+                    </li>
+                ))}
+                <li>
+                    <button
+                        className="px-2 py-1 rounded disabled:opacity-50"
+                        onClick={() => onPageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                    >
+                        <ChevronRight className="inline-block" />
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    );
+}
+
 export {
     Pagination,
     PaginationContent,

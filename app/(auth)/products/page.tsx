@@ -1,4 +1,5 @@
 'use client'
+export const dynamic = 'force-dynamic'
 
 import React, { useState, useEffect } from 'react'
 import { columns, ITable } from '@/components/custom/table/products/columns'
@@ -23,6 +24,8 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import 'react-quill/dist/quill.snow.css'
+import { useSearchParams } from 'next/navigation'
+import { PaginationBar } from '@/components/ui/pagination'
 
 interface IBrand {
     id: string
@@ -59,7 +62,7 @@ type Client = {
 const Products = () => {
     const [products, setProducts] = useState<ITable[]>([])
     const [brands, setBrands] = useState<IBrand[]>([])
-    const [filters, setFilters] = useState({})
+    const [filters, setFilters] = useState<Record<string, string>>({})
     const [loading, setLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [buttonLoading, setButtonLoading] = useState(false)
@@ -99,6 +102,15 @@ const Products = () => {
     const [selectedClient, setSelectedClient] = useState<string | undefined>(
         undefined,
     )
+
+    const searchParams = useSearchParams();
+    const initialBrandId = searchParams.get('brandId');
+    const initialFilters: Record<string, string> = initialBrandId ? { brandId: initialBrandId } : {};
+    console.log('##initialBrandId:', initialBrandId, 'initialFilters:', initialFilters);
+
+    const [page, setPage] = useState(1)
+    const [pageSize] = useState(10)
+    const [total, setTotal] = useState(0)
 
     const isPWA = () => {
         return window.matchMedia('(display-mode: standalone)').matches
@@ -166,11 +178,11 @@ const Products = () => {
     const fetchProducts = async () => {
         setLoading(true)
         try {
-            const queryParams = new URLSearchParams(filters).toString()
+            const queryParams = new URLSearchParams({ ...filters, page: String(page), pageSize: String(pageSize) }).toString()
             const response = await fetch(`/api/products?${queryParams}`)
-            const data: ITable[] = await response.json()
-            const mergedData = mergeWithSelectedProducts(data)
-            setProducts(mergedData)
+            const result = await response.json()
+            setProducts(result.products)
+            setTotal(result.total)
         } catch (error) {
             console.error('Failed to fetch products:', error)
         } finally {
@@ -213,9 +225,10 @@ const Products = () => {
         fetchBrands()
         fetchNonProductItems()
         fetchClients()
-    }, [filters])
+    }, [filters, page, pageSize])
 
     const handleFilterChange = (newFilters: { [key: string]: string }) => {
+        console.log('##handleFilterChange received:', newFilters);
         setFilters(newFilters)
     }
 
@@ -488,6 +501,11 @@ const Products = () => {
         )
     }
 
+    // Compute tableLoading for DataTable
+    const tableLoading = initialBrandId
+        ? filters.brandId !== initialBrandId || loading
+        : loading;
+
     return (
         <div className="space-y-4">
             <PageHeading heading="Products" />
@@ -496,6 +514,7 @@ const Products = () => {
                     onFilterChange={handleFilterChange}
                     onRefresh={handleRefresh}
                     onClearSelection={handleClearSelection}
+                    initialFilters={initialFilters}
                 />
 
                 <div className="flex gap-4">
@@ -526,8 +545,14 @@ const Products = () => {
                 columns={_columns}
                 data={products}
                 filterField="product"
-                loading={loading}
+                loading={tableLoading}
                 rowSelectionCallback={handleRowSelection}
+                isRemovePagination={false}
+            />
+            <PaginationBar
+                currentPage={page}
+                totalPages={Math.ceil(total / pageSize)}
+                onPageChange={setPage}
             />
 
             <Dialog
