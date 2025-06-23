@@ -11,10 +11,11 @@ import { Dialog } from '@/components/ui/dialog'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Eye } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RefreshCw } from 'lucide-react'
 import { useUserRole } from '@/hooks/useUserRole'
+import { useRouter } from 'next/navigation'
 
 type Brand = {
     id: string
@@ -33,6 +34,7 @@ const BrandsPage = () => {
     const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null)
     const [isDeleting, setIsDeleting] = useState(false) // ✅ New state for delete button loading
     const role = useUserRole()
+    const router = useRouter()
 
     // ✅ Yup Schema Validation
     const brandSchema = yup.object().shape({
@@ -211,33 +213,42 @@ const BrandsPage = () => {
                     brands.map((brand) => (
                         <Card
                             key={brand.id}
-                            className="relative w-full max-w-[300px] transition hover:shadow-lg"
+                            className="flex flex-col h-full w-full max-w-[300px] transition hover:shadow-lg"
                         >
-                            <CardContent className="relative space-y-3 p-4">
-                                {brand.image ? (
-                                    <img
-                                        src={brand.image}
-                                        alt={brand.name}
-                                        className="h-40 w-full rounded-lg object-cover"
-                                    />
-                                ) : (
-                                    <div className="flex h-40 w-full items-center justify-center rounded-lg bg-gray-300 text-sm text-gray-700">
-                                        No Image Available
-                                    </div>
-                                )}
-                                <h3 className="text-gray-800 text-lg font-semibold">
-                                    {brand.name}
-                                </h3>
-                                <p className="text-sm text-gray-600">
-                                    {brand.description}
-                                </p>
+                            <CardContent className="flex flex-col justify-between h-full space-y-3 p-4">
+                                <div>
+                                    {brand.image ? (
+                                        <img
+                                            src={brand.image}
+                                            alt={brand.name}
+                                            className="h-40 w-full rounded-lg object-cover"
+                                        />
+                                    ) : (
+                                        <div className="flex h-40 w-full items-center justify-center rounded-lg bg-gray-300 text-sm text-gray-700">
+                                            No Image Available
+                                        </div>
+                                    )}
+                                    <h3 className="text-gray-800 text-lg font-semibold mt-2">
+                                        {brand.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                        {brand.description}
+                                    </p>
+                                </div>
                                 {role === 'ADMIN' && (
-                                    <div className="absolute bottom-2 right-2 flex gap-2">
+                                    <div className="flex gap-2 mt-4">
                                         <button
                                             className="rounded-full bg-blue-100 p-2 text-blue-600 hover:bg-blue-200"
                                             onClick={() => openEditDialog(brand)}
                                         >
                                             <Pencil size={16} />
+                                        </button>
+                                        <button
+                                            className="rounded-full bg-green-100 p-2 text-green-600 hover:bg-green-200"
+                                            onClick={() => router.push(`/products?brandId=${brand.id}`)}
+                                            title="View Products"
+                                        >
+                                            <Eye size={16} />
                                         </button>
                                         <button
                                             className="rounded-full bg-red-100 p-2 text-red-600 hover:bg-red-200"

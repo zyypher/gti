@@ -17,6 +17,7 @@ interface FilterProps {
     onFilterChange: (filters: Record<string, string>) => void
     onRefresh: () => void
     onClearSelection?: () => void
+    initialFilters?: Record<string, string>
 }
 
 interface IBrand {
@@ -28,8 +29,9 @@ export default function ProductsFilters({
     onFilterChange,
     onRefresh,
     onClearSelection,
+    initialFilters = {},
 }: FilterProps) {
-    const [filters, setFilters] = useState<Record<string, string>>({})
+    const [filters, setFilters] = useState<Record<string, string>>(initialFilters)
     const [brands, setBrands] = useState<IBrand[]>([])
     const [sizes, setSizes] = useState<string[]>([])
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
@@ -67,6 +69,23 @@ export default function ProductsFilters({
         fetchBrands()
         fetchSizes()
     }, [])
+
+    useEffect(() => {
+        console.log('##brands:', brands, 'filters.brandId:', filters.brandId);
+    }, [brands, filters.brandId]);
+
+    useEffect(() => {
+        if (
+            brands.length > 0 &&
+            initialFilters.brandId &&
+            filters.brandId !== initialFilters.brandId
+        ) {
+            setFilters(initialFilters);
+            onFilterChange(initialFilters);
+        } else if (brands.length > 0 && filters.brandId) {
+            onFilterChange(filters);
+        }
+    }, [brands, filters.brandId, initialFilters.brandId]);
 
     const handleChange = (key: string, value: string) => {
         const updatedFilters = { ...filters }
