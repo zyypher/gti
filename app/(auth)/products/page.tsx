@@ -1,4 +1,5 @@
 'use client'
+export const dynamic = 'force-dynamic'
 
 import React, { useState, useEffect } from 'react'
 import { columns, ITable } from '@/components/custom/table/products/columns'
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui/select'
 import 'react-quill/dist/quill.snow.css'
 import { useSearchParams } from 'next/navigation'
+import { PaginationBar } from '@/components/ui/pagination'
 
 interface IBrand {
     id: string
@@ -106,6 +108,10 @@ const Products = () => {
     const initialFilters: Record<string, string> = initialBrandId ? { brandId: initialBrandId } : {};
     console.log('##initialBrandId:', initialBrandId, 'initialFilters:', initialFilters);
 
+    const [page, setPage] = useState(1)
+    const [pageSize] = useState(10)
+    const [total, setTotal] = useState(0)
+
     const isPWA = () => {
         return window.matchMedia('(display-mode: standalone)').matches
     }
@@ -172,11 +178,11 @@ const Products = () => {
     const fetchProducts = async () => {
         setLoading(true)
         try {
-            const queryParams = new URLSearchParams(filters).toString()
+            const queryParams = new URLSearchParams({ ...filters, page: String(page), pageSize: String(pageSize) }).toString()
             const response = await fetch(`/api/products?${queryParams}`)
-            const data: ITable[] = await response.json()
-            const mergedData = mergeWithSelectedProducts(data)
-            setProducts(mergedData)
+            const result = await response.json()
+            setProducts(result.products)
+            setTotal(result.total)
         } catch (error) {
             console.error('Failed to fetch products:', error)
         } finally {
@@ -219,7 +225,7 @@ const Products = () => {
         fetchBrands()
         fetchNonProductItems()
         fetchClients()
-    }, [filters])
+    }, [filters, page, pageSize])
 
     const handleFilterChange = (newFilters: { [key: string]: string }) => {
         console.log('##handleFilterChange received:', newFilters);
@@ -541,6 +547,12 @@ const Products = () => {
                 filterField="product"
                 loading={tableLoading}
                 rowSelectionCallback={handleRowSelection}
+                isRemovePagination={false}
+            />
+            <PaginationBar
+                currentPage={page}
+                totalPages={Math.ceil(total / pageSize)}
+                onPageChange={setPage}
             />
 
             <Dialog
