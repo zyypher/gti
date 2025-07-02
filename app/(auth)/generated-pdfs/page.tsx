@@ -90,9 +90,9 @@ const GeneratedPDFs = () => {
                     {pdfs.map((pdf) => (
                         <Card
                             key={pdf.id}
-                            className="rounded-lg bg-white p-6 shadow-lg"
+                            className="flex flex-col h-full rounded-lg bg-white p-6 shadow-lg"
                         >
-                            <CardContent>
+                            <CardContent className="flex flex-col flex-1">
                                 {pdf.client && (
                                     <p className="mb-2 text-sm font-semibold text-blue-600">
                                         Client:{' '}
@@ -121,13 +121,15 @@ const GeneratedPDFs = () => {
                                     <strong>Expires:</strong>{' '}
                                     {new Date(pdf.expiresAt).toLocaleString()}
                                 </p>
-                                <Button
-                                    variant="black"
-                                    className="mt-4 w-full"
-                                    onClick={() => handleView(pdf)}
-                                >
-                                    View PDF
-                                </Button>
+                                <div className="mt-auto">
+                                    <Button
+                                        variant="black"
+                                        className="w-full"
+                                        onClick={() => handleView(pdf)}
+                                    >
+                                        View PDF
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
                     ))}
