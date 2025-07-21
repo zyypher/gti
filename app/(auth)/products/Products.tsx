@@ -277,6 +277,21 @@ const Products = () => {
                 const pdfUrl = response.data.url
                 const fileName = `Merged_Document_${new Date().toISOString()}.pdf`
 
+                // Download the PDF
+                try {
+                    const blob = await fetch(pdfUrl).then(res => res.blob());
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } catch (err) {
+                    console.error('Failed to auto-download PDF:', err);
+                }
+
                 const expirationDate = new Date()
                 expirationDate.setDate(expirationDate.getDate() + 30)
 
