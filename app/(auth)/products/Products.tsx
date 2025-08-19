@@ -84,13 +84,13 @@ const clientSchema = yup.object({
         .string()
         .required('Primary number is required')
         .test('is-valid', 'Enter a valid phone number', (value) =>
-            value ? isValidPhoneNumber(value) : false
+            value ? isValidPhoneNumber(value) : false,
         ),
     secondaryNumber: yup
         .string()
         .optional()
         .test('is-valid', 'Enter a valid phone number', (value) =>
-            !value || isValidPhoneNumber(value)
+            !value || isValidPhoneNumber(value),
         ),
     country: yup.string().required(),
 })
@@ -104,7 +104,7 @@ const Products = () => {
     const [buttonLoading, setButtonLoading] = useState(false)
     const [selectedRows, setSelectedRows] = useState<string[]>([])
     const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false)
-    const [pdfStep, setPdfStep] = useState(1) // Tracks modal steps
+    const [pdfStep, setPdfStep] = useState(1)
     const [selectedBanner, setSelectedBanner] = useState<string | null>(null)
 
     const [banners, setBanners] = useState<INonProductPageItem[]>([])
@@ -114,9 +114,9 @@ const Products = () => {
     const [promotions, setPromotions] = useState<INonProductPageItem[]>([])
 
     const [selectedAdverts, setSelectedAdverts] = useState<AdditionalPage[]>([])
-    const [selectedPromotions, setSelectedPromotions] = useState<
-        AdditionalPage[]
-    >([])
+    const [selectedPromotions, setSelectedPromotions] = useState<AdditionalPage[]>(
+        [],
+    )
 
     const [selectedProduct, setSelectedProduct] = useState<ITable | null>(null)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -125,9 +125,9 @@ const Products = () => {
     const [shareableUrl, setShareableUrl] = useState('')
     const role = useUserRole()
 
-    const [nonProductItems, setNonProductItems] = useState<
-        NonProductPageItem[]
-    >([])
+    const [nonProductItems, setNonProductItems] = useState<NonProductPageItem[]>(
+        [],
+    )
     const [clients, setClients] = useState<Client[]>([])
     const [selectedCorporateInfo, setSelectedCorporateInfo] = useState<
         string | undefined
@@ -139,9 +139,11 @@ const Products = () => {
         undefined,
     )
 
-    const searchParams = useSearchParams();
-    const initialBrandId = searchParams.get('brandId');
-    const initialFilters: Record<string, string> = initialBrandId ? { brandId: initialBrandId } : {};
+    const searchParams = useSearchParams()
+    const initialBrandId = searchParams.get('brandId')
+    const initialFilters: Record<string, string> = initialBrandId
+        ? { brandId: initialBrandId }
+        : {}
     const [isClientDialogOpen, setIsClientDialogOpen] = useState(false)
     const [isClientSubmitting, setIsClientSubmitting] = useState(false)
 
@@ -149,13 +151,8 @@ const Products = () => {
     const [pageSize] = useState(10)
     const [total, setTotal] = useState(0)
 
-    const isPWA = () => {
-        return window.matchMedia('(display-mode: standalone)').matches
-    }
-
-    const isMobile = () => {
-        return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-    }
+    const isPWA = () => window.matchMedia('(display-mode: standalone)').matches
+    const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
     const {
         control: clientControl,
@@ -198,16 +195,13 @@ const Products = () => {
         }
     }
 
-
     useEffect(() => {
         const fetchNonProductPageItems = async () => {
             try {
                 const response = await api.get('/api/non-product-pages')
                 const data: INonProductPageItem[] = response.data
                 setBanners(data.filter((item) => item.type === 'banner'))
-                setAdvertisements(
-                    data.filter((item) => item.type === 'advertisement'),
-                )
+                setAdvertisements(data.filter((item) => item.type === 'advertisement'))
                 setPromotions(data.filter((item) => item.type === 'promotion'))
             } catch (error) {
                 console.error('Failed to load non-product page items:', error)
@@ -244,10 +238,7 @@ const Products = () => {
         const selectedSet = new Set(selectedRows)
         const merged = [...fetched]
         products.forEach((prod) => {
-            if (
-                selectedSet.has(prod.id) &&
-                !fetched.find((p) => p.id === prod.id)
-            ) {
+            if (selectedSet.has(prod.id) && !fetched.find((p) => p.id === prod.id)) {
                 merged.push(prod)
             }
         })
@@ -257,7 +248,11 @@ const Products = () => {
     const fetchProducts = async () => {
         setLoading(true)
         try {
-            const queryParams = new URLSearchParams({ ...filters, page: String(page), pageSize: String(pageSize) }).toString()
+            const queryParams = new URLSearchParams({
+                ...filters,
+                page: String(page),
+                pageSize: String(pageSize),
+            }).toString()
             const response = await fetch(`/api/products?${queryParams}`)
             const result = await response.json()
             setProducts(result.products)
@@ -307,16 +302,13 @@ const Products = () => {
     }, [filters, page, pageSize])
 
     const handleFilterChange = (newFilters: { [key: string]: string }) => {
-        console.log('##handleFilterChange received:', newFilters);
         setFilters(newFilters)
     }
 
     const handleEdit = (item: ITable) => {
         setSelectedProduct(item)
         setIsDialogOpen(true)
-        Object.keys(item).forEach((key) =>
-            setValue(key as any, (item as any)[key]),
-        )
+        Object.keys(item).forEach((key) => setValue(key as any, (item as any)[key]))
     }
 
     const handleDelete = (id: string) => {
@@ -334,14 +326,8 @@ const Products = () => {
         setButtonLoading(true)
         try {
             const additionalPages = [
-                ...selectedAdverts.map((a) => ({
-                    id: a.id,
-                    position: a.position,
-                })),
-                ...selectedPromotions.map((p) => ({
-                    id: p.id,
-                    position: p.position,
-                })),
+                ...selectedAdverts.map((a) => ({ id: a.id, position: a.position })),
+                ...selectedPromotions.map((p) => ({ id: p.id, position: p.position })),
             ]
 
             const response = await api.post('/api/pdf/generate', {
@@ -356,19 +342,18 @@ const Products = () => {
                 const pdfUrl = response.data.url
                 const fileName = `Merged_Document_${new Date().toISOString()}.pdf`
 
-                // Download the PDF
                 try {
-                    const blob = await fetch(pdfUrl).then(res => res.blob());
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
+                    const blob = await fetch(pdfUrl).then((res) => res.blob())
+                    const url = window.URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = fileName
+                    document.body.appendChild(a)
+                    a.click()
+                    a.remove()
+                    window.URL.revokeObjectURL(url)
                 } catch (err) {
-                    console.error('Failed to auto-download PDF:', err);
+                    console.error('Failed to auto-download PDF:', err)
                 }
 
                 const expirationDate = new Date()
@@ -395,21 +380,15 @@ const Products = () => {
 
                 if (isPWA() || isMobile()) {
                     if (navigator.share) {
-                        const blob = await fetch(pdfUrl).then((res) =>
-                            res.blob(),
-                        )
-                        const file = new File([blob], fileName, {
-                            type: 'application/pdf',
-                        })
+                        const blob = await fetch(pdfUrl).then((res) => res.blob())
+                        const file = new File([blob], fileName, { type: 'application/pdf' })
                         navigator
                             .share({
                                 title: 'Shared PDF',
                                 text: `View the products here: ${shareableUrl}`,
                                 files: [file],
                             })
-                            .catch((err) =>
-                                console.error('Error sharing:', err),
-                            )
+                            .catch((err) => console.error('Error sharing:', err))
                     } else {
                         toast.error('Sharing not supported')
                     }
@@ -418,9 +397,7 @@ const Products = () => {
                     setIsShareDialogOpen(true)
                 }
             } else {
-                toast.error(
-                    `Error: ${response.data.error || 'Failed to generate PDF'}`,
-                )
+                toast.error(`Error: ${response.data.error || 'Failed to generate PDF'}`)
             }
         } catch (error) {
             console.error('Failed to generate PDF:', error)
@@ -469,14 +446,10 @@ const Products = () => {
                 setSelectedProduct(null)
                 setIsDialogOpen(false)
             } else {
-                toast.error(
-                    `Failed to ${selectedProduct ? 'update' : 'add'} product`,
-                )
+                toast.error(`Failed to ${selectedProduct ? 'update' : 'add'} product`)
             }
         } catch (error) {
-            toast.error(
-                `Error ${selectedProduct ? 'updating' : 'adding'} product`,
-            )
+            toast.error(`Error ${selectedProduct ? 'updating' : 'adding'} product`)
             console.error(error)
         } finally {
             setButtonLoading(false)
@@ -490,9 +463,7 @@ const Products = () => {
         }
         if (!deleteProductId) return
         try {
-            const response = await api.delete(
-                `/api/products/${deleteProductId}/pdf`,
-            )
+            const response = await api.delete(`/api/products/${deleteProductId}/pdf`)
             if (response.status === 200) {
                 toast.success('Product deleted successfully')
                 fetchProducts()
@@ -517,13 +488,12 @@ const Products = () => {
 
     const addAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
         if (!id) return
-
         if (type === 'advert') {
             if (selectedAdverts.some((a) => a.id === id)) return
-            setSelectedAdverts((prev) => [...prev, { id: id, position: 2 }])
+            setSelectedAdverts((prev) => [...prev, { id, position: 2 }])
         } else {
             if (selectedPromotions.some((p) => p.id === id)) return
-            setSelectedPromotions((prev) => [...prev, { id: id, position: 2 }])
+            setSelectedPromotions((prev) => [...prev, { id, position: 2 }])
         }
     }
 
@@ -542,12 +512,8 @@ const Products = () => {
     ) => {
         const updater = (pages: AdditionalPage[]) =>
             pages.map((p) => (p.id === id ? { ...p, position } : p))
-
-        if (type === 'advert') {
-            setSelectedAdverts(updater)
-        } else {
-            setSelectedPromotions(updater)
-        }
+        if (type === 'advert') setSelectedAdverts(updater)
+        else setSelectedPromotions(updater)
     }
 
     const renderPositionDropdown = (
@@ -556,37 +522,28 @@ const Products = () => {
     ) => {
         const totalProductPages = selectedRows.length
         const options = []
-
         options.push(
             <option key="pos-2" value={2}>
                 After Corporate Info
             </option>,
         )
-
         for (let i = 0; i < totalProductPages; i++) {
             options.push(
-                <option
-                    key={`pos-${i + 3}`}
-                    value={i + 3}
-                >{`After Product ${i + 1}`}</option>,
+                <option key={`pos-${i + 3}`} value={i + 3}>
+                    {`After Product ${i + 1}`}
+                </option>,
             )
         }
-
         options.push(
             <option key={`pos-end`} value={totalProductPages + 2}>
                 At the end
             </option>,
         )
-
         return (
             <select
                 value={page.position}
                 onChange={(e) =>
-                    updateAdditionalPagePosition(
-                        type,
-                        page.id,
-                        parseInt(e.target.value, 10),
-                    )
+                    updateAdditionalPagePosition(type, page.id, parseInt(e.target.value, 10))
                 }
                 className="rounded border p-1"
             >
@@ -595,10 +552,16 @@ const Products = () => {
         )
     }
 
-    // Compute tableLoading for DataTable
+    // ---------- NEW: options for Tar & Nicotine ----------
+    const tarOptions = Array.from({ length: 12 }, (_, i) =>
+        ((i + 1) / 10).toFixed(1),
+    ) // 0.1..1.2
+    const nicotineOptions = Array.from({ length: 12 }, (_, i) => String(i + 1)) // 1..12
+    // -----------------------------------------------------
+
     const tableLoading = initialBrandId
         ? filters.brandId !== initialBrandId || loading
-        : loading;
+        : loading
 
     return (
         <div className="space-y-4">
@@ -649,6 +612,7 @@ const Products = () => {
                 onPageChange={setPage}
             />
 
+            {/* Add/Edit Product */}
             <Dialog
                 isOpen={isDialogOpen}
                 onClose={() => {
@@ -678,9 +642,7 @@ const Products = () => {
 
                     <div>
                         <select
-                            {...register('brandId', {
-                                required: 'Brand is required',
-                            })}
+                            {...register('brandId', { required: 'Brand is required' })}
                             className="block w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                         >
                             <option value="">Select a brand</option>
@@ -726,37 +688,59 @@ const Products = () => {
                             </p>
                         )}
                     </div>
+
+                    {/* ---------- Tar (mg) DROPDOWN ---------- */}
                     <div>
-                        <FloatingLabelInput
-                            type="number"
-                            label="Enter Tar (mg)"
-                            name="tar"
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                            Tar (mg)
+                        </label>
+                        <select
+                            className="block w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                             value={watch('tar') || ''}
-                            onChange={(val) => setValue('tar', val)}
-                            error={String(errors.tar?.message || '')}
-                        />
+                            onChange={(e) => setValue('tar', e.target.value, { shouldValidate: true })}
+                        >
+                            <option value="">Select Tar</option>
+                            {tarOptions.map((v) => (
+                                <option key={v} value={v}>
+                                    {v}
+                                </option>
+                            ))}
+                        </select>
                         {errors.tar?.message && (
-                            <p className="mt-1 hidden text-sm text-red-500">
+                            <p className="mt-1 text-sm text-red-500">
                                 {String(errors.tar.message)}
                             </p>
                         )}
                     </div>
+                    {/* -------------------------------------- */}
 
+                    {/* ---------- Nicotine (mg) DROPDOWN ---------- */}
                     <div>
-                        <FloatingLabelInput
-                            type="number"
-                            label="Enter Nicotine (mg)"
-                            name="nicotine"
+                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                            Nicotine (mg)
+                        </label>
+                        <select
+                            className="block w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                             value={watch('nicotine') || ''}
-                            onChange={(val) => setValue('nicotine', val)}
-                            error={String(errors.nicotine?.message || '')}
-                        />
+                            onChange={(e) =>
+                                setValue('nicotine', e.target.value, { shouldValidate: true })
+                            }
+                        >
+                            <option value="">Select Nicotine</option>
+                            {nicotineOptions.map((v) => (
+                                <option key={v} value={v}>
+                                    {v}
+                                </option>
+                            ))}
+                        </select>
                         {errors.nicotine?.message && (
-                            <p className="mt-1 hidden text-sm text-red-500">
+                            <p className="mt-1 text-sm text-red-500">
                                 {String(errors.nicotine.message)}
                             </p>
                         )}
                     </div>
+                    {/* -------------------------------------------- */}
+
                     <div>
                         <FloatingLabelInput
                             type="number"
@@ -790,9 +774,7 @@ const Products = () => {
 
                     <div>
                         <select
-                            {...register('fsp', {
-                                required: 'FSP selection is required',
-                            })}
+                            {...register('fsp', { required: 'FSP selection is required' })}
                             className="block w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                         >
                             <option value="">Select FSP</option>
@@ -805,11 +787,10 @@ const Products = () => {
                             </p>
                         )}
                     </div>
+
                     <div>
                         <select
-                            {...register('capsules', {
-                                required: 'Select number of capsules',
-                            })}
+                            {...register('capsules', { required: 'Select number of capsules' })}
                             className="block w-full rounded-lg border border-gray-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                         >
                             <option value="">Select Capsules</option>
@@ -842,9 +823,7 @@ const Products = () => {
 
                     {selectedProduct?.image && (
                         <div className="mb-2">
-                            <p className="mb-1 text-sm text-gray-600">
-                                Current Image Preview:
-                            </p>
+                            <p className="mb-1 text-sm text-gray-600">Current Image Preview:</p>
                             <img
                                 src={selectedProduct.image}
                                 alt="Product Image"
@@ -852,6 +831,7 @@ const Products = () => {
                             />
                         </div>
                     )}
+
                     <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">
                             Upload Product Image
@@ -860,9 +840,7 @@ const Products = () => {
                             type="file"
                             accept="image/*"
                             {...register('image', {
-                                required: !selectedProduct
-                                    ? 'Product image is required'
-                                    : false,
+                                required: !selectedProduct ? 'Product image is required' : false,
                             })}
                         />
                         {errors.image?.message && (
@@ -880,9 +858,7 @@ const Products = () => {
                             type="file"
                             accept="application/pdf"
                             {...register('pdf', {
-                                required: !selectedProduct
-                                    ? 'Product PDF is required'
-                                    : false,
+                                required: !selectedProduct ? 'Product PDF is required' : false,
                             })}
                         />
                         {errors.pdf?.message && (
@@ -894,6 +870,7 @@ const Products = () => {
                 </div>
             </Dialog>
 
+            {/* Generate PDF flow */}
             <Dialog
                 isOpen={isPdfDialogOpen}
                 onClose={() => {
@@ -917,9 +894,7 @@ const Products = () => {
                             <select
                                 className="w-full rounded border p-2"
                                 value={selectedBanner || ''}
-                                onChange={(e) =>
-                                    setSelectedBanner(e.target.value)
-                                }
+                                onChange={(e) => setSelectedBanner(e.target.value)}
                             >
                                 <option value="">Select Corporate Info</option>
                                 {banners.map((banner) => (
@@ -933,28 +908,17 @@ const Products = () => {
 
                     {pdfStep === 2 && (
                         <div>
-                            {/* Advertisements Selection */}
                             <div className="mb-4">
                                 <h3 className="mb-2 font-semibold">Adverts</h3>
                                 <div className="flex items-center gap-2">
                                     <select
                                         className="w-full rounded border p-2"
                                         value=""
-                                        onChange={(e) =>
-                                            addAdditionalPage(
-                                                'advert',
-                                                e.target.value,
-                                            )
-                                        }
+                                        onChange={(e) => addAdditionalPage('advert', e.target.value)}
                                     >
-                                        <option value="">
-                                            Select an Advert to add
-                                        </option>
+                                        <option value="">Select an Advert to add</option>
                                         {advertisements.map((advert) => (
-                                            <option
-                                                key={advert.id}
-                                                value={advert.id}
-                                            >
+                                            <option key={advert.id} value={advert.id}>
                                                 {advert.title}
                                             </option>
                                         ))}
@@ -962,27 +926,12 @@ const Products = () => {
                                 </div>
                                 <div className="mt-2 space-y-1">
                                     {selectedAdverts.map((ad) => (
-                                        <div
-                                            key={ad.id}
-                                            className="flex items-center justify-between text-sm"
-                                        >
-                                            <span>
-                                                {
-                                                    advertisements.find(
-                                                        (item) =>
-                                                            item.id === ad.id,
-                                                    )?.title
-                                                }
-                                            </span>
+                                        <div key={ad.id} className="flex items-center justify-between text-sm">
+                                            <span>{advertisements.find((it) => it.id === ad.id)?.title}</span>
                                             <Button
                                                 size="small"
                                                 variant="outline"
-                                                onClick={() =>
-                                                    removeAdditionalPage(
-                                                        'advert',
-                                                        ad.id,
-                                                    )
-                                                }
+                                                onClick={() => removeAdditionalPage('advert', ad.id)}
                                             >
                                                 Remove
                                             </Button>
@@ -990,30 +939,18 @@ const Products = () => {
                                     ))}
                                 </div>
                             </div>
-                            {/* Promotions Selection */}
+
                             <div>
-                                <h3 className="mb-2 font-semibold">
-                                    Promotions
-                                </h3>
+                                <h3 className="mb-2 font-semibold">Promotions</h3>
                                 <div className="flex items-center gap-2">
                                     <select
                                         className="w-full rounded border p-2"
                                         value=""
-                                        onChange={(e) =>
-                                            addAdditionalPage(
-                                                'promotion',
-                                                e.target.value,
-                                            )
-                                        }
+                                        onChange={(e) => addAdditionalPage('promotion', e.target.value)}
                                     >
-                                        <option value="">
-                                            Select a Promotion to add
-                                        </option>
+                                        <option value="">Select a Promotion to add</option>
                                         {promotions.map((promo) => (
-                                            <option
-                                                key={promo.id}
-                                                value={promo.id}
-                                            >
+                                            <option key={promo.id} value={promo.id}>
                                                 {promo.title}
                                             </option>
                                         ))}
@@ -1021,28 +958,12 @@ const Products = () => {
                                 </div>
                                 <div className="mt-2 space-y-1">
                                     {selectedPromotions.map((promo) => (
-                                        <div
-                                            key={promo.id}
-                                            className="flex items-center justify-between text-sm"
-                                        >
-                                            <span>
-                                                {
-                                                    promotions.find(
-                                                        (item) =>
-                                                            item.id ===
-                                                            promo.id,
-                                                    )?.title
-                                                }
-                                            </span>
+                                        <div key={promo.id} className="flex items-center justify-between text-sm">
+                                            <span>{promotions.find((it) => it.id === promo.id)?.title}</span>
                                             <Button
                                                 size="small"
                                                 variant="outline"
-                                                onClick={() =>
-                                                    removeAdditionalPage(
-                                                        'promotion',
-                                                        promo.id,
-                                                    )
-                                                }
+                                                onClick={() => removeAdditionalPage('promotion', promo.id)}
                                             >
                                                 Remove
                                             </Button>
@@ -1055,69 +976,35 @@ const Products = () => {
 
                     {pdfStep === 3 && (
                         <div>
-                            <div className="bg-blue-50 mb-4 rounded-lg p-3">
-                                <h4 className="text-blue-800 mb-2 font-semibold">
-                                    What are you doing here?
-                                </h4>
-                                <p className="text-blue-700 text-sm">
-                                    You're arranging where your selected Adverts
-                                    and Promotions will appear in the final PDF.
-                                    The Corporate Info will always be the first
-                                    page, followed by your selected products.
-                                    Use the dropdowns below to choose where each
-                                    Advert and Promotion should be inserted
-                                    between these pages.
+                            <div className="mb-4 rounded-lg bg-blue-50 p-3">
+                                <h4 className="mb-2 font-semibold text-blue-800">What are you doing here?</h4>
+                                <p className="text-sm text-blue-700">
+                                    You're arranging where your selected Adverts and Promotions will appear in the
+                                    final PDF. The Corporate Info will always be the first page, followed by your
+                                    selected products. Use the dropdowns below to choose where each Advert and
+                                    Promotion should be inserted.
                                 </p>
                             </div>
 
                             {selectedAdverts.length > 0 && (
                                 <div className="space-y-2">
-                                    <h3 className="font-semibold">
-                                        Selected Adverts
-                                    </h3>
+                                    <h3 className="font-semibold">Selected Adverts</h3>
                                     {selectedAdverts.map((advert) => (
-                                        <div
-                                            key={advert.id}
-                                            className="flex items-center justify-between"
-                                        >
-                                            <p>
-                                                {
-                                                    advertisements.find(
-                                                        (a) =>
-                                                            a.id === advert.id,
-                                                    )?.title
-                                                }
-                                            </p>
-                                            {renderPositionDropdown(
-                                                'advert',
-                                                advert,
-                                            )}
+                                        <div key={advert.id} className="flex items-center justify-between">
+                                            <p>{advertisements.find((a) => a.id === advert.id)?.title}</p>
+                                            {renderPositionDropdown('advert', advert)}
                                         </div>
                                     ))}
                                 </div>
                             )}
+
                             {selectedPromotions.length > 0 && (
                                 <div className="mt-4 space-y-2">
-                                    <h3 className="font-semibold">
-                                        Selected Promotions
-                                    </h3>
+                                    <h3 className="font-semibold">Selected Promotions</h3>
                                     {selectedPromotions.map((promo) => (
-                                        <div
-                                            key={promo.id}
-                                            className="flex items-center justify-between"
-                                        >
-                                            <p>
-                                                {
-                                                    promotions.find(
-                                                        (p) =>
-                                                            p.id === promo.id,
-                                                    )?.title
-                                                }
-                                            </p>
-                                            {renderPositionDropdown(
-                                                'promotion',
-                                                promo,
-                                            )}
+                                        <div key={promo.id} className="flex items-center justify-between">
+                                            <p>{promotions.find((p) => p.id === promo.id)?.title}</p>
+                                            {renderPositionDropdown('promotion', promo)}
                                         </div>
                                     ))}
                                 </div>
@@ -1133,11 +1020,7 @@ const Products = () => {
                                     </div>
                                     <Select
                                         onValueChange={(value) =>
-                                            setSelectedClient(
-                                                value === 'none'
-                                                    ? undefined
-                                                    : value,
-                                            )
+                                            setSelectedClient(value === 'none' ? undefined : value)
                                         }
                                         value={selectedClient}
                                     >
@@ -1145,14 +1028,9 @@ const Products = () => {
                                             <SelectValue placeholder="Select a client" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="none">
-                                                No Client
-                                            </SelectItem>
+                                            <SelectItem value="none">No Client</SelectItem>
                                             {clients.map((client) => (
-                                                <SelectItem
-                                                    key={client.id}
-                                                    value={client.id}
-                                                >
+                                                <SelectItem key={client.id} value={client.id}>
                                                     {`${client.firstName} ${client.lastName}`}
                                                 </SelectItem>
                                             ))}
@@ -1165,29 +1043,17 @@ const Products = () => {
 
                     <div className="mt-6 flex justify-end gap-4">
                         {pdfStep > 1 && (
-                            <Button
-                                variant="outline"
-                                onClick={() =>
-                                    setPdfStep((prevStep) => prevStep - 1)
-                                }
-                            >
+                            <Button variant="outline" onClick={() => setPdfStep((s) => s - 1)}>
                                 Back
                             </Button>
                         )}
-
                         {pdfStep < 3 ? (
                             <Button variant="black" onClick={handleNextStep}>
                                 Next
                             </Button>
                         ) : (
-                            <Button
-                                variant="black"
-                                onClick={handleGeneratePDF}
-                                disabled={buttonLoading}
-                            >
-                                {buttonLoading
-                                    ? 'Generating...'
-                                    : 'Generate PDF'}
+                            <Button variant="black" onClick={handleGeneratePDF} disabled={buttonLoading}>
+                                {buttonLoading ? 'Generating...' : 'Generate PDF'}
                             </Button>
                         )}
                     </div>
@@ -1209,10 +1075,7 @@ const Products = () => {
                 title="PDF Generated"
             >
                 <div className="space-y-4 p-4">
-                    <p className="text-gray-700">
-                        Your PDF has been generated successfully.
-                    </p>
-
+                    <p className="text-gray-700">Your PDF has been generated successfully.</p>
                     <div className="flex items-center space-x-2 rounded-md border bg-gray-100 p-2">
                         <span className="truncate">{shareableUrl}</span>
                         <Button
@@ -1235,18 +1098,25 @@ const Products = () => {
             >
                 <form onSubmit={handleClientSubmit(submitQuickClient)} className="space-y-4">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <Input placeholder="First Name" {...clientRegister('firstName', { required: 'First name is required' })} {...clientRegister('firstName')} />
+                        <Input placeholder="First Name" {...clientRegister('firstName')} />
                         {clientErrors.firstName && (
                             <p className="mt-1 text-sm text-red-500">{clientErrors.firstName.message}</p>
                         )}
+
                         <Input placeholder="Last Name" {...clientRegister('lastName')} />
-                        {clientErrors.lastName && <p className="mt-1 text-sm text-red-500">{clientErrors.lastName.message}</p>}
+                        {clientErrors.lastName && (
+                            <p className="mt-1 text-sm text-red-500">{clientErrors.lastName.message}</p>
+                        )}
 
                         <Input placeholder="Company" {...clientRegister('company')} />
-                        {clientErrors.company && <p className="mt-1 text-sm text-red-500">{clientErrors.company.message}</p>}
+                        {clientErrors.company && (
+                            <p className="mt-1 text-sm text-red-500">{clientErrors.company.message}</p>
+                        )}
 
                         <Input placeholder="Nickname" {...clientRegister('nickname')} />
-                        {clientErrors.nickname && <p className="mt-1 text-sm text-red-500">{clientErrors.nickname.message}</p>}
+                        {clientErrors.nickname && (
+                            <p className="mt-1 text-sm text-red-500">{clientErrors.nickname.message}</p>
+                        )}
 
                         <Controller
                             name="primaryNumber"
@@ -1291,7 +1161,6 @@ const Products = () => {
                                 </>
                             )}
                         />
-
                     </div>
                     <div className="flex justify-end">
                         <Button type="submit" variant="black" disabled={isClientSubmitting}>
@@ -1300,7 +1169,6 @@ const Products = () => {
                     </div>
                 </form>
             </Dialog>
-
         </div>
     )
 }
