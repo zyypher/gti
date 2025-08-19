@@ -3,7 +3,23 @@ import { nanoid } from 'nanoid'
 import { jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
-import { SharedPDF, Client } from '@prisma/client'
+import { startOfDay, endOfDay } from 'date-fns'
+
+type SharedPdfRow = {
+    id: string
+    uniqueSlug: string
+    productIds: string
+    createdAt: Date
+    expiresAt: Date
+    createdById: string
+    clientId: string | null
+    client?: {
+        id: string
+        firstName: string
+        lastName: string
+        nickname: string
+    } | null
+}
 
 // ✅ Middleware to Extract User ID (Example - Adjust for Auth System)
 async function getUserIdFromToken(req: Request): Promise<string | null> {
@@ -43,55 +59,94 @@ async function getUserIdFromToken(req: Request): Promise<string | null> {
     }
 }
 
-
 // ✅ GET Method: Fetch Only PDFs Created by the Current User
 export async function GET(req: Request) {
     try {
-        const userId = await getUserIdFromToken(req)
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        const url = new URL(req.url)
+
+        // Filters
+        const dateStr = url.searchParams.get('date') // yyyy-MM-dd
+        const clientId = url.searchParams.get('clientId') || undefined
+        const productId = url.searchParams.get('productId') || undefined
+        const productName = url.searchParams.get('product') || undefined // free-text product name
+
+        // Base where (can be extended safely)
+        const where: any = {}
+        if (clientId) where.clientId = clientId
+        if (dateStr) {
+            const d = new Date(dateStr)
+            where.createdAt = { gte: startOfDay(d), lte: endOfDay(d) }
         }
 
-        const sharedPdfs = await prisma.sharedPDF.findMany({
-            where: { createdById: userId },
-            orderBy: { createdAt: 'desc' }, // Sort by creation date descending
+        // Pull PDFs (without products first)
+        const rows: SharedPdfRow[] = await prisma.sharedPDF.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
             include: {
-                client: true, // Include client data
+                client: {
+                    select: { id: true, firstName: true, lastName: true, nickname: true },
+                },
             },
         })
 
-        const pdfsWithDetails = await Promise.all(
-            sharedPdfs.map(
-                async (pdf: SharedPDF & { client: Client | null }) => {
-                    const productIdsArray = pdf.productIds.split(',')
+        if (!rows.length) return NextResponse.json([])
 
-                    const products = await prisma.product.findMany({
-                        where: { id: { in: productIdsArray } },
-                        select: { id: true, name: true, pdfUrl: true },
-                    })
+        // Parse all product ids used across these PDFs and fetch them once
+        const allIds = new Set<string>()
+        const parsedIdsByPdf = new Map<string, string[]>()
 
-                    return {
-                        id: pdf.id,
-                        uniqueSlug: pdf.uniqueSlug,
-                        products,
-                        createdAt: pdf.createdAt,
-                        expiresAt: pdf.expiresAt,
-                        client: pdf.client
-                            ? {
-                                  id: pdf.client.id,
-                                  firstName: pdf.client.firstName,
-                                  lastName: pdf.client.lastName,
-                                  nickname: pdf.client.nickname,
-                              }
-                            : null,
-                    }
+        for (const r of rows) {
+            const ids = r.productIds
+                ? r.productIds.split(',').map((s) => s.trim()).filter(Boolean)
+                : []
+            parsedIdsByPdf.set(r.id, ids)
+            ids.forEach((id) => allIds.add(id))
+        }
+
+        const allProducts = await prisma.product.findMany({
+            where: { id: { in: Array.from(allIds) } },
+            select: { id: true, name: true, pdfUrl: true },
+        })
+        const productMap = new Map(allProducts.map((p) => [p.id, p]))
+
+        // Optional product filtering
+        const matchesProduct = (ids: string[]) => {
+            // productId wins (exact match)
+            if (productId) return ids.includes(productId)
+
+            // productName (case-insensitive "contains" on product.name)
+            if (productName && productName.trim()) {
+                const q = productName.trim().toLowerCase()
+                return ids.some((id) => {
+                    const p = productMap.get(id)
+                    return p ? p.name.toLowerCase().includes(q) : false
+                })
+            }
+
+            // no product filter
+            return true
+        }
+
+        // Build final response with products attached and product filter applied
+        const result = rows
+            .filter((r) => matchesProduct(parsedIdsByPdf.get(r.id) ?? []))
+            .map((r) => {
+                const ids = parsedIdsByPdf.get(r.id) ?? []
+                return {
+                    id: r.id,
+                    uniqueSlug: r.uniqueSlug,
+                    createdAt: r.createdAt,
+                    expiresAt: r.expiresAt,
+                    client: r.client ?? null,
+                    products: ids
+                        .map((id) => productMap.get(id))
+                        .filter(Boolean) as { id: string; name: string; pdfUrl: string }[],
                 }
-            ),
-        )
+            })
 
-        return NextResponse.json(pdfsWithDetails)
-    } catch (error) {
-        console.error('Error fetching generated PDFs:', error)
+        return NextResponse.json(result)
+    } catch (err) {
+        console.error('GET /api/shared-pdf error:', err)
         return NextResponse.json(
             { error: 'Failed to fetch generated PDFs' },
             { status: 500 },
