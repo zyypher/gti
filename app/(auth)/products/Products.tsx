@@ -552,16 +552,34 @@ const Products = () => {
         )
     }
 
-    // ---------- NEW: options for Tar & Nicotine ----------
+    // ---------- options for Tar & Nicotine ----------
     const tarOptions = Array.from({ length: 12 }, (_, i) =>
         ((i + 1) / 10).toFixed(1),
     ) // 0.1..1.2
     const nicotineOptions = Array.from({ length: 12 }, (_, i) => String(i + 1)) // 1..12
-    // -----------------------------------------------------
+    // -------------------------------------------------
 
     const tableLoading = initialBrandId
         ? filters.brandId !== initialBrandId || loading
         : loading
+
+    // ---------- helpers to render PDF previews (object with fallback) ----------
+    const PdfPreview = ({ src, className }: { src?: string; className?: string }) => {
+        if (!src) return null
+        const url = `${src}${src.includes('#') ? '' : '#toolbar=0&navpanes=0&scrollbar=1'}`
+        return (
+            <object
+                data={url}
+                type="application/pdf"
+                className={className ?? 'h-64 w-full rounded-md border'}
+            >
+                <div className="flex h-full w-full items-center justify-center rounded-md border text-sm text-red-500">
+                    Failed to load preview
+                </div>
+            </object>
+        )
+    }
+    // --------------------------------------------------------------------------
 
     return (
         <div className="space-y-4">
@@ -689,7 +707,7 @@ const Products = () => {
                         )}
                     </div>
 
-                    {/* ---------- Tar (mg) DROPDOWN ---------- */}
+                    {/* Tar (mg) dropdown */}
                     <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">
                             Tar (mg)
@@ -712,9 +730,8 @@ const Products = () => {
                             </p>
                         )}
                     </div>
-                    {/* -------------------------------------- */}
 
-                    {/* ---------- Nicotine (mg) DROPDOWN ---------- */}
+                    {/* Nicotine (mg) dropdown */}
                     <div>
                         <label className="mb-2 block text-sm font-medium text-gray-700">
                             Nicotine (mg)
@@ -739,7 +756,6 @@ const Products = () => {
                             </p>
                         )}
                     </div>
-                    {/* -------------------------------------------- */}
 
                     <div>
                         <FloatingLabelInput
@@ -887,7 +903,7 @@ const Products = () => {
                         : 'Confirm & Generate'
                     }`}
             >
-                <div className="space-y-4 p-4">
+                <div className="max-h-[75vh] overflow-y-auto space-y-4 p-4 pr-2">
                     {pdfStep === 1 && (
                         <>
                             <p>Select a Corporate Info for the PDF:</p>
@@ -903,6 +919,17 @@ const Products = () => {
                                     </option>
                                 ))}
                             </select>
+
+                            {/* Preview the selected Corporate Info */}
+                            {selectedBanner && (
+                                <div className="mt-3">
+                                    <p className="mb-2 text-sm text-gray-600">Corporate Info preview</p>
+                                    <PdfPreview
+                                        src={banners.find((b) => b.id === selectedBanner)?.filePath}
+                                        className="h-[60vh] w-full rounded-md border"
+                                    />
+                                </div>
+                            )}
                         </>
                     )}
 
@@ -938,6 +965,18 @@ const Products = () => {
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* Adverts previews */}
+                                {selectedAdverts.length > 0 && (
+                                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        {selectedAdverts.map((ad) => {
+                                            const src = advertisements.find((it) => it.id === ad.id)?.filePath
+                                            return (
+                                                <PdfPreview key={ad.id} src={src} className="h-64 w-full rounded-md border" />
+                                            )
+                                        })}
+                                    </div>
+                                )}
                             </div>
 
                             <div>
@@ -970,6 +1009,18 @@ const Products = () => {
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* Promotions previews */}
+                                {selectedPromotions.length > 0 && (
+                                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        {selectedPromotions.map((promo) => {
+                                            const src = promotions.find((it) => it.id === promo.id)?.filePath
+                                            return (
+                                                <PdfPreview key={promo.id} src={src} className="h-64 w-full rounded-md border" />
+                                            )
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
