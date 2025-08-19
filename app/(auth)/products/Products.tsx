@@ -11,7 +11,6 @@ import api from '@/lib/api'
 import routes from '@/lib/routes'
 import toast from 'react-hot-toast'
 import { Plus } from 'lucide-react'
-import { useForm } from 'react-hook-form'
 import { Dialog } from '@/components/ui/dialog'
 import PageHeading from '@/components/layout/page-heading'
 import { FloatingLabelInput } from '@/components/ui/floating-label-input'
@@ -26,6 +25,13 @@ import {
 import 'react-quill/dist/quill.snow.css'
 import { useSearchParams } from 'next/navigation'
 import { PaginationBar } from '@/components/ui/pagination'
+import { useForm, Controller } from 'react-hook-form'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
+import { countryData } from '@/lib/country-data'
+import { isValidPhoneNumber } from 'react-phone-number-input'
+import * as yup from 'yup'
+import { yupResolver } from '@hookform/resolvers/yup'
 
 interface IBrand {
     id: string
@@ -58,6 +64,36 @@ type Client = {
     firstName: string
     lastName: string
 }
+
+type QuickClientForm = {
+    firstName: string
+    lastName: string
+    company: string
+    primaryNumber: string
+    secondaryNumber?: string
+    country: string
+    nickname: string
+}
+
+const clientSchema = yup.object({
+    firstName: yup.string().required('First name is required'),
+    lastName: yup.string().required('Last name is required'),
+    company: yup.string().required('Company is required'),
+    nickname: yup.string().required('Nickname is required'),
+    primaryNumber: yup
+        .string()
+        .required('Primary number is required')
+        .test('is-valid', 'Enter a valid phone number', (value) =>
+            value ? isValidPhoneNumber(value) : false
+        ),
+    secondaryNumber: yup
+        .string()
+        .optional()
+        .test('is-valid', 'Enter a valid phone number', (value) =>
+            !value || isValidPhoneNumber(value)
+        ),
+    country: yup.string().required(),
+})
 
 const Products = () => {
     const [products, setProducts] = useState<ITable[]>([])
@@ -106,7 +142,8 @@ const Products = () => {
     const searchParams = useSearchParams();
     const initialBrandId = searchParams.get('brandId');
     const initialFilters: Record<string, string> = initialBrandId ? { brandId: initialBrandId } : {};
-    console.log('##initialBrandId:', initialBrandId, 'initialFilters:', initialFilters);
+    const [isClientDialogOpen, setIsClientDialogOpen] = useState(false)
+    const [isClientSubmitting, setIsClientSubmitting] = useState(false)
 
     const [page, setPage] = useState(1)
     const [pageSize] = useState(10)
@@ -119,6 +156,48 @@ const Products = () => {
     const isMobile = () => {
         return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
     }
+
+    const {
+        control: clientControl,
+        register: clientRegister,
+        handleSubmit: handleClientSubmit,
+        reset: resetClientForm,
+        setValue: setClientValue,
+        formState: { errors: clientErrors },
+    } = useForm<QuickClientForm>({
+        resolver: yupResolver(clientSchema),
+        defaultValues: {
+            firstName: '',
+            lastName: '',
+            company: '',
+            primaryNumber: '',
+            secondaryNumber: '',
+            country: 'United Arab Emirates',
+            nickname: '',
+        },
+    })
+
+    const openClientDialog = () => {
+        resetClientForm()
+        setIsClientDialogOpen(true)
+    }
+
+    const submitQuickClient = async (data: QuickClientForm) => {
+        setIsClientSubmitting(true)
+        try {
+            const res = await api.post('/api/clients', data)
+            const newClient: Client = res.data
+            setClients((prev) => [newClient, ...prev])
+            setSelectedClient(newClient.id)
+            toast.success('Client added')
+            setIsClientDialogOpen(false)
+        } catch (err) {
+            toast.error('Failed to add client')
+        } finally {
+            setIsClientSubmitting(false)
+        }
+    }
+
 
     useEffect(() => {
         const fetchNonProductPageItems = async () => {
@@ -824,13 +903,12 @@ const Products = () => {
                     setSelectedAdverts([])
                     setSelectedPromotions([])
                 }}
-                title={`Step ${pdfStep}: ${
-                    pdfStep === 1
-                        ? 'Select Corporate Info'
-                        : pdfStep === 2
-                          ? 'Add Adverts & Promotions'
-                          : 'Confirm & Generate'
-                }`}
+                title={`Step ${pdfStep}: ${pdfStep === 1
+                    ? 'Select Corporate Info'
+                    : pdfStep === 2
+                        ? 'Add Adverts & Promotions'
+                        : 'Confirm & Generate'
+                    }`}
             >
                 <div className="space-y-4 p-4">
                     {pdfStep === 1 && (
@@ -1047,9 +1125,12 @@ const Products = () => {
 
                             {clients.length > 0 && (
                                 <div className="mt-4">
-                                    <h3 className="mb-2 font-semibold">
-                                        Select Client (Optional)
-                                    </h3>
+                                    <div className="mb-2 flex items-center justify-between">
+                                        <h3 className="font-semibold">Select Client (Optional)</h3>
+                                        <Button variant="outline" onClick={openClientDialog}>
+                                            Add Client
+                                        </Button>
+                                    </div>
                                     <Select
                                         onValueChange={(value) =>
                                             setSelectedClient(
@@ -1146,6 +1227,80 @@ const Products = () => {
                     </div>
                 </div>
             </Dialog>
+
+            <Dialog
+                isOpen={isClientDialogOpen}
+                onClose={() => setIsClientDialogOpen(false)}
+                title="Add Client"
+            >
+                <form onSubmit={handleClientSubmit(submitQuickClient)} className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <Input placeholder="First Name" {...clientRegister('firstName', { required: 'First name is required' })} {...clientRegister('firstName')} />
+                        {clientErrors.firstName && (
+                            <p className="mt-1 text-sm text-red-500">{clientErrors.firstName.message}</p>
+                        )}
+                        <Input placeholder="Last Name" {...clientRegister('lastName')} />
+                        {clientErrors.lastName && <p className="mt-1 text-sm text-red-500">{clientErrors.lastName.message}</p>}
+
+                        <Input placeholder="Company" {...clientRegister('company')} />
+                        {clientErrors.company && <p className="mt-1 text-sm text-red-500">{clientErrors.company.message}</p>}
+
+                        <Input placeholder="Nickname" {...clientRegister('nickname')} />
+                        {clientErrors.nickname && <p className="mt-1 text-sm text-red-500">{clientErrors.nickname.message}</p>}
+
+                        <Controller
+                            name="primaryNumber"
+                            control={clientControl}
+                            render={({ field, fieldState }) => (
+                                <>
+                                    <PhoneInput
+                                        international
+                                        defaultCountry="AE"
+                                        placeholder="Enter primary number"
+                                        value={field.value ?? ''}
+                                        onChange={field.onChange}
+                                        onCountryChange={(country) => {
+                                            const info = countryData.find((c) => c.code === country)
+                                            if (info) setClientValue('country', info.name)
+                                        }}
+                                        inputComponent={Input}
+                                    />
+                                    {fieldState.error && (
+                                        <p className="mt-1 text-sm text-red-500">{fieldState.error.message}</p>
+                                    )}
+                                </>
+                            )}
+                        />
+
+                        <Controller
+                            name="secondaryNumber"
+                            control={clientControl}
+                            render={({ field, fieldState }) => (
+                                <>
+                                    <PhoneInput
+                                        international
+                                        defaultCountry="AE"
+                                        placeholder="Enter secondary number"
+                                        value={field.value ?? ''}
+                                        onChange={field.onChange}
+                                        inputComponent={Input}
+                                    />
+                                    {fieldState.error && (
+                                        <p className="mt-1 text-sm text-red-500">{fieldState.error.message}</p>
+                                    )}
+                                </>
+                            )}
+                        />
+
+                    </div>
+                    <div className="flex justify-end">
+                        <Button type="submit" variant="black" disabled={isClientSubmitting}>
+                            {isClientSubmitting ? 'Submitting...' : 'Submit'}
+                        </Button>
+                    </div>
+                </form>
+            </Dialog>
+
         </div>
     )
 }
