@@ -39,10 +39,11 @@ interface IBrand {
     position: number
 }
 
+/** ✨ UPDATED: allow front/back types too (kept legacy 'banner' just in case) */
 export type INonProductPageItem = {
     id: string
     title: string
-    type: 'banner' | 'advertisement' | 'promotion'
+    type: 'banner' | 'banner_front' | 'banner_back' | 'advertisement' | 'promotion'
     filePath: string
 }
 
@@ -55,7 +56,7 @@ type NonProductPageItem = {
     id: string
     filePath: string
     title: string
-    type: 'banner' | 'advertisement' | 'promotion'
+    type: 'banner' | 'banner_front' | 'banner_back' | 'advertisement' | 'promotion'
 }
 
 type Client = {
@@ -105,9 +106,15 @@ const Products = () => {
     const [selectedRows, setSelectedRows] = useState<string[]>([])
     const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false)
     const [pdfStep, setPdfStep] = useState(1)
+
+    /** ✨ NEW: split corporate infos into front/back + selections */
+    const [corporateFronts, setCorporateFronts] = useState<INonProductPageItem[]>([])
+    const [corporateBacks, setCorporateBacks] = useState<INonProductPageItem[]>([])
+    const [selectedCorporateFront, setSelectedCorporateFront] = useState<string | null>(null)
+    const [selectedCorporateBack, setSelectedCorporateBack] = useState<string | null>(null)
+    /** (keep old selectedBanner state unused so nothing else breaks) */
     const [selectedBanner, setSelectedBanner] = useState<string | null>(null)
 
-    const [banners, setBanners] = useState<INonProductPageItem[]>([])
     const [advertisements, setAdvertisements] = useState<INonProductPageItem[]>(
         [],
     )
@@ -200,8 +207,21 @@ const Products = () => {
             try {
                 const response = await api.get('/api/non-product-pages')
                 const data: INonProductPageItem[] = response.data
-                setBanners(data.filter((item) => item.type === 'banner'))
-                setAdvertisements(data.filter((item) => item.type === 'advertisement'))
+
+                // ✨ Split into front/back + others (support legacy 'banner' as front)
+                setCorporateFronts(
+                    data.filter(
+                        (item) =>
+                            item.type === 'banner_front' ||
+                            item.type === 'banner', // legacy fallback
+                    ),
+                )
+                setCorporateBacks(
+                    data.filter((item) => item.type === 'banner_back'),
+                )
+                setAdvertisements(
+                    data.filter((item) => item.type === 'advertisement'),
+                )
                 setPromotions(data.filter((item) => item.type === 'promotion'))
             } catch (error) {
                 console.error('Failed to load non-product page items:', error)
@@ -211,8 +231,9 @@ const Products = () => {
     }, [])
 
     const handleNextStep = () => {
-        if (pdfStep === 1 && !selectedBanner) {
-            toast.error('Please select a Corporate Info')
+        // ✨ Require both front & back at Step 1
+        if (pdfStep === 1 && (!selectedCorporateFront || !selectedCorporateBack)) {
+            toast.error('Please select Corporate Info (Front) and (Back).')
             return
         }
         if (
@@ -330,8 +351,10 @@ const Products = () => {
                 ...selectedPromotions.map((p) => ({ id: p.id, position: p.position })),
             ]
 
+            /** ✨ Send front/back ids to the (already updated) generate route */
             const response = await api.post('/api/pdf/generate', {
-                bannerId: selectedBanner,
+                frontCorporateId: selectedCorporateFront,
+                backCorporateId: selectedCorporateBack,
                 productIds: selectedRows,
                 additionalPages,
                 clientId: selectedClient,
@@ -377,6 +400,9 @@ const Products = () => {
                 reset()
                 setSelectedRows([])
                 setSelectedClient(undefined)
+                /** ✨ reset front/back selections */
+                setSelectedCorporateFront(null)
+                setSelectedCorporateBack(null)
 
                 if (isPWA() || isMobile()) {
                     if (navigator.share) {
@@ -566,19 +592,17 @@ const Products = () => {
     // ---------- helpers to render PDF previews (object with fallback) ----------
     const PdfPreview = ({ src, className }: { src?: string; className?: string }) => {
         if (!src) return null
-        const url = `${src}${src.includes('#') ? '' : '#toolbar=0&navpanes=0&scrollbar=1'}`
+        // Hide viewer chrome & its scrollbar where supported
+        const url = `${src}${src.includes('#') ? '' : '#'}toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
         return (
-            <object
-                data={url}
+            <embed
+                src={url}
                 type="application/pdf"
-                className={className ?? 'h-64 w-full rounded-md border'}
-            >
-                <div className="flex h-full w-full items-center justify-center rounded-md border text-sm text-red-500">
-                    Failed to load preview
-                </div>
-            </object>
+                className={className ?? 'h-64 w-full rounded-md border overflow-hidden pointer-events-none'}
+            />
         )
     }
+
     // --------------------------------------------------------------------------
 
     return (
@@ -895,9 +919,12 @@ const Products = () => {
                     setSelectedBanner(null)
                     setSelectedAdverts([])
                     setSelectedPromotions([])
+                    /** ✨ reset selections */
+                    setSelectedCorporateFront(null)
+                    setSelectedCorporateBack(null)
                 }}
                 title={`Step ${pdfStep}: ${pdfStep === 1
-                    ? 'Select Corporate Info'
+                    ? 'Select Corporate Infos'
                     : pdfStep === 2
                         ? 'Add Adverts & Promotions'
                         : 'Confirm & Generate'
@@ -905,34 +932,61 @@ const Products = () => {
             >
                 <div className="max-h-[75vh] overflow-y-auto space-y-4 p-4 pr-2">
                     {pdfStep === 1 && (
-                        <>
-                            <p>Select a Corporate Info for the PDF:</p>
-                            <select
-                                className="w-full rounded border p-2"
-                                value={selectedBanner || ''}
-                                onChange={(e) => setSelectedBanner(e.target.value)}
-                            >
-                                <option value="">Select Corporate Info</option>
-                                {banners.map((banner) => (
-                                    <option key={banner.id} value={banner.id}>
-                                        {banner.title}
-                                    </option>
-                                ))}
-                            </select>
+                        // stacked (2 rows) — no inner scroll here to avoid nested scrollbars
+                        <div className="space-y-6">
+                            <div>
+                                <p className="mb-2">Corporate Info (Front):</p>
+                                <select
+                                    className="w-full rounded border p-2"
+                                    value={selectedCorporateFront || ''}
+                                    onChange={(e) => setSelectedCorporateFront(e.target.value)}
+                                >
+                                    <option value="">Select Corporate Info (Front)</option>
+                                    {corporateFronts.map((item) => (
+                                        <option key={item.id} value={item.id}>
+                                            {item.title}
+                                        </option>
+                                    ))}
+                                </select>
 
-                            {/* Preview the selected Corporate Info */}
-                            {selectedBanner && (
-                                <div className="mt-3">
-                                    <p className="mb-2 text-sm text-gray-600">Corporate Info preview</p>
-                                    <PdfPreview
-                                        src={banners.find((b) => b.id === selectedBanner)?.filePath}
-                                        className="h-[60vh] w-full rounded-md border"
-                                    />
-                                </div>
-                            )}
-                        </>
+                                {selectedCorporateFront && (
+                                    <div className="mt-3">
+                                        <p className="mb-2 text-sm text-gray-600">Preview</p>
+                                        <PdfPreview
+                                            src={corporateFronts.find((b) => b.id === selectedCorporateFront)?.filePath}
+                                            className="h-64 w-full rounded-md border"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <p className="mb-2">Corporate Info (Back):</p>
+                                <select
+                                    className="w-full rounded border p-2"
+                                    value={selectedCorporateBack || ''}
+                                    onChange={(e) => setSelectedCorporateBack(e.target.value)}
+                                >
+                                    <option value="">Select Corporate Info (Back)</option>
+                                    {corporateBacks.map((item) => (
+                                        <option key={item.id} value={item.id}>
+                                            {item.title}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                {selectedCorporateBack && (
+                                    <div className="mt-3">
+                                        <p className="mb-2 text-sm text-gray-600">Preview</p>
+                                        <PdfPreview
+                                            src={corporateBacks.find((b) => b.id === selectedCorporateBack)?.filePath}
+                                            className="h-64 w-full rounded-md border"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     )}
-
                     {pdfStep === 2 && (
                         <div>
                             <div className="mb-4">

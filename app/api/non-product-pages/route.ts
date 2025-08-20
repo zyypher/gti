@@ -4,6 +4,9 @@ import { Upload } from '@aws-sdk/lib-storage';
 import { Readable } from 'stream';
 import { prisma } from '@/lib/prisma'
 
+const ALLOWED_TYPES = ['banner_front', 'banner_back', 'advertisement', 'promotion'] as const
+type AllowedType = (typeof ALLOWED_TYPES)[number]
+
 const BUCKET_NAME = process.env.AWS_BUCKET_NAME!;
 const s3 = new S3Client({
     region: process.env.AWS_REGION,
@@ -54,66 +57,57 @@ const uploadToS3 = async (file: File, folder: string): Promise<string> => {
 // ✅ GET All Promotions
 export async function GET() {
     try {
-        const promotions = await prisma.promotion.findMany();
-        return NextResponse.json(promotions);
-    } catch (error) {
-        console.error('Error fetching promotions:', error);
-        return NextResponse.json({ error: 'Failed to fetch promotions' }, { status: 500 });
+        const items = await prisma.promotion.findMany()
+        return NextResponse.json(items)
+    } catch (e) {
+        return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 })
     }
 }
 
 // ✅ POST - Create Promotion (Store Record First, Then Upload PDF)
 export async function POST(req: NextRequest) {
     try {
-        const formData = await req.formData();
-        const file = formData.get('file') as File;
-        const type = formData.get('type') as string;
-        const title = formData.get('title') as string;
+        const form = await req.formData()
+        const file = form.get('file') as File | null
+        const rawType = (form.get('type') as string)?.toLowerCase()
+        const title = (form.get('title') as string) || 'Untitled'
 
-        if (!type || !title) {
-            return NextResponse.json({ error: 'Type and title are required' }, { status: 400 });
+        if (!ALLOWED_TYPES.includes(rawType as AllowedType)) {
+            return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
         }
 
-        // ✅ Step 1: Create DB Record First
-        const promotion = await prisma.promotion.create({
-            data: { type, title },
-        });
+        // 1) create DB row
+        const record = await prisma.promotion.create({
+            data: { type: rawType, title },
+        })
 
-        // ✅ Step 2: Return Response Immediately (No Delay)
-        const response = NextResponse.json(promotion, { status: 201 });
-
-        // ✅ Step 3: Upload PDF to S3 in Background
+        // 2) upload in background (optional)
         if (file) {
             uploadToS3(file, 'promotions')
                 .then(async (filePath) => {
                     await prisma.promotion.update({
-                        where: { id: promotion.id },
+                        where: { id: record.id },
                         data: { filePath },
-                    });
+                    })
                 })
-                .catch((err) => console.error("PDF upload failed", err));
+                .catch((err) => console.error('PDF upload failed', err))
         }
 
-        return response;
-    } catch (error) {
-        console.error('Error creating promotion:', error);
-        return NextResponse.json({ error: 'Failed to create promotion' }, { status: 500 });
+        return NextResponse.json(record, { status: 201 })
+    } catch (e: any) {
+        return NextResponse.json({ error: e?.message ?? 'Failed to create' }, { status: 400 })
     }
 }
 
 // ✅ DELETE - Remove Promotion
+
 export async function DELETE(req: NextRequest) {
     try {
-        const id = req.nextUrl.searchParams.get('id');
-        if (!id) {
-            return NextResponse.json({ error: 'ID is required' }, { status: 400 });
-        }
-
-        await prisma.promotion.delete({ where: { id } });
-
-        return NextResponse.json({ message: 'Promotion deleted successfully' }, { status: 200 });
-    } catch (error) {
-        console.error('Error deleting promotion:', error);
-        return NextResponse.json({ error: 'Failed to delete promotion' }, { status: 500 });
+        const id = req.nextUrl.searchParams.get('id')
+        if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 })
+        await prisma.promotion.delete({ where: { id } })
+        return NextResponse.json({ ok: true })
+    } catch {
+        return NextResponse.json({ error: 'Failed to delete' }, { status: 500 })
     }
 }
