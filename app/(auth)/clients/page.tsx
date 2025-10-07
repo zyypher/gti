@@ -132,162 +132,153 @@ const ClientsPage = () => {
     const tableColumns = columns(handleOpenDialog, handleOpenDeleteDialog, role)
 
     return (
-        <div className="space-y-6 p-4">
+        <div className="space-y-6">
+            {/* Header + action */}
             <div className="flex items-center justify-between">
                 <PageHeading heading="Clients" />
                 {role === 'ADMIN' && (
                     <Button
                         variant="black"
                         onClick={() => handleOpenDialog(null)}
+                        className="rounded-xl px-4 py-2 shadow-sm transition hover:shadow-md"
                     >
                         Add Client
                     </Button>
                 )}
             </div>
 
-            <DataTable<Client>
-                columns={tableColumns}
-                data={clients}
-                filterField="nickname"
-                loading={loading}
-            />
+            {/* Soft glass wrapper for table */}
+            <div className="rounded-2xl border border-white/50 bg-white/70 p-3 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+                <DataTable<Client>
+                    columns={tableColumns}
+                    data={clients}
+                    filterField="nickname"
+                    loading={loading}
+                />
+            </div>
 
+            {/* Add/Edit Client */}
             <Dialog
                 isOpen={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
                 title={selectedClient ? 'Edit Client' : 'Add Client'}
             >
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div>
-                            <Input
-                                placeholder="First Name"
-                                {...register('firstName', {
-                                    required: 'First name is required',
-                                })}
-                            />
-                            {errors.firstName && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.firstName.message}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <Input
-                                placeholder="Last Name"
-                                {...register('lastName', {
-                                    required: 'Last name is required',
-                                })}
-                            />
-                            {errors.lastName && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.lastName.message}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <Input
-                                placeholder="Company"
-                                {...register('company', {
-                                    required: 'Company is required',
-                                })}
-                            />
-                            {errors.company && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.company.message}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <Input
-                                placeholder="Nickname"
-                                {...register('nickname', {
-                                    required: 'Nickname is required',
-                                })}
-                            />
-                            {errors.nickname && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.nickname.message}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <label
-                                htmlFor="primaryNumber"
-                                className="mb-1 block text-sm font-medium text-gray-700"
-                            >
-                                Primary Number
-                            </label>
-                            <Controller
-                                name="primaryNumber"
-                                control={control}
-                                rules={{
-                                    required: 'Primary number is required',
-                                }}
-                                render={({ field }) => (
-                                    <PhoneInput
-                                        international
-                                        defaultCountry="AE"
-                                        placeholder="Enter primary number"
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        onCountryChange={(country) => {
-                                            if (country) {
-                                                const countryInfo =
-                                                    countryData.find(
-                                                        (c) => c.code === country,
-                                                    )
-                                                if (countryInfo) {
-                                                    setValue(
-                                                        'country',
-                                                        countryInfo.name,
-                                                    )
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                    <div className="rounded-2xl border border-zinc-200 bg-white/80 p-4 backdrop-blur">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-zinc-700">First Name</label>
+                                <Input
+                                    placeholder="First Name"
+                                    className="rounded-xl border border-zinc-300 bg-white text-black placeholder:text-black/70 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10"
+                                    {...register('firstName', { required: 'First name is required' })}
+                                />
+                                {errors.firstName && (
+                                    <p className="text-sm text-red-500">{errors.firstName.message}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-zinc-700">Last Name</label>
+                                <Input
+                                    placeholder="Last Name"
+                                    className="rounded-xl border border-zinc-300 bg-white text-black placeholder:text-black/70 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10"
+                                    {...register('lastName', { required: 'Last name is required' })}
+                                />
+                                {errors.lastName && (
+                                    <p className="text-sm text-red-500">{errors.lastName.message}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-zinc-700">Company</label>
+                                <Input
+                                    placeholder="Company"
+                                    className="rounded-xl border border-zinc-300 bg-white text-black placeholder:text-black/70 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10"
+                                    {...register('company', { required: 'Company is required' })}
+                                />
+                                {errors.company && (
+                                    <p className="text-sm text-red-500">{errors.company.message}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-zinc-700">Nickname</label>
+                                <Input
+                                    placeholder="Nickname"
+                                    className="rounded-xl border border-zinc-300 bg-white text-black placeholder:text-black/70 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10"
+                                    {...register('nickname', { required: 'Nickname is required' })}
+                                />
+                                {errors.nickname && (
+                                    <p className="text-sm text-red-500">{errors.nickname.message}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-zinc-700">Primary Number</label>
+                                <Controller
+                                    name="primaryNumber"
+                                    control={control}
+                                    rules={{ required: 'Primary number is required' }}
+                                    render={({ field }) => (
+                                        <PhoneInput
+                                            international
+                                            defaultCountry="AE"
+                                            placeholder="Enter primary number"
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            onCountryChange={(country) => {
+                                                if (country) {
+                                                    const countryInfo = countryData.find((c) => c.code === country)
+                                                    if (countryInfo) setValue('country', countryInfo.name)
                                                 }
-                                            }
-                                        }}
-                                        inputComponent={Input}
-                                    />
+                                            }}
+                                            inputComponent={Input as any}
+                                            /* visual polish */
+                                            className="rounded-xl"
+                                        />
+                                    )}
+                                />
+                                {errors.primaryNumber && (
+                                    <p className="text-sm text-red-500">{errors.primaryNumber.message}</p>
                                 )}
-                            />
-                            {errors.primaryNumber && (
-                                <p className="mt-1 text-sm text-red-500">
-                                    {errors.primaryNumber.message}
-                                </p>
-                            )}
-                            {errors.country && !errors.primaryNumber && (
-                                <p className="mt-1 text-sm text-red-500">
-                                    {errors.country.message}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <label
-                                htmlFor="secondaryNumber"
-                                className="mb-1 block text-sm font-medium text-gray-700"
-                            >
-                                Secondary Number (Optional)
-                            </label>
-                            <Controller
-                                name="secondaryNumber"
-                                control={control}
-                                render={({ field }) => (
-                                    <PhoneInput
-                                        international
-                                        defaultCountry="AE"
-                                        placeholder="Enter secondary number"
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        inputComponent={Input}
-                                    />
-                                )}
-                            />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-zinc-700">Secondary Number (Optional)</label>
+                                <Controller
+                                    name="secondaryNumber"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <PhoneInput
+                                            international
+                                            defaultCountry="AE"
+                                            placeholder="Enter secondary number"
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            inputComponent={Input as any}
+                                            className="rounded-xl"
+                                        />
+                                    )}
+                                />
+                            </div>
                         </div>
                     </div>
-                    <div className="flex justify-end">
+
+                    <div className="flex items-center justify-end gap-3">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsDialogOpen(false)}
+                            className="rounded-xl"
+                        >
+                            Cancel
+                        </Button>
                         <Button
                             type="submit"
                             variant="black"
                             disabled={isSubmitting}
+                            className="rounded-xl px-5"
                         >
                             {isSubmitting ? 'Submitting...' : 'Submit'}
                         </Button>
@@ -295,27 +286,25 @@ const ClientsPage = () => {
                 </form>
             </Dialog>
 
+            {/* Delete Confirmation */}
             <Dialog
                 isOpen={isDeleteDialogOpen}
                 onClose={() => setIsDeleteDialogOpen(false)}
                 title="Confirm Deletion"
             >
-                <div>
-                    <p>
-                        Are you sure you want to delete this client? This action
-                        cannot be undone.
+                <div className="space-y-6">
+                    <p className="text-sm text-zinc-700">
+                        Are you sure you want to delete this client? This action cannot be undone.
                     </p>
-                    <div className="mt-6 flex justify-end gap-4">
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsDeleteDialogOpen(false)}
-                        >
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="rounded-xl">
                             Cancel
                         </Button>
                         <Button
                             variant="black"
                             onClick={handleDelete}
                             disabled={isSubmitting}
+                            className="rounded-xl"
                         >
                             {isSubmitting ? 'Deleting...' : 'Delete'}
                         </Button>
@@ -326,4 +315,4 @@ const ClientsPage = () => {
     )
 }
 
-export default ClientsPage 
+export default ClientsPage

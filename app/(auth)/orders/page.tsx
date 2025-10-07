@@ -27,6 +27,26 @@ interface Order {
     status: string
 }
 
+/* ------------------ purely presentational helper (style only) ------------------ */
+const Glass = ({
+    children,
+    className = '',
+}: {
+    children: React.ReactNode
+    className?: string
+}) => (
+    <div
+        className={[
+            'rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl',
+            'shadow-[0_6px_24px_rgba(0,0,0,0.08)]',
+            className,
+        ].join(' ')}
+    >
+        {children}
+    </div>
+)
+/* ------------------------------------------------------------------------------ */
+
 export default function Orders() {
     const [orders, setOrders] = useState<Order[]>([])
     const [loading, setLoading] = useState(true)
@@ -51,138 +71,136 @@ export default function Orders() {
             case 'CREATED':
                 return {
                     label: 'Created',
-                    style: {
-                        backgroundColor: '#DBEAFE', // blue-100
-                        color: '#1D4ED8', // blue-700
-                    },
+                    style: { backgroundColor: '#DBEAFE', color: '#1D4ED8' },
                 }
             case 'IN_PROGRESS':
                 return {
                     label: 'In Progress',
-                    style: {
-                        backgroundColor: '#FEF9C3', // yellow-100
-                        color: '#92400E', // yellow-700
-                    },
+                    style: { backgroundColor: '#FEF9C3', color: '#92400E' },
                 }
             case 'COMPLETED':
                 return {
                     label: 'Completed',
-                    style: {
-                        backgroundColor: '#DCFCE7', // green-100
-                        color: '#15803D', // green-700
-                    },
+                    style: { backgroundColor: '#DCFCE7', color: '#15803D' },
                 }
             default:
                 return {
                     label: status,
-                    style: {
-                        backgroundColor: '#F3F4F6', // gray-100
-                        color: '#374151', // gray-700
-                    },
+                    style: { backgroundColor: '#F3F4F6', color: '#374151' },
                 }
         }
     }
 
     return (
-        <div className="space-y-4">
-            <PageHeading heading="My Orders" />
+        <div className="relative">
+            {/* subtle gradient + radial glow */}
+            <div className="pointer-events-none absolute inset-0 -z-10">
+                <div className="absolute inset-0 bg-gradient-to-br from-zinc-50 via-white to-zinc-100" />
+                <div className="absolute left-1/2 top-[-120px] h-[420px] w-[620px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.12),rgba(255,255,255,0)_60%)]" />
+            </div>
 
-            {loading ? (
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
-                    {Array.from({ length: 6 }).map((_, index) => (
-                        <Card key={index} className="p-4">
-                            <Skeleton className="mb-2 h-6 w-16 rounded-md" />
-                            <Skeleton className="h-10 w-full rounded-md" />
-                        </Card>
-                    ))}
-                </div>
-            ) : orders.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-10">
-                    <p className="text-lg text-gray-500">No orders found</p>
-                </div>
-            ) : (
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
-                    {orders.map((order) => {
-                        const { label, style } = getStatusStyle(order.status)
-                        return (
-                            <Card
-                                key={order.id}
-                                className="relative rounded-lg border border-gray-300 bg-white p-5 shadow-md"
-                            >
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-lg font-semibold text-black">
-                                            {order.name}
-                                        </h3>
-                                        <span
-                                            style={{
-                                                ...style,
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                fontSize: '12px',
-                                                fontWeight: 600,
-                                            }}
-                                        >
-                                            {label}
-                                        </span>
-                                    </div>
-                                    <p className="flex items-center gap-2 text-sm text-gray-600">
-                                        <Building2 className="text-blue-500 size-4" />
-                                        {order.company}
-                                    </p>
-                                    <p className="flex items-center gap-2 text-sm text-gray-600">
-                                        <Mail className="size-4 text-gray-500" />
-                                        {order.email}
-                                    </p>
-                                    <p className="flex items-center gap-2 text-sm text-gray-600">
-                                        <Phone className="text-green-500 size-4" />
-                                        {order.phone}
-                                    </p>
-                                    <p className="flex items-center gap-2 text-sm text-gray-600">
-                                        <Calendar className="text-yellow-500 size-4" />
-                                        {new Date(
-                                            order.createdAt,
-                                        ).toLocaleDateString()}
-                                    </p>
-                                    <hr />
-                                    <div className="mt-2 text-sm">
-                                        <strong>Products Ordered:</strong>
-                                        <ul>
-                                            {order.products.length > 0 ? (
-                                                order.products.map(
-                                                    (product) => (
-                                                        <li
-                                                            key={product.id}
-                                                            className="text-gray-800"
-                                                        >
-                                                            {product.name} -{' '}
-                                                            {order.quantities[
-                                                                product.id
-                                                            ] || 0}{' '}
-                                                            units
-                                                        </li>
-                                                    ),
-                                                )
-                                            ) : (
-                                                <p className="text-gray-800">
-                                                    No products found
-                                                </p>
-                                            )}
-                                        </ul>
-                                    </div>
+            <div className="space-y-6 p-4">
+                <PageHeading heading="My Orders" />
 
-                                    <Link
-                                        href={`/orders/${order.id}`}
-                                        className="text-blue-500 font-medium"
-                                    >
-                                        View Details →
-                                    </Link>
+                {loading ? (
+                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
+                        {Array.from({ length: 6 }).map((_, index) => (
+                            <Glass key={index} className="p-5">
+                                <Skeleton className="mb-3 h-6 w-24 rounded-md" />
+                                <div className="rounded-2xl border border-white/20 bg-white/50 p-4 shadow-sm backdrop-blur-xl">
+                                    <Skeleton className="mb-3 h-5 w-3/5" />
+                                    <Skeleton className="mb-2 h-4 w-4/5" />
+                                    <Skeleton className="mb-2 h-4 w-3/5" />
+                                    <Skeleton className="mb-2 h-4 w-2/5" />
+                                    <Skeleton className="h-10 w-full" />
                                 </div>
-                            </Card>
-                        )
-                    })}
-                </div>
-            )}
+                            </Glass>
+                        ))}
+                    </div>
+                ) : orders.length === 0 ? (
+                    <Glass className="p-10">
+                        <div className="col-span-full flex flex-col items-center justify-center">
+                            <p className="text-lg text-zinc-500">No orders found</p>
+                        </div>
+                    </Glass>
+                ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
+                        {orders.map((order) => {
+                            const { label, style } = getStatusStyle(order.status)
+                            return (
+                                <Glass key={order.id} className="transition hover:scale-[1.01]">
+                                    <Card className="relative rounded-2xl border border-white/20 bg-white/60 p-5 shadow-[0_8px_24px_rgba(0,0,0,0.06)] backdrop-blur-xl">
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-lg font-semibold tracking-tight text-zinc-900">
+                                                    {order.name}
+                                                </h3>
+                                                <span
+                                                    style={{
+                                                        ...style,
+                                                        padding: '6px 10px',
+                                                        borderRadius: '9999px',
+                                                        fontSize: '12px',
+                                                        fontWeight: 600,
+                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                                                        border: '1px solid rgba(255,255,255,0.6)',
+                                                        backdropFilter: 'blur(6px)',
+                                                    }}
+                                                >
+                                                    {label}
+                                                </span>
+                                            </div>
+
+                                            <p className="flex items-center gap-2 text-sm text-zinc-700">
+                                                <Building2 className="size-4 text-indigo-600" />
+                                                {order.company}
+                                            </p>
+                                            <p className="flex items-center gap-2 text-sm text-zinc-700">
+                                                <Mail className="size-4 text-zinc-500" />
+                                                {order.email}
+                                            </p>
+                                            <p className="flex items-center gap-2 text-sm text-zinc-700">
+                                                <Phone className="size-4 text-emerald-600" />
+                                                {order.phone}
+                                            </p>
+                                            <p className="flex items-center gap-2 text-sm text-zinc-700">
+                                                <Calendar className="size-4 text-amber-600" />
+                                                {new Date(order.createdAt).toLocaleDateString()}
+                                            </p>
+
+                                            <div className="my-2 h-px w-full bg-gradient-to-r from-transparent via-zinc-300/60 to-transparent" />
+
+                                            <div className="mt-2 text-sm">
+                                                <strong className="text-zinc-900">Products Ordered:</strong>
+                                                <ul className="mt-1 space-y-0.5">
+                                                    {order.products.length > 0 ? (
+                                                        order.products.map((product) => (
+                                                            <li key={product.id} className="text-zinc-800">
+                                                                {product.name} — {order.quantities[product.id] || 0} units
+                                                            </li>
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-zinc-800">No products found</p>
+                                                    )}
+                                                </ul>
+                                            </div>
+
+                                            <div className="pt-2">
+                                                <Link
+                                                    href={`/orders/${order.id}`}
+                                                    className="inline-flex items-center rounded-xl border border-white/30 bg-white/70 px-3 py-2 text-sm font-medium text-indigo-700 shadow-sm backdrop-blur hover:bg-white/80"
+                                                >
+                                                    View Details →
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                </Glass>
+                            )
+                        })}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }
