@@ -38,6 +38,26 @@ interface IGeneratedPDF {
     client: TClient | null
 }
 
+/* ------------------ purely presentational helper (style only) ------------------ */
+const Glass = ({
+    children,
+    className = '',
+}: {
+    children: React.ReactNode
+    className?: string
+}) => (
+    <div
+        className={[
+            'rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl',
+            'shadow-[0_6px_24px_rgba(0,0,0,0.08)]',
+            className,
+        ].join(' ')}
+    >
+        {children}
+    </div>
+)
+/* ------------------------------------------------------------------------------ */
+
 export default function GeneratedPDFs() {
     // data
     const [pdfs, setPdfs] = useState<IGeneratedPDF[]>([])
@@ -136,182 +156,207 @@ export default function GeneratedPDFs() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-6">
-            <h1 className="mb-4 text-2xl font-semibold">Generated PDFs</h1>
-
-            {/* Compact filters row */}
-            <div className="mb-6 flex flex-wrap items-center gap-3">
-                {/* Date (react-day-picker in a popover, compact trigger) */}
-                <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            <span className="min-w-[120px] text-left">
-                                {selectedDate ? format(selectedDate, 'PP') : 'Choose date'}
-                            </span>
-                        </Button>
-                    </PopoverTrigger>
-
-                    <PopoverContent className="z-50 p-3 w-auto min-w-[300px]" align="start">
-                        <DayPicker
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={(d) => {
-                                setSelectedDate(d)
-                                if (d) setIsDateOpen(false)   // close after choosing
-                            }}
-                            showOutsideDays
-                            className="rdp"
-                        />
-                        <div className="mt-2 flex items-center justify-between">
-                            <Button
-                                onClick={() => {
-                                    clearDate()
-                                    setIsDateOpen(false)
-                                }}
-                            >
-                                Clear
-                            </Button>
-                            <Button
-                                onClick={() => {
-                                    setSelectedDate(new Date())
-                                    setIsDateOpen(false)
-                                }}
-                            >
-                                Today
-                            </Button>
-                        </div>
-                    </PopoverContent>
-                </Popover>
-
-                {selectedDate && (
-                    <Button onClick={clearDate} aria-label="Clear date">
-                        <X className="h-4 w-4" />
-                    </Button>
-                )}
-
-                {/* Client */}
-                <div className="flex items-center gap-2">
-                    <Select
-                        value={selectedClientId ?? 'all'}
-                        onValueChange={(v) => setSelectedClientId(v === 'all' ? undefined : v)}
-                    >
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="All clients" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All clients</SelectItem>
-                            {clients.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>
-                                    {c.firstName} {c.lastName}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {selectedClientId && (
-                        <Button onClick={clearClient} aria-label="Clear client">
-                            <X className="h-4 w-4" />
-                        </Button>
-                    )}
-                </div>
-
-                {/* Product search */}
-                <div className="flex items-center gap-2">
-                    <Input
-                        className="w-[220px]"
-                        placeholder="Filter by product…"
-                        value={productQuery}
-                        onChange={onProductChange}
-                    />
-                    {productQuery && (
-                        <Button onClick={clearProduct} aria-label="Clear product">
-                            <X className="h-4 w-4" />
-                        </Button>
-                    )}
-                </div>
+        <div className="relative">
+            {/* subtle background + radial accent */}
+            <div className="pointer-events-none absolute inset-0 -z-10">
+                <div className="absolute inset-0 bg-gradient-to-br from-zinc-50 via-white to-zinc-100" />
+                <div className="absolute left-1/2 top-[-140px] h-[460px] w-[680px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.12),rgba(255,255,255,0)_60%)]" />
             </div>
 
-            {/* List */}
-            {loading ? (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {Array.from({ length: 6 }).map((_, index) => (
-                        <Card key={index} className="rounded-lg p-4 shadow">
-                            <Skeleton className="mb-2 h-40 w-full" />
-                            <Skeleton className="mb-2 h-6 w-3/4" />
-                            <Skeleton className="mb-4 h-5 w-1/2" />
-                            <Skeleton className="h-10 w-full" />
-                        </Card>
-                    ))}
+            <div className="container mx-auto px-4 py-8 space-y-6">
+                <div className="flex items-end justify-between">
+                    <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Generated PDFs</h1>
                 </div>
-            ) : pdfs.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-10">
-                    <p className="text-lg text-gray-500">No generated PDFs found</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {pdfs.map((pdf) => (
-                        <Card
-                            key={pdf.id}
-                            className="flex h-full flex-col rounded-lg bg-white p-6 shadow-lg"
-                        >
-                            <CardContent className="flex flex-1 flex-col">
-                                {pdf.client && (
-                                    <p className="mb-2 text-sm font-semibold text-blue-600">
-                                        Client: {pdf.client.firstName} {pdf.client.lastName}
-                                    </p>
-                                )}
 
-                                <p className="text-sm font-semibold text-gray-900">Products:</p>
-                                <ul className="text-sm text-gray-600">
-                                    {pdf.products.length > 0 ? (
-                                        pdf.products.map((product) => <li key={product.id}>{product.name}</li>)
-                                    ) : (
-                                        <li>No products available</li>
-                                    )}
-                                </ul>
+                {/* Filters */}
+                <Glass className="p-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/* Date */}
+                        <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="flex items-center gap-2 rounded-xl border-white/40 bg-white/70"
+                                >
+                                    <Calendar className="h-4 w-4" />
+                                    <span className="min-w-[120px] text-left">
+                                        {selectedDate ? format(selectedDate, 'PP') : 'Choose date'}
+                                    </span>
+                                </Button>
+                            </PopoverTrigger>
 
-                                <p className="text-sm font-medium text-gray-700">
-                                    <strong>Created:</strong> {new Date(pdf.createdAt).toLocaleString()}
-                                </p>
-                                <p className="mb-2 text-sm text-gray-500">
-                                    <strong>Expires:</strong> {new Date(pdf.expiresAt).toLocaleString()}
-                                </p>
-
-                                <div className="mt-auto">
-                                    <Button variant="black" className="w-full" onClick={() => handleView(pdf)}>
-                                        View PDF
+                            <PopoverContent className="z-50 w-auto min-w-[300px] p-3" align="start">
+                                <DayPicker
+                                    mode="single"
+                                    selected={selectedDate}
+                                    onSelect={(d) => {
+                                        setSelectedDate(d)
+                                        if (d) setIsDateOpen(false)
+                                    }}
+                                    showOutsideDays
+                                    className="rdp"
+                                />
+                                <div className="mt-2 flex items-center justify-between">
+                                    <Button
+                                        onClick={() => {
+                                            clearDate()
+                                            setIsDateOpen(false)
+                                        }}
+                                    >
+                                        Clear
+                                    </Button>
+                                    <Button
+                                        onClick={() => {
+                                            setSelectedDate(new Date())
+                                            setIsDateOpen(false)
+                                        }}
+                                    >
+                                        Today
                                     </Button>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            )}
+                            </PopoverContent>
+                        </Popover>
 
-            {/* PDF Preview Modal */}
-            <Dialog
-                isOpen={!!activePdfUrl}
-                onClose={() => {
-                    setActivePdfUrl(null)
-                    setCurrentShareableUrl(null)
-                }}
-                title="PDF Preview"
-            >
-                <div className="space-y-4 p-4">
-                    {activePdfUrl && (
-                        <embed
-                            src={`${activePdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
-                            type="application/pdf"
-                            className="h-[80vh] w-full"
-                        />
-                    )}
-                    {currentShareableUrl && (
-                        <Button onClick={handleCopyLink} variant="black" className="w-full">
-                            Copy Shareable Link
-                        </Button>
-                    )}
-                </div>
-            </Dialog>
+                        {selectedDate && (
+                            <Button onClick={clearDate} aria-label="Clear date" variant="outline" className="rounded-xl">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
+
+                        {/* Client */}
+                        <div className="flex items-center gap-2">
+                            <Select
+                                value={selectedClientId ?? 'all'}
+                                onValueChange={(v) => setSelectedClientId(v === 'all' ? undefined : v)}
+                            >
+                                <SelectTrigger className="w-[200px] rounded-xl border-white/40 bg-white/70">
+                                    <SelectValue placeholder="All clients" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All clients</SelectItem>
+                                    {clients.map((c) => (
+                                        <SelectItem key={c.id} value={c.id}>
+                                            {c.firstName} {c.lastName}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {selectedClientId && (
+                                <Button onClick={clearClient} aria-label="Clear client" variant="outline" className="rounded-xl">
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+
+                        {/* Product search */}
+                        <div className="flex items-center gap-2">
+                            <Input
+                                className="w-[240px] rounded-xl border-white/40 bg-white/70 text-black placeholder:text-black placeholder:opacity-100"
+                                placeholder="Filter by product…"
+                                value={productQuery}
+                                onChange={onProductChange}
+                            />
+                            {productQuery && (
+                                <Button onClick={clearProduct} aria-label="Clear product" variant="outline" className="rounded-xl">
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </Glass>
+
+                {/* List */}
+                {loading ? (
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {Array.from({ length: 6 }).map((_, index) => (
+                            <Glass key={index} className="p-4">
+                                <Skeleton className="mb-3 h-44 w-full rounded-xl" />
+                                <Skeleton className="mb-2 h-6 w-2/3" />
+                                <Skeleton className="mb-2 h-5 w-1/2" />
+                                <Skeleton className="mb-2 h-5 w-1/3" />
+                                <Skeleton className="h-10 w-full" />
+                            </Glass>
+                        ))}
+                    </div>
+                ) : pdfs.length === 0 ? (
+                    <Glass className="p-10">
+                        <div className="flex flex-col items-center justify-center">
+                            <p className="text-lg text-zinc-500">No generated PDFs found</p>
+                        </div>
+                    </Glass>
+                ) : (
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {pdfs.map((pdf) => (
+                            <Glass key={pdf.id} className="h-full">
+                                <Card className="flex h-full flex-col rounded-2xl border border-white/20 bg-white/50 p-6 shadow-[0_8px_24px_rgba(0,0,0,0.06)] backdrop-blur-xl">
+                                    <CardContent className="flex flex-1 flex-col p-0">
+                                        {pdf.client && (
+                                            <p className="mb-2 text-sm font-semibold text-indigo-600">
+                                                Client: {pdf.client.firstName} {pdf.client.lastName}
+                                            </p>
+                                        )}
+
+                                        <p className="text-sm font-semibold text-zinc-900">Products:</p>
+                                        <ul className="mb-2 text-sm text-zinc-700">
+                                            {pdf.products.length > 0 ? (
+                                                pdf.products.map((product) => <li key={product.id}>{product.name}</li>)
+                                            ) : (
+                                                <li>No products available</li>
+                                            )}
+                                        </ul>
+
+                                        <p className="text-sm font-medium text-zinc-800">
+                                            <strong>Created:</strong>{' '}
+                                            {new Date(pdf.createdAt).toLocaleString()}
+                                        </p>
+                                        <p className="mb-4 text-sm text-zinc-600">
+                                            <strong>Expires:</strong>{' '}
+                                            {new Date(pdf.expiresAt).toLocaleString()}
+                                        </p>
+
+                                        <div className="mt-auto">
+                                            <Button
+                                                variant="black"
+                                                className="w-full rounded-xl"
+                                                onClick={() => handleView(pdf)}
+                                            >
+                                                View PDF
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </Glass>
+                        ))}
+                    </div>
+                )}
+
+                {/* PDF Preview Modal */}
+                <Dialog
+                    isOpen={!!activePdfUrl}
+                    onClose={() => {
+                        setActivePdfUrl(null)
+                        setCurrentShareableUrl(null)
+                    }}
+                    title="PDF Preview"
+                >
+                    <div className="space-y-4 p-2 sm:p-4">
+                        {activePdfUrl && (
+                            <div className="overflow-hidden rounded-2xl border border-white/20 bg-white/50 backdrop-blur-xl">
+                                <embed
+                                    src={`${activePdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                                    type="application/pdf"
+                                    className="h-[75vh] w-full"
+                                />
+                            </div>
+                        )}
+                        {currentShareableUrl && (
+                            <Button onClick={handleCopyLink} variant="black" className="w-full rounded-xl">
+                                Copy Shareable Link
+                            </Button>
+                        )}
+                    </div>
+                </Dialog>
+            </div>
         </div>
     )
 }
