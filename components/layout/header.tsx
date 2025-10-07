@@ -5,11 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Bell, ChevronDown, Info, LogOut, Menu, UserCog } from 'lucide-react'
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,54 +21,39 @@ const Header = () => {
 
     const [user, setUser] = useState<{ firstName: string; lastName: string; email: string } | null>(null)
     const [loading, setLoading] = useState(true)
-    const [notifications, setNotifications] = useState<{ id: string; message: string; createdAt: string; isRead: boolean }[]>([])
+    const [notifications, setNotifications] = useState<
+        { id: string; message: string; createdAt: string; isRead: boolean }[]
+    >([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [loadingNotifications, setLoadingNotifications] = useState(true)
-    const [displayName, setDisplayName] = useState<string | null>(null);
+    const [displayName, setDisplayName] = useState<string | null>(null)
 
     const subscribeToPush = async (userId: string) => {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            console.error('Push notifications are not supported in this browser.');
-            return;
-        }
-
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
         try {
-            // 🔹 Request Notification Permission First
-            const permission = await Notification.requestPermission();
-
-            if (permission !== 'granted') {
-                console.warn('Push notifications permission denied.');
-                return; // ❌ Exit if permission is denied
-            }
-
-            // 🔹 Register the Service Worker
-            const registration = await navigator.serviceWorker.ready;
-            const existingSubscription = await registration.pushManager.getSubscription();
-
-            if (!existingSubscription) {
-                const newSubscription = await registration.pushManager.subscribe({
+            const permission = await Notification.requestPermission()
+            if (permission !== 'granted') return
+            const registration = await navigator.serviceWorker.ready
+            const existing = await registration.pushManager.getSubscription()
+            if (!existing) {
+                const sub = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-                });
-
-                // 🔹 Send Subscription to Backend
-                await api.post('/api/subscribe', { userId, subscription: newSubscription });
-                console.log('Push subscription saved:', newSubscription);
+                })
+                await api.post('/api/subscribe', { userId, subscription: sub })
             }
-        } catch (error) {
-            console.error('Error subscribing to push notifications:', error);
+        } catch (e) {
+            console.error('Push subscription failed:', e)
         }
-    };
+    }
 
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const response = await api.get('/api/users/me')
-                if (response.data?.id) {
-                    subscribeToPush(response.data.id);
-                }
-                setUser(response.data)
-            } catch (error) {
+                const res = await api.get('/api/users/me')
+                if (res.data?.id) subscribeToPush(res.data.id)
+                setUser(res.data)
+            } catch {
                 console.error('Failed to fetch user data')
             } finally {
                 setLoading(false)
@@ -84,11 +65,11 @@ const Header = () => {
     useEffect(() => {
         const fetchNotifications = async () => {
             try {
-                const response = await api.get('/api/notifications')
-                setNotifications(response.data.notifications)
-                setUnreadCount(response.data.unreadCount)
-            } catch (error) {
-                console.error('Failed to fetch notifications:', error)
+                const res = await api.get('/api/notifications')
+                setNotifications(res.data.notifications)
+                setUnreadCount(res.data.unreadCount)
+            } catch (e) {
+                console.error('Failed to fetch notifications:', e)
             } finally {
                 setLoadingNotifications(false)
             }
@@ -96,29 +77,24 @@ const Header = () => {
         fetchNotifications()
     }, [])
 
-
-
     useEffect(() => {
         if (user?.firstName || user?.lastName) {
-            setDisplayName(`${user.firstName ?? ''} ${user.lastName ?? ''}`.trim());
+            setDisplayName(`${user.firstName ?? ''} ${user.lastName ?? ''}`.trim())
         } else if (user?.email === 'admin@gulbahartobacco.com') {
-            setDisplayName('Admin');
+            setDisplayName('Admin')
         } else {
-            setDisplayName('Sales User');
+            setDisplayName('Sales User')
         }
-    }, [user]); // ✅ Reacts to user changes
+    }, [user])
 
     const markNotificationsAsRead = async () => {
         if (unreadCount === 0) return
-
         try {
             await api.patch('/api/notifications')
             setUnreadCount(0)
-            setNotifications((prev) =>
-                prev.map((n) => ({ ...n, isRead: true })),
-            )
-        } catch (error) {
-            console.error('Failed to mark notifications as read:', error)
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+        } catch (e) {
+            console.error('Failed to mark notifications as read:', e)
         }
     }
 
@@ -140,29 +116,24 @@ const Header = () => {
     }
 
     return (
-        <header className="fixed inset-x-0 top-0 z-30 bg-white px-4 py-[15px] shadow-sm lg:px-5">
-            <div className="flex items-center justify-between gap-5">
+        // fixed height = 64px (h-16) to align with sidebar/top offsets
+        <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-black/5 bg-white/90 backdrop-blur">
+            <div className="flex h-full items-center justify-between gap-5 px-4 lg:px-5">
                 <Link href="/" className="inline-block shrink-0 lg:ml-2.5">
-                    <img
-                        src="/images/gulbahar-logo.png"
-                        alt="Brand Logo"
-                        className="h-10 w-auto"
-                    />
+                    <img src="/images/gulbahar-logo.png" alt="Brand Logo" className="h-9 w-auto" />
                 </Link>
 
                 <div className="inline-flex items-center gap-3 sm:gap-5">
+                    {/* Notifications */}
                     <div className="order-2 lg:order-none">
                         <Popover>
                             <PopoverTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="relative duration-300 hover:opacity-80"
-                                >
+                                <button type="button" className="relative transition-opacity hover:opacity-80">
                                     <Bell className="h-5 w-5" />
                                     {unreadCount > 0 && (
                                         <Badge
-                                            variant={'primary'}
-                                            size={'number'}
+                                            variant="primary"
+                                            size="number"
                                             className="absolute -right-0.5 -top-0.5 grid h-3 min-w-3 place-content-center px-1 text-[9px]"
                                         >
                                             {unreadCount}
@@ -172,13 +143,11 @@ const Header = () => {
                             </PopoverTrigger>
                             <PopoverContent
                                 sideOffset={12}
-                                className="mr-4 w-full max-w-80 divide-y divide-gray-300 p-0"
+                                className="mr-4 w-full max-w-80 divide-y divide-gray-200 p-0"
                                 onOpenAutoFocus={markNotificationsAsRead}
                             >
-                                <div className="rounded-t-lg bg-gray-100 p-3 text-black">
-                                    <h2 className="font-semibold leading-5">
-                                        Notifications
-                                    </h2>
+                                <div className="rounded-t-lg bg-gray-50 p-3 text-black">
+                                    <h2 className="font-semibold leading-5">Notifications</h2>
                                 </div>
                                 <div className="p-4">
                                     {loadingNotifications ? (
@@ -190,11 +159,14 @@ const Header = () => {
                                         </div>
                                     ) : (
                                         <ul className="space-y-2">
-                                            {notifications?.map((notification) => (
-                                                <li key={notification.id} className={`p-2 rounded ${notification.isRead ? 'bg-gray-200' : 'bg-gray-100'}`}>
-                                                    <p className="text-sm text-gray-800">{notification.message}</p>
+                                            {notifications.map(n => (
+                                                <li
+                                                    key={n.id}
+                                                    className={`rounded p-2 ${n.isRead ? 'bg-gray-100' : 'bg-white'}`}
+                                                >
+                                                    <p className="text-sm text-gray-800">{n.message}</p>
                                                     <p className="text-xs text-gray-500">
-                                                        {new Date(notification.createdAt).toLocaleString()}
+                                                        {new Date(n.createdAt).toLocaleString()}
                                                     </p>
                                                 </li>
                                             ))}
@@ -205,6 +177,7 @@ const Header = () => {
                         </Popover>
                     </div>
 
+                    {/* Profile */}
                     <div className="hidden lg:block">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -216,6 +189,7 @@ const Header = () => {
                                             {getUserInitials()}
                                         </div>
                                     )}
+
                                     <div className="hidden space-y-1 lg:block">
                                         {loading ? (
                                             <>
@@ -224,25 +198,23 @@ const Header = () => {
                                             </>
                                         ) : (
                                             <>
-                                                <h5 className="line-clamp-1 text-[10px]/3 font-semibold">
-                                                    Welcome back 👋
-                                                </h5>
-                                                <h2 className="line-clamp-1 text-xs font-bold text-black">
-                                                    {displayName}
-                                                </h2>
+                                                <h5 className="line-clamp-1 text-[10px]/3 font-semibold">Welcome back 👋</h5>
+                                                <h2 className="line-clamp-1 text-xs font-bold text-black">{displayName}</h2>
                                             </>
                                         )}
                                     </div>
 
-                                    <button
-                                        type="button"
-                                        className="-ml-1 mt-auto text-black transition group-hover:opacity-70"
-                                    >
+                                    <button type="button" className="-ml-1 mt-auto text-black transition group-hover:opacity-70">
                                         <ChevronDown className="h-4 w-4 shrink-0 duration-300" />
                                     </button>
                                 </div>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" sideOffset={12} className="min-w-[200px] space-y-1 rounded-lg p-1.5 text-sm font-medium">
+
+                            <DropdownMenuContent
+                                align="end"
+                                sideOffset={12}
+                                className="min-w-[200px] space-y-1 rounded-lg p-1.5 text-sm font-medium"
+                            >
                                 <DropdownMenuItem className="p-0">
                                     <Link href="/setting" className="flex items-center gap-1.5 rounded-lg px-3 py-2">
                                         <UserCog className="size-[18px] shrink-0" />
@@ -259,11 +231,8 @@ const Header = () => {
                         </DropdownMenu>
                     </div>
 
-                    <button
-                        type="button"
-                        className="lg:hidden"
-                        onClick={toggleSidebar}
-                    >
+                    {/* Mobile menu */}
+                    <button type="button" className="lg:hidden" onClick={toggleSidebar}>
                         <Menu className="h-5 w-5" />
                     </button>
                 </div>
