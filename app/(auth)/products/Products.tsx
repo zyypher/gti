@@ -849,14 +849,19 @@ const Products = () => {
             setSelectedCorporateFront(null)
             setSelectedCorporateBack(null)
           }}
-          title={`Step ${pdfStep}: ${
-            pdfStep === 1 ? 'Select Corporate Infos' : pdfStep === 2 ? 'Add Adverts & Promotions' : 'Confirm & Generate'
-          }`}
+          title={`Step ${pdfStep}: ${pdfStep === 1 ? 'Select Corporate Infos'
+              : pdfStep === 2 ? 'Add Adverts & Promotions'
+                : 'Confirm & Generate'
+            }`}
         >
-          <div className="max-h-[75vh] overflow-y-auto space-y-4 p-2">
-            {pdfStep === 1 && (
-              <GlassPanel className="space-y-6 p-4">
-                <div>
+          {/* FLEX column: scrollable content + fixed footer */}
+          <div className="flex max-h-[75vh] flex-col">
+            {/* scrolls */}
+            <div className="flex-1 overflow-y-auto space-y-4 p-2 pr-3">
+              {/* --- keep your step panels unchanged below --- */}
+              {pdfStep === 1 && (
+                <GlassPanel className="space-y-6 p-4">
+                  <div>
                   <p className="mb-2 text-sm text-zinc-700">Corporate Info (Front):</p>
                   <select
                     className="w-full rounded border border-white/40 bg-white/70 p-2"
@@ -865,12 +870,9 @@ const Products = () => {
                   >
                     <option value="">Select Corporate Info (Front)</option>
                     {corporateFronts.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.title}
-                      </option>
+                      <option key={item.id} value={item.id}>{item.title}</option>
                     ))}
                   </select>
-
                   {selectedCorporateFront && (
                     <div className="mt-3">
                       <p className="mb-2 text-sm text-zinc-600">Preview</p>
@@ -891,12 +893,9 @@ const Products = () => {
                   >
                     <option value="">Select Corporate Info (Back)</option>
                     {corporateBacks.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.title}
-                      </option>
+                      <option key={item.id} value={item.id}>{item.title}</option>
                     ))}
                   </select>
-
                   {selectedCorporateBack && (
                     <div className="mt-3">
                       <p className="mb-2 text-sm text-zinc-600">Preview</p>
@@ -907,12 +906,12 @@ const Products = () => {
                     </div>
                   )}
                 </div>
-              </GlassPanel>
-            )}
+                </GlassPanel>
+              )}
 
-            {pdfStep === 2 && (
-              <GlassPanel className="p-4">
-                <div className="mb-4">
+              {pdfStep === 2 && (
+                <GlassPanel className="p-4">
+                 <div className="mb-4">
                   <SectionTitle>Adverts</SectionTitle>
                   <div className="mt-2 flex items-center gap-2">
                     <select
@@ -922,9 +921,7 @@ const Products = () => {
                     >
                       <option value="">Select an Advert to add</option>
                       {advertisements.map((advert) => (
-                        <option key={advert.id} value={advert.id}>
-                          {advert.title}
-                        </option>
+                        <option key={advert.id} value={advert.id}>{advert.title}</option>
                       ))}
                     </select>
                   </div>
@@ -959,9 +956,7 @@ const Products = () => {
                     >
                       <option value="">Select a Promotion to add</option>
                       {promotions.map((promo) => (
-                        <option key={promo.id} value={promo.id}>
-                          {promo.title}
-                        </option>
+                        <option key={promo.id} value={promo.id}>{promo.title}</option>
                       ))}
                     </select>
                   </div>
@@ -985,12 +980,12 @@ const Products = () => {
                     </div>
                   )}
                 </div>
-              </GlassPanel>
-            )}
+                </GlassPanel>
+              )}
 
-            {pdfStep === 3 && (
-              <GlassPanel className="p-4 space-y-4">
-                <div className="rounded-lg border border-white/30 bg-white/40 p-3">
+              {pdfStep === 3 && (
+                <GlassPanel className="p-4 space-y-4">
+                   <div className="rounded-lg border border-white/30 bg-white/40 p-3">
                   <h4 className="mb-1 font-semibold text-zinc-900">What are you doing here?</h4>
                   <p className="text-sm text-zinc-700">
                     Arrange where your selected Adverts and Promotions will appear in the final PDF.
@@ -1026,9 +1021,7 @@ const Products = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <SectionTitle>Select Client (Optional)</SectionTitle>
-                      <Button variant="outline" onClick={openClientDialog}>
-                        Add Client
-                      </Button>
+                      <Button variant="outline" onClick={openClientDialog}>Add Client</Button>
                     </div>
                     <Select
                       onValueChange={(value) => setSelectedClient(value === 'none' ? undefined : value)}
@@ -1048,25 +1041,30 @@ const Products = () => {
                     </Select>
                   </div>
                 )}
+                </GlassPanel>
+              )}
+              {/* --- end step panels --- */}
+            </div>
 
-                <div className="mt-4 flex justify-end gap-3">
-                  {pdfStep > 1 && (
-                    <Button variant="outline" onClick={() => setPdfStep((s) => s - 1)}>
-                      Back
-                    </Button>
-                  )}
-                  <Button
-                    variant="black"
-                    onClick={pdfStep < 3 ? handleNextStep : handleGeneratePDF}
-                    disabled={pdfStep === 3 && buttonLoading}
-                  >
-                    {pdfStep < 3 ? 'Next' : buttonLoading ? 'Generating...' : 'Generate PDF'}
-                  </Button>
-                </div>
-              </GlassPanel>
-            )}
+            {/* fixed footer at bottom of dialog (no sticky) */}
+            <div className="mt-2 flex shrink-0 items-center justify-end gap-3 border-t border-white/30 bg-white/60 px-3 py-3">
+              {pdfStep > 1 && (
+                <Button variant="outline" onClick={() => setPdfStep((s) => s - 1)}>
+                  Back
+                </Button>
+              )}
+              <Button
+                variant="black"
+                onClick={pdfStep < 3 ? handleNextStep : handleGeneratePDF}
+                disabled={pdfStep === 3 && buttonLoading}
+              >
+                {pdfStep < 3 ? 'Next' : (buttonLoading ? 'Generating...' : 'Generate PDF')}
+              </Button>
+            </div>
           </div>
         </Dialog>
+
+
 
         <Dialog
           isOpen={isDeleteDialogOpen}
