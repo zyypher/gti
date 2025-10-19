@@ -1,8 +1,5 @@
 # 🗂️ Gulbahar Tobacco International — Admin Dashboard
 
-![Banner](./images/banner-gti-dashboard.png)
-<!-- Place your screenshot at /docs/banner-gti-dashboard.png or /public/banner-gti-dashboard.png -->
-
 An enterprise admin dashboard for **Gulbahar Tobacco International (GTI)** to manage product catalogs and operations.
 
 The platform supports **brands**, **products**, **non‑product pages**, **PDF ingestion & merging**, **order generation**, **notifications**, **settings**, **users**, **clients**, and granular **permissions** — all built on **Next.js 14**, **Prisma**, and **PostgreSQL**, with **AWS S3** for file storage and **pdf-lib** for advanced PDF workflows.
@@ -163,20 +160,6 @@ NEXT_PUBLIC_ENABLE_PWA="true"
 /public             # static assets (icons, logos), you can place banner here too
 /docs               # project docs + banner image (recommended)
 ```
-
----
-
-## 🖼️ Banner
-
-Add a screenshot to **`/docs/banner-gti-dashboard.png`** (or `/public/banner-gti-dashboard.png`) and it will appear at the top of this README.
-
-```md
-![Banner](./docs/banner-gti-dashboard.png)
-```
-
-> Tip: Keep it ~1600×400 (or similar letterbox) for a clean GitHub preview.
-
----
 
 ## 🧪 Notes & Tips
 
