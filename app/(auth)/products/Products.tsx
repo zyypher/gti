@@ -396,7 +396,7 @@ const Products = () => {
           })
           .then((res) => res.data)
 
-        const shareableUrl = `${window.location.origin}/${slug}`
+        const shareableUrl = `${process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL}/${slug}`
 
         setIsPdfDialogOpen(false)
         setPdfStep(1)
