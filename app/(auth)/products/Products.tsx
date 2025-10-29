@@ -396,7 +396,7 @@ const Products = () => {
           })
           .then((res) => res.data)
 
-        const shareableUrl = `${window.location.origin}/shared-pdf/${slug}`
+        const shareableUrl = `${window.location.origin}/${slug}`
 
         setIsPdfDialogOpen(false)
         setPdfStep(1)
