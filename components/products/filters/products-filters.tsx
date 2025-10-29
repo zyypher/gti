@@ -26,17 +26,28 @@ interface IBrand {
   name: string
 }
 
-const ANY = 'any' // sentinel used for “Any” options
+const ALL = 'all' // sentinel used for “All” option (UI shows All; API omits key)
 
-function applySelect(
+/**
+ * Helper to apply a Select change while keeping:
+ * - UI memory of "All" (so the trigger shows All)
+ * - API filters clean (remove key when All)
+ */
+function applySelectUI(
   key: string,
   value: string,
   filters: Record<string, string>,
   setFilters: (f: Record<string, string>) => void,
-  onFilterChange: (f: Record<string, string>) => void
+  onFilterChange: (f: Record<string, string>) => void,
+  uiSelections: Record<string, string>,
+  setUiSelections: (f: Record<string, string>) => void
 ) {
-  if (value === ANY) {
-    // clear this key from filters
+  // remember what the user selected for the UI
+  const nextUi = { ...uiSelections, [key]: value }
+  setUiSelections(nextUi)
+
+  if (value === ALL) {
+    // “All” = clear this key from API filters
     const { [key]: _omit, ...rest } = filters
     setFilters(rest)
     onFilterChange(rest)
@@ -54,6 +65,10 @@ export default function ProductsFilters({
   initialFilters = {},
 }: FilterProps) {
   const [filters, setFilters] = useState<Record<string, string>>(initialFilters)
+
+  // UI-only selection memory so "All" shows in the trigger even though the key is removed from filters
+  const [uiSelections, setUiSelections] = useState<Record<string, string>>({})
+
   const [brands, setBrands] = useState<IBrand[]>([])
   const [sizes, setSizes] = useState<string[]>([])
   const [flavors, setFlavors] = useState<string[]>([])
@@ -147,12 +162,14 @@ export default function ProductsFilters({
     fetchColors()
   }, [])
 
-  // honor initial brand filter once brands are available
+  // honor initial brand filter once brands are available (and mirror it in UI selections)
   useEffect(() => {
     if (brands.length > 0 && initialFilters.brandId && filters.brandId !== initialFilters.brandId) {
       setFilters(initialFilters)
+      setUiSelections((prev) => ({ ...prev, brandId: initialFilters.brandId })) // so trigger shows the initial brand
       onFilterChange(initialFilters)
     } else if (brands.length > 0 && filters.brandId) {
+      setUiSelections((prev) => ({ ...prev, brandId: filters.brandId }))
       onFilterChange(filters)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -171,9 +188,14 @@ export default function ProductsFilters({
 
   const clearFilters = () => {
     setFilters({})
+    setUiSelections({}) // reset UI to placeholders
     onFilterChange({})
     onClearSelection?.()
   }
+
+  // convenience wrapper so we don't pass ui state everywhere inline
+  const onSelect = (key: string) => (v: string) =>
+    applySelectUI(key, v, filters, setFilters, onFilterChange, uiSelections, setUiSelections)
 
   return (
     <>
@@ -181,7 +203,7 @@ export default function ProductsFilters({
       <div className="hidden grid-cols-2 gap-4 md:grid md:grid-cols-4 lg:grid-cols-6">
         {/* Always visible filters */}
         <div className="relative col-span-2">
-           <FloatingLabelInput
+          <FloatingLabelInput
             label="Search by name"
             name="searchByName"
             value={filters.name || ''}
@@ -192,8 +214,8 @@ export default function ProductsFilters({
 
         {/* Brand */}
         <Select
-          value={filters.brandId || ''} // empty string keeps placeholder visible
-          onValueChange={(v) => applySelect('brandId', v, filters, setFilters, onFilterChange)}
+          value={uiSelections.brandId ?? (filters.brandId ?? '')} // '' => placeholder by default
+          onValueChange={onSelect('brandId')}
         >
           <SelectTrigger>
             <SelectValue
@@ -209,7 +231,7 @@ export default function ProductsFilters({
             />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any</SelectItem>
+            <SelectItem value={ALL}>All</SelectItem>
             {brands.map((brand) => (
               <SelectItem key={brand.id} value={brand.id}>
                 {brand.name}
@@ -220,8 +242,8 @@ export default function ProductsFilters({
 
         {/* Size */}
         <Select
-          value={filters.size || ''}
-          onValueChange={(v) => applySelect('size', v, filters, setFilters, onFilterChange)}
+          value={uiSelections.size ?? (filters.size ?? '')}
+          onValueChange={onSelect('size')}
         >
           <SelectTrigger>
             <SelectValue
@@ -237,7 +259,7 @@ export default function ProductsFilters({
             />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any</SelectItem>
+            <SelectItem value={ALL}>All</SelectItem>
             {sizes.map((size) => (
               <SelectItem key={size} value={size}>
                 {size}
@@ -246,23 +268,26 @@ export default function ProductsFilters({
           </SelectContent>
         </Select>
 
+        {/* Flavour */}
         <Select
-          value={filters.flavor || ''}
-          onValueChange={(v) => applySelect('flavor', v, filters, setFilters, onFilterChange)}
+          value={uiSelections.flavor ?? (filters.flavor ?? '')}
+          onValueChange={onSelect('flavor')}
         >
           <SelectTrigger>
             <SelectValue
-              placeholder={isLoadingFlavors ? (
-                <span className="flex items-center">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                </span>
-              ) : (
-                'Select Flavour'
-              )}
+              placeholder={
+                isLoadingFlavors ? (
+                  <span className="flex items-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                  </span>
+                ) : (
+                  'Select Flavour'
+                )
+              }
             />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any</SelectItem>
+            <SelectItem value={ALL}>All</SelectItem>
             {flavors.map((flavor) => (
               <SelectItem key={flavor} value={flavor}>
                 {flavor}
@@ -270,23 +295,27 @@ export default function ProductsFilters({
             ))}
           </SelectContent>
         </Select>
+
+        {/* Pack Format */}
         <Select
-          value={filters.packetStyle || ''}
-          onValueChange={(v) => applySelect('packetStyle', v, filters, setFilters, onFilterChange)}
+          value={uiSelections.packetStyle ?? (filters.packetStyle ?? '')}
+          onValueChange={onSelect('packetStyle')}
         >
           <SelectTrigger>
             <SelectValue
-              placeholder={isLoadingPackFormats ? (
-                <span className="flex items-center">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                </span>
-              ) : (
-                'Select Pack Format'
-              )}
+              placeholder={
+                isLoadingPackFormats ? (
+                  <span className="flex items-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                  </span>
+                ) : (
+                  'Select Pack Format'
+                )
+              }
             />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any</SelectItem>
+            <SelectItem value={ALL}>All</SelectItem>
             {packFormats.map((packFormat) => (
               <SelectItem key={packFormat} value={packFormat}>
                 {packFormat}
@@ -300,14 +329,14 @@ export default function ProductsFilters({
           <>
             {/* FSP */}
             <Select
-              value={filters.fsp || ''}
-              onValueChange={(v) => applySelect('fsp', v, filters, setFilters, onFilterChange)}
+              value={uiSelections.fsp ?? (filters.fsp ?? '')}
+              onValueChange={onSelect('fsp')}
             >
               <SelectTrigger>
                 <SelectValue placeholder="FSP" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY}>Any</SelectItem>
+                <SelectItem value={ALL}>All</SelectItem>
                 <SelectItem value="true">Yes</SelectItem>
                 <SelectItem value="false">No</SelectItem>
               </SelectContent>
@@ -315,16 +344,14 @@ export default function ProductsFilters({
 
             {/* Capsules */}
             <Select
-              value={filters.capsules || ''}
-              onValueChange={(v) =>
-                applySelect('capsules', v, filters, setFilters, onFilterChange)
-              }
+              value={uiSelections.capsules ?? (filters.capsules ?? '')}
+              onValueChange={onSelect('capsules')}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Number of Capsules" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY}>Any</SelectItem>
+                <SelectItem value={ALL}>All</SelectItem>
                 <SelectItem value="0">0</SelectItem>
                 <SelectItem value="1">1</SelectItem>
                 <SelectItem value="2">2</SelectItem>
@@ -334,14 +361,14 @@ export default function ProductsFilters({
 
             {/* Tar (mg) */}
             <Select
-              value={filters.tar || ''}
-              onValueChange={(v) => applySelect('tar', v, filters, setFilters, onFilterChange)}
+              value={uiSelections.tar ?? (filters.tar ?? '')}
+              onValueChange={onSelect('tar')}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Tar (mg)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY}>Any</SelectItem>
+                <SelectItem value={ALL}>All</SelectItem>
                 {tarOptions.map((v) => (
                   <SelectItem key={v} value={v}>
                     {v}
@@ -352,16 +379,14 @@ export default function ProductsFilters({
 
             {/* Nicotine (mg) */}
             <Select
-              value={filters.nicotine || ''}
-              onValueChange={(v) =>
-                applySelect('nicotine', v, filters, setFilters, onFilterChange)
-              }
+              value={uiSelections.nicotine ?? (filters.nicotine ?? '')}
+              onValueChange={onSelect('nicotine')}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Nicotine (mg)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY}>Any</SelectItem>
+                <SelectItem value={ALL}>All</SelectItem>
                 {nicotineOptions.map((v) => (
                   <SelectItem key={v} value={v}>
                     {v}
@@ -370,23 +395,26 @@ export default function ProductsFilters({
               </SelectContent>
             </Select>
 
+            {/* CO (mg) */}
             <Select
-              value={filters.co || ''}
-              onValueChange={(v) => applySelect('co', v, filters, setFilters, onFilterChange)}
+              value={uiSelections.co ?? (filters.co ?? '')}
+              onValueChange={onSelect('co')}
             >
               <SelectTrigger>
                 <SelectValue
-                  placeholder={isLoadingCarbonMonoxides ? (
-                    <span className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                    </span>
-                  ) : (
-                    'Select Carbon Monoxide (mg)'
-                  )}
+                  placeholder={
+                    isLoadingCarbonMonoxides ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                      </span>
+                    ) : (
+                      'Select Carbon Monoxide (mg)'
+                    )
+                  }
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY}>Any</SelectItem>
+                <SelectItem value={ALL}>All</SelectItem>
                 {carbonMonoxides.map((co) => (
                   <SelectItem key={co} value={co}>
                     {co}
@@ -395,23 +423,26 @@ export default function ProductsFilters({
               </SelectContent>
             </Select>
 
+            {/* Color */}
             <Select
-              value={filters.color || ''}
-              onValueChange={(v) => applySelect('color', v, filters, setFilters, onFilterChange)}
+              value={uiSelections.color ?? (filters.color ?? '')}
+              onValueChange={onSelect('color')}
             >
               <SelectTrigger>
                 <SelectValue
-                  placeholder={isLoadingColors ? (
-                    <span className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                    </span>
-                  ) : (
-                    'Select Color of Packet'
-                  )}
+                  placeholder={
+                    isLoadingColors ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                      </span>
+                    ) : (
+                      'Select Color of Packet'
+                    )
+                  }
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY}>Any</SelectItem>
+                <SelectItem value={ALL}>All</SelectItem>
                 {colors.map((color) => (
                   <SelectItem key={color} value={color}>
                     {color}
@@ -452,6 +483,7 @@ export default function ProductsFilters({
           size="small"
           onClick={() => {
             setFilters({})
+            setUiSelections({})
             onFilterChange({})
           }}
         >
@@ -468,14 +500,14 @@ export default function ProductsFilters({
         <div className="space-y-4 p-4">
           <div className="relative">
             <Select
-              value={filters.name || ''}
-              onValueChange={(v) => setFilters({ ...filters, name: v })}
+              value={uiSelections.name ?? (filters.name ?? '')}
+              onValueChange={onSelect('name')}
             >
               <SelectTrigger>
                 <SelectValue placeholder={'Select Product Name'} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY}>Any</SelectItem>
+                <SelectItem value={ALL}>All</SelectItem>
                 {/* Optionally, you can fetch product names for dropdown, or keep as textbox if needed */}
               </SelectContent>
             </Select>
@@ -483,8 +515,8 @@ export default function ProductsFilters({
 
           {/* Brand */}
           <Select
-            value={filters.brandId || ''}
-            onValueChange={(v) => applySelect('brandId', v, filters, setFilters, onFilterChange)}
+            value={uiSelections.brandId ?? (filters.brandId ?? '')}
+            onValueChange={onSelect('brandId')}
           >
             <SelectTrigger>
               <SelectValue
@@ -500,7 +532,7 @@ export default function ProductsFilters({
               />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ALL}>All</SelectItem>
               {brands.map((brand) => (
                 <SelectItem key={brand.id} value={brand.id}>
                   {brand.name}
@@ -511,8 +543,8 @@ export default function ProductsFilters({
 
           {/* Size */}
           <Select
-            value={filters.size || ''}
-            onValueChange={(v) => applySelect('size', v, filters, setFilters, onFilterChange)}
+            value={uiSelections.size ?? (filters.size ?? '')}
+            onValueChange={onSelect('size')}
           >
             <SelectTrigger>
               <SelectValue
@@ -528,7 +560,7 @@ export default function ProductsFilters({
               />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ALL}>All</SelectItem>
               {sizes.map((size) => (
                 <SelectItem key={size} value={size}>
                   {size}
@@ -537,23 +569,26 @@ export default function ProductsFilters({
             </SelectContent>
           </Select>
 
+          {/* Flavour */}
           <Select
-            value={filters.flavor || ''}
-            onValueChange={(v) => setFilters({ ...filters, flavor: v })}
+            value={uiSelections.flavor ?? (filters.flavor ?? '')}
+            onValueChange={onSelect('flavor')}
           >
             <SelectTrigger>
               <SelectValue
-                placeholder={isLoadingFlavors ? (
-                  <span className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                  </span>
-                ) : (
-                  'Select Flavour'
-                )}
+                placeholder={
+                  isLoadingFlavors ? (
+                    <span className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </span>
+                  ) : (
+                    'Select Flavour'
+                  )
+                }
               />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ALL}>All</SelectItem>
               {flavors.map((flavor) => (
                 <SelectItem key={flavor} value={flavor}>
                   {flavor}
@@ -562,23 +597,26 @@ export default function ProductsFilters({
             </SelectContent>
           </Select>
 
+          {/* Pack Format */}
           <Select
-            value={filters.packetStyle || ''}
-            onValueChange={(v) => setFilters({ ...filters, packetStyle: v })}
+            value={uiSelections.packetStyle ?? (filters.packetStyle ?? '')}
+            onValueChange={onSelect('packetStyle')}
           >
             <SelectTrigger>
               <SelectValue
-                placeholder={isLoadingPackFormats ? (
-                  <span className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                  </span>
-                ) : (
-                  'Select Pack Format'
-                )}
+                placeholder={
+                  isLoadingPackFormats ? (
+                    <span className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </span>
+                  ) : (
+                    'Select Pack Format'
+                  )
+                }
               />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ALL}>All</SelectItem>
               {packFormats.map((packFormat) => (
                 <SelectItem key={packFormat} value={packFormat}>
                   {packFormat}
@@ -589,14 +627,14 @@ export default function ProductsFilters({
 
           {/* FSP */}
           <Select
-            value={filters.fsp || ''}
-            onValueChange={(v) => applySelect('fsp', v, filters, setFilters, onFilterChange)}
+            value={uiSelections.fsp ?? (filters.fsp ?? '')}
+            onValueChange={onSelect('fsp')}
           >
             <SelectTrigger>
               <SelectValue placeholder="FSP" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ALL}>All</SelectItem>
               <SelectItem value="true">Yes</SelectItem>
               <SelectItem value="false">No</SelectItem>
             </SelectContent>
@@ -604,16 +642,14 @@ export default function ProductsFilters({
 
           {/* Capsules */}
           <Select
-            value={filters.capsules || ''}
-            onValueChange={(v) =>
-              applySelect('capsules', v, filters, setFilters, onFilterChange)
-            }
+            value={uiSelections.capsules ?? (filters.capsules ?? '')}
+            onValueChange={onSelect('capsules')}
           >
             <SelectTrigger>
               <SelectValue placeholder="Number of Capsules" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ALL}>All</SelectItem>
               <SelectItem value="0">0</SelectItem>
               <SelectItem value="1">1</SelectItem>
               <SelectItem value="2">2</SelectItem>
@@ -623,14 +659,14 @@ export default function ProductsFilters({
 
           {/* Tar */}
           <Select
-            value={filters.tar || ''}
-            onValueChange={(v) => applySelect('tar', v, filters, setFilters, onFilterChange)}
+            value={uiSelections.tar ?? (filters.tar ?? '')}
+            onValueChange={onSelect('tar')}
           >
             <SelectTrigger>
               <SelectValue placeholder="Tar (mg)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ALL}>All</SelectItem>
               {tarOptions.map((v) => (
                 <SelectItem key={v} value={v}>
                   {v}
@@ -641,16 +677,14 @@ export default function ProductsFilters({
 
           {/* Nicotine */}
           <Select
-            value={filters.nicotine || ''}
-            onValueChange={(v) =>
-              applySelect('nicotine', v, filters, setFilters, onFilterChange)
-            }
+            value={uiSelections.nicotine ?? (filters.nicotine ?? '')}
+            onValueChange={onSelect('nicotine')}
           >
             <SelectTrigger>
               <SelectValue placeholder="Nicotine (mg)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ALL}>All</SelectItem>
               {nicotineOptions.map((v) => (
                 <SelectItem key={v} value={v}>
                   {v}
@@ -659,23 +693,26 @@ export default function ProductsFilters({
             </SelectContent>
           </Select>
 
+          {/* CO */}
           <Select
-            value={filters.co || ''}
-            onValueChange={(v) => setFilters({ ...filters, co: v })}
+            value={uiSelections.co ?? (filters.co ?? '')}
+            onValueChange={onSelect('co')}
           >
             <SelectTrigger>
               <SelectValue
-                placeholder={isLoadingCarbonMonoxides ? (
-                  <span className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                  </span>
-                ) : (
-                  'Select Carbon Monoxide (mg)'
-                )}
+                placeholder={
+                  isLoadingCarbonMonoxides ? (
+                    <span className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </span>
+                  ) : (
+                    'Select Carbon Monoxide (mg)'
+                  )
+                }
               />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ALL}>All</SelectItem>
               {carbonMonoxides.map((co) => (
                 <SelectItem key={co} value={co}>
                   {co}
@@ -684,23 +721,26 @@ export default function ProductsFilters({
             </SelectContent>
           </Select>
 
+          {/* Color */}
           <Select
-            value={filters.color || ''}
-            onValueChange={(v) => setFilters({ ...filters, color: v })}
+            value={uiSelections.color ?? (filters.color ?? '')}
+            onValueChange={onSelect('color')}
           >
             <SelectTrigger>
               <SelectValue
-                placeholder={isLoadingColors ? (
-                  <span className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                  </span>
-                ) : (
-                  'Select Color of Packet'
-                )}
+                placeholder={
+                  isLoadingColors ? (
+                    <span className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </span>
+                  ) : (
+                    'Select Color of Packet'
+                  )
+                }
               />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ANY}>Any</SelectItem>
+              <SelectItem value={ALL}>All</SelectItem>
               {colors.map((color) => (
                 <SelectItem key={color} value={color}>
                   {color}

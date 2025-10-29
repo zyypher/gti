@@ -317,12 +317,18 @@ const Products = () => {
     }
   }
 
+  // fetch only the table when filters/pagination change
   useEffect(() => {
     fetchProducts()
+  }, [filters, page, pageSize])
+
+  // fetch static/reference lists once on mount
+  useEffect(() => {
     fetchBrands()
     fetchNonProductItems()
     fetchClients()
-  }, [filters, page, pageSize])
+  }, [])
+
 
   const handleFilterChange = (newFilters: { [key: string]: string }) => {
     setFilters(newFilters)
@@ -390,7 +396,7 @@ const Products = () => {
           })
           .then((res) => res.data)
 
-        const shareableUrl = `${window.location.origin}/shared-pdf/${slug}`
+        const shareableUrl = `${window.location.origin}/${slug}`
 
         setIsPdfDialogOpen(false)
         setPdfStep(1)
@@ -499,9 +505,9 @@ const Products = () => {
   }
 
   const handleRefresh = () => {
-    setFilters((prevFilters) => ({ ...prevFilters }))
     fetchProducts()
   }
+
 
   const handleClearSelection = () => {
     setSelectedRows([])
@@ -850,8 +856,8 @@ const Products = () => {
             setSelectedCorporateBack(null)
           }}
           title={`Step ${pdfStep}: ${pdfStep === 1 ? 'Select Corporate Infos'
-              : pdfStep === 2 ? 'Add Adverts & Promotions'
-                : 'Confirm & Generate'
+            : pdfStep === 2 ? 'Add Adverts & Promotions'
+              : 'Confirm & Generate'
             }`}
         >
           {/* FLEX column: scrollable content + fixed footer */}
@@ -862,185 +868,185 @@ const Products = () => {
               {pdfStep === 1 && (
                 <GlassPanel className="space-y-6 p-4">
                   <div>
-                  <p className="mb-2 text-sm text-zinc-700">Corporate Info (Front):</p>
-                  <select
-                    className="w-full rounded border border-white/40 bg-white/70 p-2"
-                    value={selectedCorporateFront || ''}
-                    onChange={(e) => setSelectedCorporateFront(e.target.value)}
-                  >
-                    <option value="">Select Corporate Info (Front)</option>
-                    {corporateFronts.map((item) => (
-                      <option key={item.id} value={item.id}>{item.title}</option>
-                    ))}
-                  </select>
-                  {selectedCorporateFront && (
-                    <div className="mt-3">
-                      <p className="mb-2 text-sm text-zinc-600">Preview</p>
-                      <PdfPreview
-                        src={corporateFronts.find((b) => b.id === selectedCorporateFront)?.filePath}
-                        className="h-64 w-full rounded-md border"
-                      />
-                    </div>
-                  )}
-                </div>
+                    <p className="mb-2 text-sm text-zinc-700">Corporate Info (Front):</p>
+                    <select
+                      className="w-full rounded border border-white/40 bg-white/70 p-2"
+                      value={selectedCorporateFront || ''}
+                      onChange={(e) => setSelectedCorporateFront(e.target.value)}
+                    >
+                      <option value="">Select Corporate Info (Front)</option>
+                      {corporateFronts.map((item) => (
+                        <option key={item.id} value={item.id}>{item.title}</option>
+                      ))}
+                    </select>
+                    {selectedCorporateFront && (
+                      <div className="mt-3">
+                        <p className="mb-2 text-sm text-zinc-600">Preview</p>
+                        <PdfPreview
+                          src={corporateFronts.find((b) => b.id === selectedCorporateFront)?.filePath}
+                          className="h-64 w-full rounded-md border"
+                        />
+                      </div>
+                    )}
+                  </div>
 
-                <div>
-                  <p className="mb-2 text-sm text-zinc-700">Corporate Info (Back):</p>
-                  <select
-                    className="w-full rounded border border-white/40 bg-white/70 p-2"
-                    value={selectedCorporateBack || ''}
-                    onChange={(e) => setSelectedCorporateBack(e.target.value)}
-                  >
-                    <option value="">Select Corporate Info (Back)</option>
-                    {corporateBacks.map((item) => (
-                      <option key={item.id} value={item.id}>{item.title}</option>
-                    ))}
-                  </select>
-                  {selectedCorporateBack && (
-                    <div className="mt-3">
-                      <p className="mb-2 text-sm text-zinc-600">Preview</p>
-                      <PdfPreview
-                        src={corporateBacks.find((b) => b.id === selectedCorporateBack)?.filePath}
-                        className="h-64 w-full rounded-md border"
-                      />
-                    </div>
-                  )}
-                </div>
+                  <div>
+                    <p className="mb-2 text-sm text-zinc-700">Corporate Info (Back):</p>
+                    <select
+                      className="w-full rounded border border-white/40 bg-white/70 p-2"
+                      value={selectedCorporateBack || ''}
+                      onChange={(e) => setSelectedCorporateBack(e.target.value)}
+                    >
+                      <option value="">Select Corporate Info (Back)</option>
+                      {corporateBacks.map((item) => (
+                        <option key={item.id} value={item.id}>{item.title}</option>
+                      ))}
+                    </select>
+                    {selectedCorporateBack && (
+                      <div className="mt-3">
+                        <p className="mb-2 text-sm text-zinc-600">Preview</p>
+                        <PdfPreview
+                          src={corporateBacks.find((b) => b.id === selectedCorporateBack)?.filePath}
+                          className="h-64 w-full rounded-md border"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </GlassPanel>
               )}
 
               {pdfStep === 2 && (
                 <GlassPanel className="p-4">
-                 <div className="mb-4">
-                  <SectionTitle>Adverts</SectionTitle>
-                  <div className="mt-2 flex items-center gap-2">
-                    <select
-                      className="w-full rounded border border-white/40 bg-white/70 p-2"
-                      value=""
-                      onChange={(e) => addAdditionalPage('advert', e.target.value)}
-                    >
-                      <option value="">Select an Advert to add</option>
-                      {advertisements.map((advert) => (
-                        <option key={advert.id} value={advert.id}>{advert.title}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    {selectedAdverts.map((ad) => (
-                      <div key={ad.id} className="flex items-center justify-between text-sm">
-                        <span>{advertisements.find((it) => it.id === ad.id)?.title}</span>
-                        <Button size="small" variant="outline" onClick={() => removeAdditionalPage('advert', ad.id)}>
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {selectedAdverts.length > 0 && (
-                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                      {selectedAdverts.map((ad) => {
-                        const src = advertisements.find((it) => it.id === ad.id)?.filePath
-                        return <PdfPreview key={ad.id} src={src} className="h-64 w-full rounded-md border" />
-                      })}
+                  <div className="mb-4">
+                    <SectionTitle>Adverts</SectionTitle>
+                    <div className="mt-2 flex items-center gap-2">
+                      <select
+                        className="w-full rounded border border-white/40 bg-white/70 p-2"
+                        value=""
+                        onChange={(e) => addAdditionalPage('advert', e.target.value)}
+                      >
+                        <option value="">Select an Advert to add</option>
+                        {advertisements.map((advert) => (
+                          <option key={advert.id} value={advert.id}>{advert.title}</option>
+                        ))}
+                      </select>
                     </div>
-                  )}
-                </div>
-
-                <div>
-                  <SectionTitle>Promotions</SectionTitle>
-                  <div className="mt-2 flex items-center gap-2">
-                    <select
-                      className="w-full rounded border border-white/40 bg-white/70 p-2"
-                      value=""
-                      onChange={(e) => addAdditionalPage('promotion', e.target.value)}
-                    >
-                      <option value="">Select a Promotion to add</option>
-                      {promotions.map((promo) => (
-                        <option key={promo.id} value={promo.id}>{promo.title}</option>
+                    <div className="mt-2 space-y-1">
+                      {selectedAdverts.map((ad) => (
+                        <div key={ad.id} className="flex items-center justify-between text-sm">
+                          <span>{advertisements.find((it) => it.id === ad.id)?.title}</span>
+                          <Button size="small" variant="outline" onClick={() => removeAdditionalPage('advert', ad.id)}>
+                            Remove
+                          </Button>
+                        </div>
                       ))}
-                    </select>
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    {selectedPromotions.map((promo) => (
-                      <div key={promo.id} className="flex items-center justify-between text-sm">
-                        <span>{promotions.find((it) => it.id === promo.id)?.title}</span>
-                        <Button size="small" variant="outline" onClick={() => removeAdditionalPage('promotion', promo.id)}>
-                          Remove
-                        </Button>
+                    </div>
+
+                    {selectedAdverts.length > 0 && (
+                      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {selectedAdverts.map((ad) => {
+                          const src = advertisements.find((it) => it.id === ad.id)?.filePath
+                          return <PdfPreview key={ad.id} src={src} className="h-64 w-full rounded-md border" />
+                        })}
                       </div>
-                    ))}
+                    )}
                   </div>
 
-                  {selectedPromotions.length > 0 && (
-                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                      {selectedPromotions.map((promo) => {
-                        const src = promotions.find((it) => it.id === promo.id)?.filePath
-                        return <PdfPreview key={promo.id} src={src} className="h-64 w-full rounded-md border" />
-                      })}
+                  <div>
+                    <SectionTitle>Promotions</SectionTitle>
+                    <div className="mt-2 flex items-center gap-2">
+                      <select
+                        className="w-full rounded border border-white/40 bg-white/70 p-2"
+                        value=""
+                        onChange={(e) => addAdditionalPage('promotion', e.target.value)}
+                      >
+                        <option value="">Select a Promotion to add</option>
+                        {promotions.map((promo) => (
+                          <option key={promo.id} value={promo.id}>{promo.title}</option>
+                        ))}
+                      </select>
                     </div>
-                  )}
-                </div>
+                    <div className="mt-2 space-y-1">
+                      {selectedPromotions.map((promo) => (
+                        <div key={promo.id} className="flex items-center justify-between text-sm">
+                          <span>{promotions.find((it) => it.id === promo.id)?.title}</span>
+                          <Button size="small" variant="outline" onClick={() => removeAdditionalPage('promotion', promo.id)}>
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {selectedPromotions.length > 0 && (
+                      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {selectedPromotions.map((promo) => {
+                          const src = promotions.find((it) => it.id === promo.id)?.filePath
+                          return <PdfPreview key={promo.id} src={src} className="h-64 w-full rounded-md border" />
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </GlassPanel>
               )}
 
               {pdfStep === 3 && (
                 <GlassPanel className="p-4 space-y-4">
-                   <div className="rounded-lg border border-white/30 bg-white/40 p-3">
-                  <h4 className="mb-1 font-semibold text-zinc-900">What are you doing here?</h4>
-                  <p className="text-sm text-zinc-700">
-                    Arrange where your selected Adverts and Promotions will appear in the final PDF.
-                    Corporate Info goes first, followed by the selected products.
-                  </p>
-                </div>
-
-                {selectedAdverts.length > 0 && (
-                  <div className="space-y-2">
-                    <SectionTitle>Selected Adverts</SectionTitle>
-                    {selectedAdverts.map((advert) => (
-                      <div key={advert.id} className="flex items-center justify-between">
-                        <p>{advertisements.find((a) => a.id === advert.id)?.title}</p>
-                        {renderPositionDropdown('advert', advert)}
-                      </div>
-                    ))}
+                  <div className="rounded-lg border border-white/30 bg-white/40 p-3">
+                    <h4 className="mb-1 font-semibold text-zinc-900">What are you doing here?</h4>
+                    <p className="text-sm text-zinc-700">
+                      Arrange where your selected Adverts and Promotions will appear in the final PDF.
+                      Corporate Info goes first, followed by the selected products.
+                    </p>
                   </div>
-                )}
 
-                {selectedPromotions.length > 0 && (
-                  <div className="space-y-2">
-                    <SectionTitle>Selected Promotions</SectionTitle>
-                    {selectedPromotions.map((promo) => (
-                      <div key={promo.id} className="flex items-center justify-between">
-                        <p>{promotions.find((p) => p.id === promo.id)?.title}</p>
-                        {renderPositionDropdown('promotion', promo)}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {clients.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <SectionTitle>Select Client (Optional)</SectionTitle>
-                      <Button variant="outline" onClick={openClientDialog}>Add Client</Button>
+                  {selectedAdverts.length > 0 && (
+                    <div className="space-y-2">
+                      <SectionTitle>Selected Adverts</SectionTitle>
+                      {selectedAdverts.map((advert) => (
+                        <div key={advert.id} className="flex items-center justify-between">
+                          <p>{advertisements.find((a) => a.id === advert.id)?.title}</p>
+                          {renderPositionDropdown('advert', advert)}
+                        </div>
+                      ))}
                     </div>
-                    <Select
-                      onValueChange={(value) => setSelectedClient(value === 'none' ? undefined : value)}
-                      value={selectedClient}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Client</SelectItem>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {`${client.firstName} ${client.lastName}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                  )}
+
+                  {selectedPromotions.length > 0 && (
+                    <div className="space-y-2">
+                      <SectionTitle>Selected Promotions</SectionTitle>
+                      {selectedPromotions.map((promo) => (
+                        <div key={promo.id} className="flex items-center justify-between">
+                          <p>{promotions.find((p) => p.id === promo.id)?.title}</p>
+                          {renderPositionDropdown('promotion', promo)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {clients.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <SectionTitle>Select Client (Optional)</SectionTitle>
+                        <Button variant="outline" onClick={openClientDialog}>Add Client</Button>
+                      </div>
+                      <Select
+                        onValueChange={(value) => setSelectedClient(value === 'none' ? undefined : value)}
+                        value={selectedClient}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No Client</SelectItem>
+                          {clients.map((client) => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {`${client.firstName} ${client.lastName}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </GlassPanel>
               )}
               {/* --- end step panels --- */}
