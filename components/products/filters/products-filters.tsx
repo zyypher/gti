@@ -26,12 +26,15 @@ interface IBrand {
   name: string
 }
 
-const ALL = 'all' // sentinel used for “All” option (UI shows All; API omits key)
+const ALL = 'all' // generic “All” sentinel for non-flavour/capsule menus
+
+// UI-only sentinels for flavour/capsule behaviors
+const PLACEHOLDER = '__PLACEHOLDER__'
+const UI_ALL_FLAVOURS = '__ALL_FLAVOURS__'
+const UI_ALL_CAPS = '__ALL_CAPS__'
 
 /**
- * Helper to apply a Select change while keeping:
- * - UI memory of "All" (so the trigger shows All)
- * - API filters clean (remove key when All)
+ * Keep UI “All” memory while keeping API filters clean.
  */
 function applySelectUI(
   key: string,
@@ -42,12 +45,10 @@ function applySelectUI(
   uiSelections: Record<string, string>,
   setUiSelections: (f: Record<string, string>) => void
 ) {
-  // remember what the user selected for the UI
   const nextUi = { ...uiSelections, [key]: value }
   setUiSelections(nextUi)
 
   if (value === ALL) {
-    // “All” = clear this key from API filters
     const { [key]: _omit, ...rest } = filters
     setFilters(rest)
     onFilterChange(rest)
@@ -58,6 +59,24 @@ function applySelectUI(
   }
 }
 
+/** Reset a single key from filters + UI memory */
+function resetKey(
+  key: string,
+  filters: Record<string, string>,
+  setFilters: (f: Record<string, string>) => void,
+  uiSelections: Record<string, string>,
+  setUiSelections: (f: Record<string, string>) => void,
+  onFilterChange: (f: Record<string, string>) => void
+) {
+  const { [key]: _omit, ...rest } = filters
+  setFilters(rest)
+
+  const { [key]: _uOmit, ...uiRest } = uiSelections
+  setUiSelections(uiRest)
+
+  onFilterChange(rest)
+}
+
 export default function ProductsFilters({
   onFilterChange,
   onRefresh,
@@ -66,7 +85,7 @@ export default function ProductsFilters({
 }: FilterProps) {
   const [filters, setFilters] = useState<Record<string, string>>(initialFilters)
 
-  // UI-only selection memory so "All" shows in the trigger even though the key is removed from filters
+  // UI-only memory for what was selected in each dropdown
   const [uiSelections, setUiSelections] = useState<Record<string, string>>({})
 
   const [brands, setBrands] = useState<IBrand[]>([])
@@ -92,9 +111,7 @@ export default function ProductsFilters({
     const fetchBrands = async () => {
       try {
         const response = await api.get('/api/brands')
-        setBrands(
-          response.data.sort((a: IBrand, b: IBrand) => a.name.localeCompare(b.name))
-        )
+        setBrands(response.data.sort((a: IBrand, b: IBrand) => a.name.localeCompare(b.name)))
       } catch (error) {
         console.error('Failed to fetch brands:', error)
       } finally {
@@ -113,9 +130,6 @@ export default function ProductsFilters({
       }
     }
 
-    fetchBrands()
-    fetchSizes()
-    // Fetch unique values for dropdowns
     const fetchFlavors = async () => {
       try {
         const response = await api.get('/api/products/flavors')
@@ -126,6 +140,7 @@ export default function ProductsFilters({
         setIsLoadingFlavors(false)
       }
     }
+
     const fetchPackFormats = async () => {
       try {
         const response = await api.get('/api/products/pack-formats')
@@ -136,6 +151,7 @@ export default function ProductsFilters({
         setIsLoadingPackFormats(false)
       }
     }
+
     const fetchCarbonMonoxides = async () => {
       try {
         const response = await api.get('/api/products/carbon-monoxides')
@@ -146,6 +162,7 @@ export default function ProductsFilters({
         setIsLoadingCarbonMonoxides(false)
       }
     }
+
     const fetchColors = async () => {
       try {
         const response = await api.get('/api/products/colors')
@@ -156,17 +173,20 @@ export default function ProductsFilters({
         setIsLoadingColors(false)
       }
     }
+
+    fetchBrands()
+    fetchSizes()
     fetchFlavors()
     fetchPackFormats()
     fetchCarbonMonoxides()
     fetchColors()
   }, [])
 
-  // honor initial brand filter once brands are available (and mirror it in UI selections)
+  // Honor initial brand filter once brands are available (and mirror it in UI selections)
   useEffect(() => {
     if (brands.length > 0 && initialFilters.brandId && filters.brandId !== initialFilters.brandId) {
       setFilters(initialFilters)
-      setUiSelections((prev) => ({ ...prev, brandId: initialFilters.brandId })) // so trigger shows the initial brand
+      setUiSelections((prev) => ({ ...prev, brandId: initialFilters.brandId }))
       onFilterChange(initialFilters)
     } else if (brands.length > 0 && filters.brandId) {
       setUiSelections((prev) => ({ ...prev, brandId: filters.brandId }))
@@ -188,20 +208,91 @@ export default function ProductsFilters({
 
   const clearFilters = () => {
     setFilters({})
-    setUiSelections({}) // reset UI to placeholders
+    setUiSelections({})
     onFilterChange({})
     onClearSelection?.()
   }
 
-  // convenience wrapper so we don't pass ui state everywhere inline
+  // Convenience wrapper for standard selects
   const onSelect = (key: string) => (v: string) =>
     applySelectUI(key, v, filters, setFilters, onFilterChange, uiSelections, setUiSelections)
+
+  // --- SPECIAL: Flavour select (supports placeholder reset + modes) ---
+  const onSelectFlavor = (v: string) => {
+    if (v === PLACEHOLDER) {
+      // reset only flavour fields and close menu
+      const { flavor: _f, flavorMode: _fm, ...rest } = filters
+      setFilters(rest)
+      onFilterChange(rest)
+      const { flavor: _uf, ...uiRest } = uiSelections
+      setUiSelections(uiRest)
+      return
+    }
+
+    // clear flavour fields first
+    const { flavor: _f, flavorMode: _fm, ...rest } = filters
+
+    if (v === UI_ALL_FLAVOURS) {
+      // all flavours except Regular
+      const next = { ...rest, flavorMode: 'allFlavoursExceptRegular' }
+      setFilters(next)
+      onFilterChange(next)
+      setUiSelections((u) => ({ ...u, flavor: UI_ALL_FLAVOURS }))
+      return
+    }
+
+    if (v === 'Regular') {
+      // only Regular
+      const next = { ...rest, flavor: 'Regular', flavorMode: 'onlyRegular' }
+      setFilters(next)
+      onFilterChange(next)
+      setUiSelections((u) => ({ ...u, flavor: 'Regular' }))
+      return
+    }
+
+    // exact flavour match
+    const next = { ...rest, flavor: v }
+    setFilters(next)
+    onFilterChange(next)
+    setUiSelections((u) => ({ ...u, flavor: v }))
+  }
+
+  // --- SPECIAL: Capsules select (supports placeholder reset + modes) ---
+  const onSelectCapsules = (v: string) => {
+    if (v === PLACEHOLDER) {
+      // reset only capsules fields and close menu
+      const { capsules: _c, capsulesMode: _cm, ...rest } = filters
+      setFilters(rest)
+      onFilterChange(rest)
+      const { capsules: _uc, ...uiRest } = uiSelections
+      setUiSelections(uiRest)
+      return
+    }
+
+    // clear capsules fields first
+    const { capsules: _c, capsulesMode: _cm, ...rest } = filters
+
+    if (v === UI_ALL_CAPS) {
+      // > 0 capsules
+      const next = { ...rest, capsulesMode: 'gt0' }
+      setFilters(next)
+      onFilterChange(next)
+      setUiSelections((u) => ({ ...u, capsules: UI_ALL_CAPS }))
+      return
+    }
+
+    // exact integer value (0/1/2/3…)
+    const next = { ...rest, capsules: v }
+    setFilters(next)
+    onFilterChange(next)
+    setUiSelections((u) => ({ ...u, capsules: v }))
+  }
 
   return (
     <>
       {/* Desktop Filters */}
       <div className="hidden grid-cols-2 gap-4 md:grid md:grid-cols-4 lg:grid-cols-6">
-        {/* Always visible filters */}
+        {/* Always visible: Search by name */}
         <div className="relative col-span-2">
           <FloatingLabelInput
             label="Search by name"
@@ -214,7 +305,7 @@ export default function ProductsFilters({
 
         {/* Brand */}
         <Select
-          value={uiSelections.brandId ?? (filters.brandId ?? '')} // '' => placeholder by default
+          value={uiSelections.brandId ?? (filters.brandId ?? '')}
           onValueChange={onSelect('brandId')}
         >
           <SelectTrigger>
@@ -268,10 +359,10 @@ export default function ProductsFilters({
           </SelectContent>
         </Select>
 
-        {/* Flavour */}
+        {/* Flavour (with placeholder row, All Flavours, Regular, others) */}
         <Select
           value={uiSelections.flavor ?? (filters.flavor ?? '')}
-          onValueChange={onSelect('flavor')}
+          onValueChange={onSelectFlavor}
         >
           <SelectTrigger>
             <SelectValue
@@ -287,12 +378,16 @@ export default function ProductsFilters({
             />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>All</SelectItem>
-            {flavors.map((flavor) => (
-              <SelectItem key={flavor} value={flavor}>
-                {flavor}
-              </SelectItem>
-            ))}
+            <SelectItem value={PLACEHOLDER}>Select Flavour</SelectItem>
+            <SelectItem value={UI_ALL_FLAVOURS}>All Flavours</SelectItem>
+            <SelectItem value="Regular">Regular</SelectItem>
+            {flavors
+              .filter((f) => f !== 'Regular')
+              .map((flavor) => (
+                <SelectItem key={flavor} value={flavor}>
+                  {flavor}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
 
@@ -342,16 +437,17 @@ export default function ProductsFilters({
               </SelectContent>
             </Select>
 
-            {/* Capsules */}
+            {/* Capsules (with placeholder row + special logic) */}
             <Select
               value={uiSelections.capsules ?? (filters.capsules ?? '')}
-              onValueChange={onSelect('capsules')}
+              onValueChange={onSelectCapsules}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Number of Capsules" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All</SelectItem>
+                <SelectItem value={PLACEHOLDER}>Number of Capsules</SelectItem>
+                <SelectItem value={UI_ALL_CAPS}>All Capsules</SelectItem>
                 <SelectItem value="0">0</SelectItem>
                 <SelectItem value="1">1</SelectItem>
                 <SelectItem value="2">2</SelectItem>
@@ -481,11 +577,7 @@ export default function ProductsFilters({
         <Button
           variant="outline"
           size="small"
-          onClick={() => {
-            setFilters({})
-            setUiSelections({})
-            onFilterChange({})
-          }}
+          onClick={clearFilters}
         >
           <X size={18} /> Clear
         </Button>
@@ -498,6 +590,7 @@ export default function ProductsFilters({
         title="Filters"
       >
         <div className="space-y-4 p-4">
+          {/* Product Name (mobile uses Select per your previous code) */}
           <div className="relative">
             <Select
               value={uiSelections.name ?? (filters.name ?? '')}
@@ -508,7 +601,7 @@ export default function ProductsFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>All</SelectItem>
-                {/* Optionally, you can fetch product names for dropdown, or keep as textbox if needed */}
+                {/* If you later add product name options, they go here */}
               </SelectContent>
             </Select>
           </div>
@@ -569,31 +662,25 @@ export default function ProductsFilters({
             </SelectContent>
           </Select>
 
-          {/* Flavour */}
+          {/* Flavour (same behavior as desktop) */}
           <Select
             value={uiSelections.flavor ?? (filters.flavor ?? '')}
-            onValueChange={onSelect('flavor')}
+            onValueChange={onSelectFlavor}
           >
             <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  isLoadingFlavors ? (
-                    <span className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                    </span>
-                  ) : (
-                    'Select Flavour'
-                  )
-                }
-              />
+              <SelectValue placeholder="Select Flavour" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
-              {flavors.map((flavor) => (
-                <SelectItem key={flavor} value={flavor}>
-                  {flavor}
-                </SelectItem>
-              ))}
+              <SelectItem value={PLACEHOLDER}>Select Flavour</SelectItem>
+              <SelectItem value={UI_ALL_FLAVOURS}>All Flavours</SelectItem>
+              <SelectItem value="Regular">Regular</SelectItem>
+              {flavors
+                .filter((f) => f !== 'Regular')
+                .map((flavor) => (
+                  <SelectItem key={flavor} value={flavor}>
+                    {flavor}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
 
@@ -640,16 +727,17 @@ export default function ProductsFilters({
             </SelectContent>
           </Select>
 
-          {/* Capsules */}
+          {/* Capsules (same behavior as desktop) */}
           <Select
             value={uiSelections.capsules ?? (filters.capsules ?? '')}
-            onValueChange={onSelect('capsules')}
+            onValueChange={onSelectCapsules}
           >
             <SelectTrigger>
               <SelectValue placeholder="Number of Capsules" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
+              <SelectItem value={PLACEHOLDER}>Number of Capsules</SelectItem>
+              <SelectItem value={UI_ALL_CAPS}>All Capsules</SelectItem>
               <SelectItem value="0">0</SelectItem>
               <SelectItem value="1">1</SelectItem>
               <SelectItem value="2">2</SelectItem>
