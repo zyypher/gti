@@ -57,57 +57,81 @@ const uploadToS3 = async (file: File, folder: string): Promise<string> => {
 }
 
 // **GET Products (Fetch All)**
+// **GET Products (Fetch All)**
 export async function GET(req: NextRequest) {
     try {
         const url = new URL(req.url)
-        const searchParams = new URLSearchParams(url.search)
+        const sp = url.searchParams
 
-        const filters: any = {}
+        const where: any = {}
+        const and: any[] = []
 
-        const getTextFilter = (key: string) => {
-            const value = searchParams.get(key)
-            if (value && value.trim() !== '') {
-                return { contains: value, mode: 'insensitive' }
-            }
-            return undefined
+        const contains = (k: string) => {
+            const v = sp.get(k)
+            return v && v.trim() ? { contains: v.trim(), mode: 'insensitive' } : undefined
         }
 
-        filters.name = getTextFilter('name')
-        filters.size = getTextFilter('size')
-        filters.flavor = getTextFilter('flavor')
-        filters.packetStyle = getTextFilter('packetStyle')
-        filters.color = getTextFilter('color')
-        filters.corners = getTextFilter('corners')
+        // generic text filters
+        where.name = contains('name')
+        where.size = contains('size')
+        where.packetStyle = contains('packetStyle')
+        where.color = contains('color')
+        where.corners = contains('corners')
 
-        const brandId = searchParams.get('brandId')
-        if (brandId) filters.brandId = brandId
+        // brand
+        const brandId = sp.get('brandId')
+        if (brandId) where.brandId = brandId
 
-        const fsp = searchParams.get('fsp')
-        if (fsp !== null) filters.fsp = fsp === 'true'
+        // fsp
+        const fsp = sp.get('fsp')
+        if (fsp === 'true') where.fsp = true
+        else if (fsp === 'false') where.fsp = false
 
-        const capsules = searchParams.get('capsules')
-        if (capsules) filters.capsules = parseInt(capsules)
+        // capsules
+        const capsulesMode = sp.get('capsulesMode')
+        const capsules = sp.get('capsules')
+        if (capsulesMode === 'gt0') {
+            where.capsules = { gt: 0 }
+        } else if (capsules !== null) {
+            const n = Number.parseInt(capsules, 10)
+            if (!Number.isNaN(n)) where.capsules = n
+        }
 
-        const tar = searchParams.get('tar')
-        if (tar) filters.tar = parseFloat(tar)
+        // numbers
+        const tar = sp.get('tar')
+        if (tar) where.tar = parseFloat(tar)
+        const nicotine = sp.get('nicotine')
+        if (nicotine) where.nicotine = parseFloat(nicotine)
+        const co = sp.get('co')
+        if (co) where.co = parseFloat(co)
 
-        const nicotine = searchParams.get('nicotine')
-        if (nicotine) filters.nicotine = parseFloat(nicotine)
+        // flavour logic
+        const flavorMode = sp.get('flavorMode')
+        const flavor = sp.get('flavor')
 
-        const co = searchParams.get('co')
-        if (co) filters.co = parseFloat(co)
+        if (flavorMode === 'allFlavoursExceptRegular') {
+            // everything except Regular (case-insensitive)
+            and.push({ NOT: { flavor: { equals: 'Regular', mode: 'insensitive' } } })
+            // optionally exclude empty strings (valid for required string)
+            and.push({ flavor: { not: '' } })
+        } else if (flavorMode === 'onlyRegular') {
+            where.flavor = { equals: 'Regular', mode: 'insensitive' }
+        } else if (flavor) {
+            // exact flavour
+            where.flavor = { equals: flavor, mode: 'insensitive' }
+        }
 
-        // Pagination
-        const page = parseInt(searchParams.get('page') || '1', 10)
-        const pageSize = parseInt(searchParams.get('pageSize') || '10', 10)
+        if (and.length) where.AND = and
+
+        // pagination
+        const page = Number.parseInt(sp.get('page') || '1', 10)
+        const pageSize = Number.parseInt(sp.get('pageSize') || '10', 10)
         const skip = (page - 1) * pageSize
         const take = pageSize
 
-        // Get total count for pagination
-        const total = await prisma.product.count({ where: filters })
-
+        const total = await prisma.product.count({ where })
         const products = await prisma.product.findMany({
-            where: filters,
+            where,
             include: { brand: true },
             skip,
             take,
@@ -116,12 +140,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ products, total })
     } catch (error) {
         console.error('Error fetching products:', error)
-        return NextResponse.json(
-            { error: 'Failed to fetch products' },
-            { status: 500 },
-        )
+        return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
     }
 }
+
 
 // **POST Product (Create a New Product with S3 Uploads)**
 export async function POST(req: Request) {
@@ -180,36 +202,36 @@ export async function POST(req: Request) {
         // ✅ Step 2: Return the product immediately (modal closes & UI updates)
         const response = NextResponse.json(product, { status: 201 })
 
-        // ✅ Step 3: Run S3 uploads in the background (non-blocking)
-        ;(async () => {
-            const uploadTasks: Promise<string | null>[] = []
+            // ✅ Step 3: Run S3 uploads in the background (non-blocking)
+            ; (async () => {
+                const uploadTasks: Promise<string | null>[] = []
 
-            if (imageFile) {
-                uploadTasks.push(
-                    uploadToS3(imageFile, 'products').catch(() => null),
-                )
-            } else {
-                uploadTasks.push(Promise.resolve(null))
-            }
+                if (imageFile) {
+                    uploadTasks.push(
+                        uploadToS3(imageFile, 'products').catch(() => null),
+                    )
+                } else {
+                    uploadTasks.push(Promise.resolve(null))
+                }
 
-            if (pdfFile) {
-                uploadTasks.push(uploadToS3(pdfFile, 'pdfs').catch(() => null))
-            } else {
-                uploadTasks.push(Promise.resolve(null))
-            }
+                if (pdfFile) {
+                    uploadTasks.push(uploadToS3(pdfFile, 'pdfs').catch(() => null))
+                } else {
+                    uploadTasks.push(Promise.resolve(null))
+                }
 
-            // Wait for uploads to complete
-            const [imageUrl, pdfUrl] = await Promise.all(uploadTasks)
+                // Wait for uploads to complete
+                const [imageUrl, pdfUrl] = await Promise.all(uploadTasks)
 
-            // ✅ Step 4: Update the product with uploaded URLs
-            await prisma.product.update({
-                where: { id: product.id },
-                data: {
-                    image: imageUrl || '',
-                    pdfUrl: pdfUrl || '',
-                },
-            })
-        })()
+                // ✅ Step 4: Update the product with uploaded URLs
+                await prisma.product.update({
+                    where: { id: product.id },
+                    data: {
+                        image: imageUrl || '',
+                        pdfUrl: pdfUrl || '',
+                    },
+                })
+            })()
 
         return response
     } catch (error) {
