@@ -46,22 +46,27 @@ const checkboxVariants = cva(
 const Checkbox = React.forwardRef<
     React.ElementRef<typeof CheckboxPrimitive.Root>,
     React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> &
-        VariantProps<typeof checkboxVariants>
->(({ className, variant, color, ...props }, ref) => (
+    VariantProps<typeof checkboxVariants>
+>(({ className, variant, color, checked, ...props }, ref) => (
     <CheckboxPrimitive.Root
         ref={ref}
+        checked={checked}
         className={cn(checkboxVariants({ variant, color, className }))}
         {...props}
     >
-        <CheckboxPrimitive.Indicator
-            className={cn('flex items-center justify-center text-current')}
-        >
-            <IconCheckboxCheck
-                className={cn(
-                    'h-1.5 w-1.5',
-                    variant === 'outline' ? 'currentcolor' : '',
-                )}
-            />
+        <CheckboxPrimitive.Indicator className="flex items-center justify-center text-current">
+
+            {/* ✅ Show minus when indeterminate */}
+            {checked === 'indeterminate' ? (
+                <div className="w-2 h-[2px] bg-current rounded-sm" />
+            ) : (
+                <IconCheckboxCheck
+                    className={cn(
+                        'h-1.5 w-1.5',
+                        variant === 'outline' ? 'currentcolor' : '',
+                    )}
+                />
+            )}
         </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
 ))

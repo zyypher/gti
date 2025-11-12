@@ -13,6 +13,7 @@ import { X, Filter, RefreshCw, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { FloatingLabelInput } from '@/components/ui/floating-label-input'
+import { useRouter, usePathname } from 'next/navigation'
 
 interface FilterProps {
   onFilterChange: (filters: Record<string, string>) => void
@@ -26,7 +27,7 @@ interface IBrand {
   name: string
 }
 
-const ALL = 'all' // generic “All” sentinel for non-flavour/capsule menus
+const ALL = 'all' // generic "All" sentinel for non-flavour/capsule menus
 
 // UI-only sentinels for flavour/capsule behaviors
 const PLACEHOLDER = '__PLACEHOLDER__'
@@ -34,7 +35,7 @@ const UI_ALL_FLAVOURS = '__ALL_FLAVOURS__'
 const UI_ALL_CAPS = '__ALL_CAPS__'
 
 /**
- * Keep UI “All” memory while keeping API filters clean.
+ * Keep UI "All" memory while keeping API filters clean.
  */
 function applySelectUI(
   key: string,
@@ -59,30 +60,14 @@ function applySelectUI(
   }
 }
 
-/** Reset a single key from filters + UI memory */
-function resetKey(
-  key: string,
-  filters: Record<string, string>,
-  setFilters: (f: Record<string, string>) => void,
-  uiSelections: Record<string, string>,
-  setUiSelections: (f: Record<string, string>) => void,
-  onFilterChange: (f: Record<string, string>) => void
-) {
-  const { [key]: _omit, ...rest } = filters
-  setFilters(rest)
-
-  const { [key]: _uOmit, ...uiRest } = uiSelections
-  setUiSelections(uiRest)
-
-  onFilterChange(rest)
-}
-
 export default function ProductsFilters({
   onFilterChange,
   onRefresh,
   onClearSelection,
   initialFilters = {},
 }: FilterProps) {
+  const router = useRouter()
+  const pathname = usePathname()
   const [filters, setFilters] = useState<Record<string, string>>(initialFilters)
 
   // UI-only memory for what was selected in each dropdown
@@ -182,18 +167,23 @@ export default function ProductsFilters({
     fetchColors()
   }, [])
 
-  // Honor initial brand filter once brands are available (and mirror it in UI selections)
+  // Ensure initial brandId (from URL/parent) is applied only once.
+  const [hasAppliedInitialBrand, setHasAppliedInitialBrand] = useState(false)
   useEffect(() => {
-    if (brands.length > 0 && initialFilters.brandId && filters.brandId !== initialFilters.brandId) {
+    if (
+      brands.length > 0 &&
+      initialFilters.brandId &&
+      !hasAppliedInitialBrand
+    ) {
       setFilters(initialFilters)
-      setUiSelections((prev) => ({ ...prev, brandId: initialFilters.brandId }))
+      setUiSelections((prev) => ({ ...prev, brandId: initialFilters.brandId! }))
       onFilterChange(initialFilters)
+      setHasAppliedInitialBrand(true)
     } else if (brands.length > 0 && filters.brandId) {
       setUiSelections((prev) => ({ ...prev, brandId: filters.brandId }))
-      onFilterChange(filters)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brands, filters.brandId, initialFilters.brandId])
+  }, [brands, filters.brandId, initialFilters.brandId, hasAppliedInitialBrand])
 
   const handleChangeText = (key: string, value: string) => {
     const updated = { ...filters }
@@ -207,10 +197,18 @@ export default function ProductsFilters({
   }
 
   const clearFilters = () => {
+    // prevent the "apply initial brand" effect from re-triggering after clear
+    setHasAppliedInitialBrand(true)
+
+    // wipe filters + UI selections (including the Brand dropdown)
     setFilters({})
     setUiSelections({})
+
     onFilterChange({})
     onClearSelection?.()
+
+    // Clear URL query parameters
+    router.push(pathname)
   }
 
   // Convenience wrapper for standard selects
@@ -305,7 +303,7 @@ export default function ProductsFilters({
 
         {/* Brand */}
         <Select
-          value={uiSelections.brandId ?? (filters.brandId ?? '')}
+          value={uiSelections.brandId ?? filters.brandId ?? undefined}
           onValueChange={onSelect('brandId')}
         >
           <SelectTrigger>
@@ -333,7 +331,7 @@ export default function ProductsFilters({
 
         {/* Size */}
         <Select
-          value={uiSelections.size ?? (filters.size ?? '')}
+          value={uiSelections.size ?? filters.size ?? undefined}
           onValueChange={onSelect('size')}
         >
           <SelectTrigger>
@@ -361,7 +359,7 @@ export default function ProductsFilters({
 
         {/* Flavour (with placeholder row, All Flavours, Regular, others) */}
         <Select
-          value={uiSelections.flavor ?? (filters.flavor ?? '')}
+          value={uiSelections.flavor ?? filters.flavor ?? undefined}
           onValueChange={onSelectFlavor}
         >
           <SelectTrigger>
@@ -393,7 +391,7 @@ export default function ProductsFilters({
 
         {/* Pack Format */}
         <Select
-          value={uiSelections.packetStyle ?? (filters.packetStyle ?? '')}
+          value={uiSelections.packetStyle ?? filters.packetStyle ?? undefined}
           onValueChange={onSelect('packetStyle')}
         >
           <SelectTrigger>
@@ -424,7 +422,7 @@ export default function ProductsFilters({
           <>
             {/* FSP */}
             <Select
-              value={uiSelections.fsp ?? (filters.fsp ?? '')}
+              value={uiSelections.fsp ?? filters.fsp ?? undefined}
               onValueChange={onSelect('fsp')}
             >
               <SelectTrigger>
@@ -439,7 +437,7 @@ export default function ProductsFilters({
 
             {/* Capsules (with placeholder row + special logic) */}
             <Select
-              value={uiSelections.capsules ?? (filters.capsules ?? '')}
+              value={uiSelections.capsules ?? filters.capsules ?? undefined}
               onValueChange={onSelectCapsules}
             >
               <SelectTrigger>
@@ -457,7 +455,7 @@ export default function ProductsFilters({
 
             {/* Tar (mg) */}
             <Select
-              value={uiSelections.tar ?? (filters.tar ?? '')}
+              value={uiSelections.tar ?? filters.tar ?? undefined}
               onValueChange={onSelect('tar')}
             >
               <SelectTrigger>
@@ -475,7 +473,7 @@ export default function ProductsFilters({
 
             {/* Nicotine (mg) */}
             <Select
-              value={uiSelections.nicotine ?? (filters.nicotine ?? '')}
+              value={uiSelections.nicotine ?? filters.nicotine ?? undefined}
               onValueChange={onSelect('nicotine')}
             >
               <SelectTrigger>
@@ -493,7 +491,7 @@ export default function ProductsFilters({
 
             {/* CO (mg) */}
             <Select
-              value={uiSelections.co ?? (filters.co ?? '')}
+              value={uiSelections.co ?? filters.co ?? undefined}
               onValueChange={onSelect('co')}
             >
               <SelectTrigger>
@@ -521,7 +519,7 @@ export default function ProductsFilters({
 
             {/* Color */}
             <Select
-              value={uiSelections.color ?? (filters.color ?? '')}
+              value={uiSelections.color ?? filters.color ?? undefined}
               onValueChange={onSelect('color')}
             >
               <SelectTrigger>
@@ -593,7 +591,7 @@ export default function ProductsFilters({
           {/* Product Name (mobile uses Select per your previous code) */}
           <div className="relative">
             <Select
-              value={uiSelections.name ?? (filters.name ?? '')}
+              value={uiSelections.name ?? filters.name ?? undefined}
               onValueChange={onSelect('name')}
             >
               <SelectTrigger>
@@ -608,7 +606,7 @@ export default function ProductsFilters({
 
           {/* Brand */}
           <Select
-            value={uiSelections.brandId ?? (filters.brandId ?? '')}
+            value={uiSelections.brandId ?? filters.brandId ?? undefined}
             onValueChange={onSelect('brandId')}
           >
             <SelectTrigger>
@@ -636,7 +634,7 @@ export default function ProductsFilters({
 
           {/* Size */}
           <Select
-            value={uiSelections.size ?? (filters.size ?? '')}
+            value={uiSelections.size ?? filters.size ?? undefined}
             onValueChange={onSelect('size')}
           >
             <SelectTrigger>
@@ -664,7 +662,7 @@ export default function ProductsFilters({
 
           {/* Flavour (same behavior as desktop) */}
           <Select
-            value={uiSelections.flavor ?? (filters.flavor ?? '')}
+            value={uiSelections.flavor ?? filters.flavor ?? undefined}
             onValueChange={onSelectFlavor}
           >
             <SelectTrigger>
@@ -686,7 +684,7 @@ export default function ProductsFilters({
 
           {/* Pack Format */}
           <Select
-            value={uiSelections.packetStyle ?? (filters.packetStyle ?? '')}
+            value={uiSelections.packetStyle ?? filters.packetStyle ?? undefined}
             onValueChange={onSelect('packetStyle')}
           >
             <SelectTrigger>
@@ -714,7 +712,7 @@ export default function ProductsFilters({
 
           {/* FSP */}
           <Select
-            value={uiSelections.fsp ?? (filters.fsp ?? '')}
+            value={uiSelections.fsp ?? filters.fsp ?? undefined}
             onValueChange={onSelect('fsp')}
           >
             <SelectTrigger>
@@ -729,7 +727,7 @@ export default function ProductsFilters({
 
           {/* Capsules (same behavior as desktop) */}
           <Select
-            value={uiSelections.capsules ?? (filters.capsules ?? '')}
+            value={uiSelections.capsules ?? filters.capsules ?? undefined}
             onValueChange={onSelectCapsules}
           >
             <SelectTrigger>
@@ -747,7 +745,7 @@ export default function ProductsFilters({
 
           {/* Tar */}
           <Select
-            value={uiSelections.tar ?? (filters.tar ?? '')}
+            value={uiSelections.tar ?? filters.tar ?? undefined}
             onValueChange={onSelect('tar')}
           >
             <SelectTrigger>
@@ -765,7 +763,7 @@ export default function ProductsFilters({
 
           {/* Nicotine */}
           <Select
-            value={uiSelections.nicotine ?? (filters.nicotine ?? '')}
+            value={uiSelections.nicotine ?? filters.nicotine ?? undefined}
             onValueChange={onSelect('nicotine')}
           >
             <SelectTrigger>
@@ -783,7 +781,7 @@ export default function ProductsFilters({
 
           {/* CO */}
           <Select
-            value={uiSelections.co ?? (filters.co ?? '')}
+            value={uiSelections.co ?? filters.co ?? undefined}
             onValueChange={onSelect('co')}
           >
             <SelectTrigger>
@@ -811,7 +809,7 @@ export default function ProductsFilters({
 
           {/* Color */}
           <Select
-            value={uiSelections.color ?? (filters.color ?? '')}
+            value={uiSelections.color ?? filters.color ?? undefined}
             onValueChange={onSelect('color')}
           >
             <SelectTrigger>
