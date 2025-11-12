@@ -22,41 +22,32 @@ function readableStreamToNodeStream(stream: ReadableStream) {
     return new Readable({
         async read() {
             const { done, value } = await reader.read()
-            if (done) {
-                this.push(null)
-            } else {
-                this.push(value)
-            }
+            if (done) this.push(null)
+            else this.push(value)
         },
     })
 }
 
-// **Function to Upload Files Using Multipart Upload (Faster for Large Files)**
-
+// multipart upload helper
 const uploadToS3 = async (file: File, folder: string): Promise<string> => {
     const key = `${folder}/${Date.now()}-${file.name}`
-
     const nodeStream = readableStreamToNodeStream(file.stream())
-
     const upload = new Upload({
         client: s3,
         params: {
             Bucket: BUCKET_NAME,
             Key: key,
-            Body: nodeStream, // ✅ Now it's a proper Node.js stream
+            Body: nodeStream,
             ContentType: file.type,
             ACL: 'public-read',
         },
-        queueSize: 4, // ✅ Parallel chunk uploads
-        partSize: 5 * 1024 * 1024, // ✅ 5MB per part
+        queueSize: 4,
+        partSize: 5 * 1024 * 1024,
     })
-
     await upload.done()
-
     return `https://${BUCKET_NAME}.s3.amazonaws.com/${key}`
 }
 
-// **GET Products (Fetch All)**
 // **GET Products (Fetch All)**
 export async function GET(req: NextRequest) {
     try {
@@ -71,23 +62,19 @@ export async function GET(req: NextRequest) {
             return v && v.trim() ? { contains: v.trim(), mode: 'insensitive' } : undefined
         }
 
-        // generic text filters
         where.name = contains('name')
         where.size = contains('size')
         where.packetStyle = contains('packetStyle')
         where.color = contains('color')
         where.corners = contains('corners')
 
-        // brand
         const brandId = sp.get('brandId')
         if (brandId) where.brandId = brandId
 
-        // fsp
         const fsp = sp.get('fsp')
         if (fsp === 'true') where.fsp = true
         else if (fsp === 'false') where.fsp = false
 
-        // capsules
         const capsulesMode = sp.get('capsulesMode')
         const capsules = sp.get('capsules')
         if (capsulesMode === 'gt0') {
@@ -97,7 +84,6 @@ export async function GET(req: NextRequest) {
             if (!Number.isNaN(n)) where.capsules = n
         }
 
-        // numbers
         const tar = sp.get('tar')
         if (tar) where.tar = parseFloat(tar)
         const nicotine = sp.get('nicotine')
@@ -105,25 +91,20 @@ export async function GET(req: NextRequest) {
         const co = sp.get('co')
         if (co) where.co = parseFloat(co)
 
-        // flavour logic
         const flavorMode = sp.get('flavorMode')
         const flavor = sp.get('flavor')
 
         if (flavorMode === 'allFlavoursExceptRegular') {
-            // everything except Regular (case-insensitive)
             and.push({ NOT: { flavor: { equals: 'Regular', mode: 'insensitive' } } })
-            // optionally exclude empty strings (valid for required string)
             and.push({ flavor: { not: '' } })
         } else if (flavorMode === 'onlyRegular') {
             where.flavor = { equals: 'Regular', mode: 'insensitive' }
         } else if (flavor) {
-            // exact flavour
             where.flavor = { equals: flavor, mode: 'insensitive' }
         }
 
         if (and.length) where.AND = and
 
-        // pagination
         const page = Number.parseInt(sp.get('page') || '1', 10)
         const pageSize = Number.parseInt(sp.get('pageSize') || '10', 10)
         const skip = (page - 1) * pageSize
@@ -135,6 +116,7 @@ export async function GET(req: NextRequest) {
             include: { brand: true },
             skip,
             take,
+            orderBy: { updatedAt: 'desc' }
         })
 
         return NextResponse.json({ products, total })
@@ -144,7 +126,6 @@ export async function GET(req: NextRequest) {
     }
 }
 
-
 // **POST Product (Create a New Product with S3 Uploads)**
 export async function POST(req: Request) {
     const formData = await req.formData()
@@ -153,9 +134,7 @@ export async function POST(req: Request) {
     const productData: Record<string, string> = {}
 
     formData.forEach((value, key) => {
-        if (typeof value === 'string') {
-            productData[key] = value
-        }
+        if (typeof value === 'string') productData[key] = value
     })
 
     const {
@@ -172,15 +151,41 @@ export async function POST(req: Request) {
         color,
     } = productData
 
+    // 🔒 hard validation: ALL fields + both files required
+    const missing = [
+        ['brandId', brandId],
+        ['name', name],
+        ['size', size],
+        ['tar', tar],
+        ['nicotine', nicotine],
+        ['co', co],
+        ['flavor', flavor],
+        ['packetStyle', packetStyle],
+        ['fsp', fsp],
+        ['capsules', capsules],
+        ['color', color],
+    ].filter(([, v]) => !v || String(v).trim() === '')
+
+    if (missing.length) {
+        return NextResponse.json(
+            { error: `Missing fields: ${missing.map(([k]) => k).join(', ')}` },
+            { status: 400 }
+        )
+    }
+    if (!imageFile || imageFile.size === 0) {
+        return NextResponse.json({ error: 'Product image is required' }, { status: 400 })
+    }
+    if (!pdfFile || pdfFile.size === 0 || pdfFile.type !== 'application/pdf') {
+        return NextResponse.json({ error: 'Valid PDF is required' }, { status: 400 })
+    }
+
     try {
-        // ✅ Convert types correctly
         const parsedTar = parseFloat(tar || '0')
         const parsedNicotine = parseFloat(nicotine || '0')
         const parsedCo = parseFloat(co || '0')
-        const parsedFsp = fsp === 'true' // Convert "true"/"false" string to boolean
+        const parsedFsp = fsp === 'true'
         const parsedCapsules = parseInt(capsules || '0')
 
-        // ✅ Step 1: Create the product in Neon first
         const product = await prisma.product.create({
             data: {
                 name,
@@ -199,31 +204,14 @@ export async function POST(req: Request) {
             },
         })
 
-        // ✅ Step 2: Return the product immediately (modal closes & UI updates)
         const response = NextResponse.json(product, { status: 201 })
 
-            // ✅ Step 3: Run S3 uploads in the background (non-blocking)
             ; (async () => {
-                const uploadTasks: Promise<string | null>[] = []
+                const [imageUrl, pdfUrl] = await Promise.all([
+                    uploadToS3(imageFile, 'products').catch(() => null),
+                    uploadToS3(pdfFile, 'pdfs').catch(() => null),
+                ])
 
-                if (imageFile) {
-                    uploadTasks.push(
-                        uploadToS3(imageFile, 'products').catch(() => null),
-                    )
-                } else {
-                    uploadTasks.push(Promise.resolve(null))
-                }
-
-                if (pdfFile) {
-                    uploadTasks.push(uploadToS3(pdfFile, 'pdfs').catch(() => null))
-                } else {
-                    uploadTasks.push(Promise.resolve(null))
-                }
-
-                // Wait for uploads to complete
-                const [imageUrl, pdfUrl] = await Promise.all(uploadTasks)
-
-                // ✅ Step 4: Update the product with uploaded URLs
                 await prisma.product.update({
                     where: { id: product.id },
                     data: {
@@ -259,29 +247,19 @@ export async function DELETE(req: Request) {
             )
         }
 
-        // **Delete Image from S3**
         if (product.image) {
             const imageKey = product.image.split('.com/')[1]
-            await s3.send(
-                new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: imageKey }),
-            )
+            await s3.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: imageKey }))
         }
 
-        // **Delete PDF from S3**
         if (product.pdfUrl) {
             const pdfKey = product.pdfUrl.split('.com/')[1]
-            await s3.send(
-                new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: pdfKey }),
-            )
+            await s3.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: pdfKey }))
         }
 
-        // **Delete Product from DB**
         await prisma.product.delete({ where: { id } })
 
-        return NextResponse.json(
-            { message: 'Product deleted' },
-            { status: 200 },
-        )
+        return NextResponse.json({ message: 'Product deleted' }, { status: 200 })
     } catch (error) {
         console.error('Error deleting product:', error)
         return NextResponse.json(

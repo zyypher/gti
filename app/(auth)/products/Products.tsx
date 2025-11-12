@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { columns, ITable } from '@/components/custom/table/products/columns'
 import { DataTable } from '@/components/custom/table/data-table'
 import ProductsFilters from '@/components/products/filters/products-filters'
@@ -25,7 +25,7 @@ import {
 import 'react-quill/dist/quill.snow.css'
 import { useSearchParams } from 'next/navigation'
 import { PaginationBar } from '@/components/ui/pagination'
-import { useForm, Controller } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import PhoneInput from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import { countryData } from '@/lib/country-data'
@@ -33,13 +33,13 @@ import { isValidPhoneNumber } from 'react-phone-number-input'
 import * as yup from 'yup'
 import { yupResolver } from '@hookform/resolvers/yup'
 
+/* -------------------- types -------------------- */
 interface IBrand {
   id: string
   name: string
   position: number
 }
 
-/** ✨ UPDATED: allow front/back types too (kept legacy 'banner' just in case) */
 export type INonProductPageItem = {
   id: string
   title: string
@@ -85,18 +85,18 @@ const clientSchema = yup.object({
     .string()
     .required('Primary number is required')
     .test('is-valid', 'Enter a valid phone number', (value) =>
-      value ? isValidPhoneNumber(value) : false
+      value ? isValidPhoneNumber(value) : false,
     ),
   secondaryNumber: yup
     .string()
     .optional()
     .test('is-valid', 'Enter a valid phone number', (value) =>
-      !value || isValidPhoneNumber(value)
+      !value || isValidPhoneNumber(value),
     ),
   country: yup.string().required(),
 })
 
-/* ---------- tiny presentational helpers (no logic change) ---------- */
+/* ----------------- presentational ---------------- */
 const GlassPanel = ({
   children,
   className = '',
@@ -118,8 +118,39 @@ const GlassPanel = ({
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
   <h3 className="text-base font-semibold text-zinc-900">{children}</h3>
 )
-/* ------------------------------------------------------------------ */
 
+/* ------------------ product form ----------------- */
+type ProductFormValues = {
+  name: string
+  brandId: string
+  size: string
+  flavor: string
+  tar: string
+  nicotine: string
+  co?: string
+  packetStyle: string
+  fsp: string
+  capsules: string
+  color: string
+  image?: FileList
+  pdf?: FileList
+}
+
+const EMPTY_DEFAULTS: ProductFormValues = {
+  name: '',
+  brandId: '',
+  size: '',
+  flavor: '',
+  tar: '',
+  nicotine: '',
+  co: '',
+  packetStyle: '',
+  fsp: '',
+  capsules: '',
+  color: '',
+}
+
+/* ===================== PAGE ===================== */
 const Products = () => {
   const [products, setProducts] = useState<ITable[]>([])
   const [brands, setBrands] = useState<IBrand[]>([])
@@ -131,12 +162,10 @@ const Products = () => {
   const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false)
   const [pdfStep, setPdfStep] = useState(1)
 
-  /** ✨ NEW: split corporate infos into front/back + selections */
   const [corporateFronts, setCorporateFronts] = useState<INonProductPageItem[]>([])
   const [corporateBacks, setCorporateBacks] = useState<INonProductPageItem[]>([])
   const [selectedCorporateFront, setSelectedCorporateFront] = useState<string | null>(null)
   const [selectedCorporateBack, setSelectedCorporateBack] = useState<string | null>(null)
-  /** (keep old selectedBanner state unused so nothing else breaks) */
   const [selectedBanner, setSelectedBanner] = useState<string | null>(null)
 
   const [advertisements, setAdvertisements] = useState<INonProductPageItem[]>([])
@@ -154,12 +183,8 @@ const Products = () => {
 
   const [nonProductItems, setNonProductItems] = useState<NonProductPageItem[]>([])
   const [clients, setClients] = useState<Client[]>([])
-  const [selectedCorporateInfo, setSelectedCorporateInfo] = useState<string | undefined>(
-    undefined
-  )
-  const [addedPromotions, setAddedPromotions] = useState<{ id: string; position: number }[]>(
-    []
-  )
+  const [selectedCorporateInfo, setSelectedCorporateInfo] = useState<string | undefined>(undefined)
+  const [addedPromotions, setAddedPromotions] = useState<{ id: string; position: number }[]>([])
   const [selectedClient, setSelectedClient] = useState<string | undefined>(undefined)
 
   const searchParams = useSearchParams()
@@ -167,6 +192,7 @@ const Products = () => {
   const initialFilters: Record<string, string> = initialBrandId ? { brandId: initialBrandId } : {}
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false)
   const [isClientSubmitting, setIsClientSubmitting] = useState(false)
+  const [tableResetKey, setTableResetKey] = useState(0)
 
   const [page, setPage] = useState(1)
   const [pageSize] = useState(10)
@@ -174,7 +200,9 @@ const Products = () => {
 
   const isPWA = () => window.matchMedia('(display-mode: standalone)').matches
   const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  console.log('##clients', clients)
 
+  /* -------- client form (quick add) -------- */
   const {
     control: clientControl,
     register: clientRegister,
@@ -209,28 +237,25 @@ const Products = () => {
       setSelectedClient(newClient.id)
       toast.success('Client added')
       setIsClientDialogOpen(false)
-    } catch (err) {
+    } catch {
       toast.error('Failed to add client')
     } finally {
       setIsClientSubmitting(false)
     }
   }
 
+  /* -------- non-product page lists -------- */
   useEffect(() => {
     const fetchNonProductPageItems = async () => {
       try {
         const response = await api.get('/api/non-product-pages')
         const data: INonProductPageItem[] = response.data
-
-        // ✨ Split into front/back + others (support legacy 'banner' as front)
-        setCorporateFronts(
-          data.filter((item) => item.type === 'banner_front' || item.type === 'banner')
-        )
-        setCorporateBacks(data.filter((item) => item.type === 'banner_back'))
-        setAdvertisements(data.filter((item) => item.type === 'advertisement'))
-        setPromotions(data.filter((item) => item.type === 'promotion'))
-      } catch (error) {
-        console.error('Failed to load non-product page items:', error)
+        setCorporateFronts(data.filter((i) => i.type === 'banner_front' || i.type === 'banner'))
+        setCorporateBacks(data.filter((i) => i.type === 'banner_back'))
+        setAdvertisements(data.filter((i) => i.type === 'advertisement'))
+        setPromotions(data.filter((i) => i.type === 'promotion'))
+      } catch (e) {
+        console.error('Failed to load non-product page items:', e)
       }
     }
     fetchNonProductPageItems()
@@ -245,28 +270,36 @@ const Products = () => {
       toast.error('Please select at least one Advert and one Promotion.')
       return
     }
-    setPdfStep((prevStep) => prevStep + 1)
+    setPdfStep((s) => s + 1)
   }
 
+  /* -------------- Product form -------------- */
   const {
     register,
     handleSubmit,
     reset,
     setValue,
     watch,
+    control: productControl,
+    clearErrors,
     formState: { errors },
-  } = useForm()
+  } = useForm<ProductFormValues>({
+    defaultValues: EMPTY_DEFAULTS,
+    shouldUnregister: true,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+  })
 
-  const mergeWithSelectedProducts = (fetched: ITable[]) => {
-    const selectedSet = new Set(selectedRows)
-    const merged = [...fetched]
-    products.forEach((prod) => {
-      if (selectedSet.has(prod.id) && !fetched.find((p) => p.id === prod.id)) {
-        merged.push(prod)
-      }
-    })
-    return merged
-  }
+  const [fileKey, setFileKey] = useState(0)
+
+  const tarOptions = useMemo(
+    () => Array.from({ length: 12 }, (_, i) => ((i + 1) / 10).toFixed(1)),
+    [],
+  )
+  const nicotineOptions = useMemo(
+    () => Array.from({ length: 12 }, (_, i) => String(i + 1)),
+    [],
+  )
 
   const fetchProducts = async () => {
     setLoading(true)
@@ -280,8 +313,8 @@ const Products = () => {
       const result = await response.json()
       setProducts(result.products)
       setTotal(result.total)
-    } catch (error) {
-      console.error('Failed to fetch products:', error)
+    } catch (e) {
+      console.error('Failed to fetch products:', e)
     } finally {
       setLoading(false)
     }
@@ -292,8 +325,8 @@ const Products = () => {
       const response = await fetch('/api/brands')
       const data = await response.json()
       setBrands(data)
-    } catch (error) {
-      console.error('Failed to fetch brands:', error)
+    } catch (e) {
+      console.error('Failed to fetch brands:', e)
     }
   }
 
@@ -301,8 +334,8 @@ const Products = () => {
     try {
       const response = await api.get('/api/non-product-pages')
       setNonProductItems(response.data)
-    } catch (error) {
-      console.error('Failed to fetch non-product items', error)
+    } catch (e) {
+      console.error('Failed to fetch non-product items', e)
       toast.error('Failed to fetch non-product items.')
     }
   }
@@ -311,33 +344,53 @@ const Products = () => {
     try {
       const response = await api.get('/api/clients')
       setClients(response.data)
-    } catch (error) {
-      console.error('Failed to fetch clients', error)
+    } catch (e) {
+      console.error('Failed to fetch clients', e)
       toast.error('Failed to fetch clients.')
     }
   }
 
-  // fetch only the table when filters/pagination change
   useEffect(() => {
     fetchProducts()
   }, [filters, page, pageSize])
 
-  // fetch static/reference lists once on mount
   useEffect(() => {
     fetchBrands()
     fetchNonProductItems()
     fetchClients()
   }, [])
 
-
   const handleFilterChange = (newFilters: { [key: string]: string }) => {
     setFilters(newFilters)
   }
 
+  /** Prefill edit form correctly (fixes FSP/boolean mismatch) */
   const handleEdit = (item: ITable) => {
     setSelectedProduct(item)
     setIsDialogOpen(true)
-    Object.keys(item).forEach((key) => setValue(key as any, (item as any)[key]))
+
+    const fspNormalized: 'true' | 'false' =
+      typeof item.fsp === 'boolean'
+        ? (item.fsp ? 'true' : 'false')
+        : /^(true|yes|1)$/i.test(String(item.fsp))
+          ? 'true'
+          : 'false'
+
+    reset({
+      name: (item as any).name ?? '',
+      brandId: (item as any).brandId ?? '',
+      size: String((item as any).size ?? ''),
+      flavor: (item as any).flavor ?? '',
+      tar: String((item as any).tar ?? ''),
+      nicotine: String((item as any).nicotine ?? ''),
+      co: String((item as any).co ?? ''),
+      packetStyle: (item as any).packetStyle ?? '',
+      fsp: fspNormalized,
+      capsules: String((item as any).capsules ?? ''),
+      color: (item as any).color ?? '',
+    })
+
+    clearErrors(['tar', 'nicotine', 'brandId', 'name', 'size', 'flavor'])
   }
 
   const handleDelete = (id: string) => {
@@ -408,21 +461,18 @@ const Products = () => {
         setSelectedClient(undefined)
         setSelectedCorporateFront(null)
         setSelectedCorporateBack(null)
+        setTableResetKey((k) => k + 1)
 
-        if (isPWA() || isMobile()) {
-          if (navigator.share) {
-            const blob = await fetch(pdfUrl).then((res) => res.blob())
-            const file = new File([blob], fileName, { type: 'application/pdf' })
-            navigator
-              .share({
-                title: 'Shared PDF',
-                text: `View the products here: ${shareableUrl}`,
-                files: [file],
-              })
-              .catch((err) => console.error('Error sharing:', err))
-          } else {
-            toast.error('Sharing not supported')
-          }
+        if ((isPWA() || isMobile()) && navigator.share) {
+          const blob = await fetch(pdfUrl).then((res) => res.blob())
+          const file = new File([blob], fileName, { type: 'application/pdf' })
+          navigator
+            .share({
+              title: 'Shared PDF',
+              text: `View the products here: ${shareableUrl}`,
+              files: [file],
+            })
+            .catch((err) => console.error('Error sharing:', err))
         } else {
           setShareableUrl(shareableUrl)
           setIsShareDialogOpen(true)
@@ -438,22 +488,29 @@ const Products = () => {
     }
   }
 
-  const handleAddOrUpdateProduct = async (data: any) => {
+  /** Create/Update (files optional during edit; text fields always sent) */
+  const handleAddOrUpdateProduct = async (data: ProductFormValues) => {
     if (role !== 'ADMIN') {
       toast.error('You are not authorized to perform this action.')
       return
     }
     setButtonLoading(true)
+
     const formData = new FormData()
-    Object.keys(data).forEach((key) => {
-      if (key === 'image' && data.image[0]) {
-        formData.append('image', data.image[0])
-      } else if (key === 'pdf' && data.pdf[0]) {
-        formData.append('pdf', data.pdf[0])
-      } else {
-        formData.append(key, data[key])
-      }
-    })
+    formData.append('name', data.name ?? '')
+    formData.append('brandId', data.brandId ?? '')
+    formData.append('size', data.size ?? '')
+    formData.append('flavor', data.flavor ?? '')
+    formData.append('tar', data.tar ?? '')
+    formData.append('nicotine', data.nicotine ?? '')
+    formData.append('co', data.co ?? '')
+    formData.append('packetStyle', data.packetStyle ?? '')
+    formData.append('fsp', data.fsp ?? '')
+    formData.append('capsules', data.capsules ?? '')
+    formData.append('color', data.color ?? '')
+
+    if (data.image?.length) formData.append('image', data.image[0])
+    if (data.pdf?.length) formData.append('pdf', data.pdf[0])
 
     try {
       const url = selectedProduct ? `/api/products/${selectedProduct.id}/pdf` : routes.addProduct
@@ -475,9 +532,13 @@ const Products = () => {
       } else {
         toast.error(`Failed to ${selectedProduct ? 'update' : 'add'} product`)
       }
-    } catch (error) {
-      toast.error(`Error ${selectedProduct ? 'updating' : 'adding'} product`)
+    } catch (error: any) {
       console.error(error)
+      toast.error(
+        error?.response?.data?.error
+          ? `Error: ${error.response.data.error}`
+          : `Error ${selectedProduct ? 'updating' : 'adding'} product`,
+      )
     } finally {
       setButtonLoading(false)
     }
@@ -504,14 +565,8 @@ const Products = () => {
     }
   }
 
-  const handleRefresh = () => {
-    fetchProducts()
-  }
-
-
-  const handleClearSelection = () => {
-    setSelectedRows([])
-  }
+  const handleRefresh = () => fetchProducts()
+  const handleClearSelection = () => setSelectedRows([])
 
   const addAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
     if (!id) return
@@ -525,15 +580,17 @@ const Products = () => {
   }
 
   const removeAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
-    if (type === 'advert') {
-      setSelectedAdverts((prev) => prev.filter((p) => p.id !== id))
-    } else {
-      setSelectedPromotions((prev) => prev.filter((p) => p.id !== id))
-    }
+    if (type === 'advert') setSelectedAdverts((prev) => prev.filter((p) => p.id !== id))
+    else setSelectedPromotions((prev) => prev.filter((p) => p.id !== id))
   }
 
-  const updateAdditionalPagePosition = (type: 'advert' | 'promotion', id: string, position: number) => {
-    const updater = (pages: AdditionalPage[]) => pages.map((p) => (p.id === id ? { ...p, position } : p))
+  const updateAdditionalPagePosition = (
+    type: 'advert' | 'promotion',
+    id: string,
+    position: number,
+  ) => {
+    const updater = (pages: AdditionalPage[]) =>
+      pages.map((p) => (p.id === id ? { ...p, position } : p))
     if (type === 'advert') setSelectedAdverts(updater)
     else setSelectedPromotions(updater)
   }
@@ -544,19 +601,19 @@ const Products = () => {
     options.push(
       <option key="pos-2" value={2}>
         After Corporate Info
-      </option>
+      </option>,
     )
     for (let i = 0; i < totalProductPages; i++) {
       options.push(
         <option key={`pos-${i + 3}`} value={i + 3}>
           {`After Product ${i + 1}`}
-        </option>
+        </option>,
       )
     }
     options.push(
       <option key={`pos-end`} value={totalProductPages + 2}>
         At the end
-      </option>
+      </option>,
     )
     return (
       <select
@@ -569,20 +626,20 @@ const Products = () => {
     )
   }
 
-  // ---------- options for Tar & Nicotine ----------
-  const tarOptions = Array.from({ length: 12 }, (_, i) => ((i + 1) / 10).toFixed(1)) // 0.1..1.2
-  const nicotineOptions = Array.from({ length: 12 }, (_, i) => String(i + 1)) // 1..12
-  // -------------------------------------------------
-
   const tableLoading = initialBrandId ? filters.brandId !== initialBrandId || loading : loading
 
-  // ---------- PDF preview helper ----------
+  /* PDF preview helper */
   const PdfPreview = ({ src, className }: { src?: string; className?: string }) => {
     if (!src) return null
     const url = `${src}${src.includes('#') ? '' : '#'}toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
-    return <embed src={url} type="application/pdf" className={className ?? 'h-64 w-full rounded-md border overflow-hidden pointer-events-none'} />
+    return (
+      <embed
+        src={url}
+        type="application/pdf"
+        className={className ?? 'h-64 w-full rounded-md border overflow-hidden pointer-events-none'}
+      />
+    )
   }
-  // ---------------------------------------
 
   return (
     <div className="relative">
@@ -601,6 +658,8 @@ const Products = () => {
                 variant="black"
                 onClick={() => {
                   setSelectedProduct(null)
+                  reset(EMPTY_DEFAULTS)
+                  setFileKey((k) => k + 1)
                   reset()
                   setIsDialogOpen(true)
                 }}
@@ -610,13 +669,17 @@ const Products = () => {
                 New Product
               </Button>
             )}
-            <Button variant="outline-black" disabled={selectedRows.length === 0} onClick={() => setIsPdfDialogOpen(true)}>
+            <Button
+              variant="outline-black"
+              disabled={selectedRows.length === 0}
+              onClick={() => setIsPdfDialogOpen(true)}
+            >
               Create PDF
             </Button>
           </GlassPanel>
         </div>
 
-        {/* Filters in glass panel */}
+        {/* Filters */}
         <GlassPanel className="p-3">
           <ProductsFilters
             onFilterChange={handleFilterChange}
@@ -629,6 +692,7 @@ const Products = () => {
         {/* Table */}
         <GlassPanel className="p-3">
           <DataTable<ITable>
+            key={tableResetKey}
             columns={_columns}
             data={products}
             filterField="product"
@@ -637,11 +701,15 @@ const Products = () => {
             isRemovePagination={false}
           />
           <div className="border-t border-white/20 pt-3">
-            <PaginationBar currentPage={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} />
+            <PaginationBar
+              currentPage={page}
+              totalPages={Math.ceil(total / pageSize)}
+              onPageChange={setPage}
+            />
           </div>
         </GlassPanel>
 
-        {/* Add/Edit Product Dialog */}
+        {/* Add/Edit Dialog */}
         <Dialog
           isOpen={isDialogOpen}
           onClose={() => {
@@ -655,60 +723,72 @@ const Products = () => {
         >
           <div className="max-h-[70vh] space-y-4 overflow-y-auto p-2">
             <SectionTitle>Details</SectionTitle>
-            <GlassPanel className="p-4 space-y-4">
+            <GlassPanel className="space-y-4 p-4">
+              {/* Name */}
               <div>
                 <FloatingLabelInput
                   label="Enter product name"
                   name="name"
                   value={watch('name') || ''}
-                  onChange={(val) => setValue('name', val)}
+                  onChange={(val) => setValue('name', val, { shouldValidate: true })}
                   error={String(errors.name?.message || '')}
                 />
+                <input type="hidden" {...register('name', { required: 'Name is required' })} />
               </div>
 
+              {/* Brand */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-700">Brand</label>
                 <select
                   {...register('brandId', { required: 'Brand is required' })}
-                  className="block w-full rounded-lg border border-white/40 bg-white/70 p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-lg border border-zinc-500 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  defaultValue={watch('brandId') || ''}
+                  style={{ border: '1px solid #d1d5db' }}
                 >
                   <option value="">Select a brand</option>
-                  {brands.map((brand) => (
-                    <option key={brand.id} value={brand.id}>
-                      {brand.name}
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
                     </option>
                   ))}
                 </select>
-                {errors.brandId?.message && <p className="mt-1 text-sm text-red-500">{String(errors.brandId.message)}</p>}
+                {errors.brandId?.message && (
+                  <p className="mt-1 text-sm text-red-500">{String(errors.brandId.message)}</p>
+                )}
               </div>
 
+              {/* Size */}
               <div>
                 <FloatingLabelInput
                   label="Enter Stick Format"
                   name="size"
                   value={watch('size') || ''}
-                  onChange={(val) => setValue('size', val)}
+                  onChange={(val) => setValue('size', val, { shouldValidate: true })}
                   error={String(errors.size?.message || '')}
                 />
+                <input type="hidden" {...register('size', { required: 'Stick format is required' })} />
               </div>
 
+              {/* Flavor */}
               <div>
                 <FloatingLabelInput
                   label="Flavour"
                   name="flavor"
                   value={watch('flavor') || ''}
-                  onChange={(val) => setValue('flavor', val)}
+                  onChange={(val) => setValue('flavor', val, { shouldValidate: true })}
                   error={String(errors.flavor?.message || '')}
                 />
+                <input type="hidden" {...register('flavor', { required: 'Flavour is required' })} />
               </div>
 
-              {/* Tar (mg) */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-700">Tar (mg)</label>
                 <select
-                  className="block w-full rounded-lg border border-white/40 bg-white/70 p-2 focus:border-black focus:ring-1 focus:ring-black"
-                  value={watch('tar') || ''}
+                  {...register('tar', { required: 'Tar is required' })}
+                  value={watch('tar') ?? ''}
                   onChange={(e) => setValue('tar', e.target.value, { shouldValidate: true })}
+                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  style={{ border: '1px solid #d1d5db' }}
                 >
                   <option value="">Select Tar</option>
                   {tarOptions.map((v) => (
@@ -717,16 +797,19 @@ const Products = () => {
                     </option>
                   ))}
                 </select>
-                {errors.tar?.message && <p className="mt-1 text-sm text-red-500">{String(errors.tar.message)}</p>}
+                {errors.tar?.message && (
+                  <p className="mt-1 text-sm text-red-500">{String(errors.tar.message)}</p>
+                )}
               </div>
 
-              {/* Nicotine */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-700">Nicotine (mg)</label>
                 <select
-                  className="block w-full rounded-lg border border-white/40 bg-white/70 p-2 focus:border-black focus:ring-1 focus:ring-black"
-                  value={watch('nicotine') || ''}
+                  {...register('nicotine', { required: 'Nicotine is required' })}
+                  value={watch('nicotine') ?? ''}
                   onChange={(e) => setValue('nicotine', e.target.value, { shouldValidate: true })}
+                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  style={{ border: '1px solid #d1d5db' }}
                 >
                   <option value="">Select Nicotine</option>
                   {nicotineOptions.map((v) => (
@@ -740,45 +823,62 @@ const Products = () => {
                 )}
               </div>
 
+              {/* CO */}
               <div>
                 <FloatingLabelInput
                   type="number"
-                  label="Enter CO (mg) (optional)"
+                  label="Enter CO (mg)"
                   name="co"
                   value={watch('co') || ''}
-                  onChange={(val) => setValue('co', val)}
+                  onChange={(val) => setValue('co', val, { shouldValidate: true })}
                   error={String(errors.co?.message || '')}
                 />
+                <input type="hidden" {...register('co', { required: 'CO is required' })} />
               </div>
 
+              {/* Packet style */}
               <div>
                 <FloatingLabelInput
                   label="Pack Format (e.g., Fan Pack, Slide Pack, Regular)"
                   name="packetStyle"
                   value={watch('packetStyle') || ''}
-                  onChange={(val) => setValue('packetStyle', val)}
+                  onChange={(val) => setValue('packetStyle', val, { shouldValidate: true })}
                   error={String(errors.packetStyle?.message || '')}
+                />
+                <input
+                  type="hidden"
+                  {...register('packetStyle', { required: 'Pack format is required' })}
                 />
               </div>
 
+              {/* FSP */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-700">FSP</label>
                 <select
                   {...register('fsp', { required: 'FSP selection is required' })}
-                  className="block w-full rounded-lg border border-white/40 bg-white/70 p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  value={watch('fsp') ?? ''}
+                  onChange={(e) => setValue('fsp', e.target.value, { shouldValidate: true })}
+                  style={{ border: '1px solid #d1d5db' }}
                 >
                   <option value="">Select FSP</option>
                   <option value="true">Yes</option>
                   <option value="false">No</option>
                 </select>
-                {errors.fsp?.message && <p className="mt-1 text-sm text-red-500">{String(errors.fsp.message)}</p>}
+                {errors.fsp?.message && (
+                  <p className="mt-1 text-sm text-red-500">{String(errors.fsp.message)}</p>
+                )}
               </div>
 
+              {/* Capsules */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-700">Capsules</label>
                 <select
                   {...register('capsules', { required: 'Select number of capsules' })}
-                  className="block w-full rounded-lg border border-white/40 bg-white/70 p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  value={watch('capsules') ?? ''}
+                  onChange={(e) => setValue('capsules', e.target.value, { shouldValidate: true })}
+                  style={{ border: '1px solid #d1d5db' }}
                 >
                   <option value="">Select Capsules</option>
                   <option value="0">0</option>
@@ -791,16 +891,19 @@ const Products = () => {
                 )}
               </div>
 
+              {/* Color */}
               <div>
                 <FloatingLabelInput
                   label="Enter Packet Color"
                   name="color"
                   value={watch('color') || ''}
-                  onChange={(val) => setValue('color', val)}
+                  onChange={(val) => setValue('color', val, { shouldValidate: true })}
                   error={String(errors.color?.message || '')}
                 />
+                <input type="hidden" {...register('color', { required: 'Packet color is required' })} />
               </div>
 
+              {/* Existing previews on EDIT */}
               {selectedProduct?.image && (
                 <div className="mb-2">
                   <p className="mb-1 text-sm text-zinc-600">Current Image Preview:</p>
@@ -812,6 +915,14 @@ const Products = () => {
                 </div>
               )}
 
+              {selectedProduct && (selectedProduct as any).pdfUrl && (
+                <div className="mb-2">
+                  <p className="mb-1 text-sm text-zinc-600">Current PDF Preview:</p>
+                  <PdfPreview src={(selectedProduct as any).pdfUrl} className="h-64 w-full rounded-md border" />
+                </div>
+              )}
+
+              {/* New file inputs (optional on edit) */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-700">Upload Product Image</label>
                 <Input
@@ -821,8 +932,8 @@ const Products = () => {
                     required: !selectedProduct ? 'Product image is required' : false,
                   })}
                 />
-                {errors.image?.message && (
-                  <p className="mt-1 text-sm text-red-500">{String(errors.image.message)}</p>
+                {errors.image && (
+                  <p className="mt-1 text-sm text-red-500">{String((errors as any).image?.message)}</p>
                 )}
               </div>
 
@@ -835,8 +946,8 @@ const Products = () => {
                     required: !selectedProduct ? 'Product PDF is required' : false,
                   })}
                 />
-                {errors.pdf?.message && (
-                  <p className="mt-1 text-sm text-red-500">{String(errors.pdf.message)}</p>
+                {errors.pdf && (
+                  <p className="mt-1 text-sm text-red-500">{String((errors as any).pdf?.message)}</p>
                 )}
               </div>
             </GlassPanel>
@@ -855,16 +966,10 @@ const Products = () => {
             setSelectedCorporateFront(null)
             setSelectedCorporateBack(null)
           }}
-          title={`Step ${pdfStep}: ${pdfStep === 1 ? 'Select Corporate Infos'
-            : pdfStep === 2 ? 'Add Adverts & Promotions'
-              : 'Confirm & Generate'
-            }`}
+          title={`Step ${pdfStep}: ${pdfStep === 1 ? 'Select Corporate Infos' : pdfStep === 2 ? 'Add Adverts & Promotions' : 'Confirm & Generate'}`}
         >
-          {/* FLEX column: scrollable content + fixed footer */}
           <div className="flex max-h-[75vh] flex-col">
-            {/* scrolls */}
-            <div className="flex-1 overflow-y-auto space-y-4 p-2 pr-3">
-              {/* --- keep your step panels unchanged below --- */}
+            <div className="flex-1 space-y-4 overflow-y-auto p-2 pr-3">
               {pdfStep === 1 && (
                 <GlassPanel className="space-y-6 p-4">
                   <div>
@@ -876,7 +981,9 @@ const Products = () => {
                     >
                       <option value="">Select Corporate Info (Front)</option>
                       {corporateFronts.map((item) => (
-                        <option key={item.id} value={item.id}>{item.title}</option>
+                        <option key={item.id} value={item.id}>
+                          {item.title}
+                        </option>
                       ))}
                     </select>
                     {selectedCorporateFront && (
@@ -899,7 +1006,9 @@ const Products = () => {
                     >
                       <option value="">Select Corporate Info (Back)</option>
                       {corporateBacks.map((item) => (
-                        <option key={item.id} value={item.id}>{item.title}</option>
+                        <option key={item.id} value={item.id}>
+                          {item.title}
+                        </option>
                       ))}
                     </select>
                     {selectedCorporateBack && (
@@ -927,7 +1036,9 @@ const Products = () => {
                       >
                         <option value="">Select an Advert to add</option>
                         {advertisements.map((advert) => (
-                          <option key={advert.id} value={advert.id}>{advert.title}</option>
+                          <option key={advert.id} value={advert.id}>
+                            {advert.title}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -935,7 +1046,11 @@ const Products = () => {
                       {selectedAdverts.map((ad) => (
                         <div key={ad.id} className="flex items-center justify-between text-sm">
                           <span>{advertisements.find((it) => it.id === ad.id)?.title}</span>
-                          <Button size="small" variant="outline" onClick={() => removeAdditionalPage('advert', ad.id)}>
+                          <Button
+                            size="small"
+                            variant="outline"
+                            onClick={() => removeAdditionalPage('advert', ad.id)}
+                          >
                             Remove
                           </Button>
                         </div>
@@ -962,7 +1077,9 @@ const Products = () => {
                       >
                         <option value="">Select a Promotion to add</option>
                         {promotions.map((promo) => (
-                          <option key={promo.id} value={promo.id}>{promo.title}</option>
+                          <option key={promo.id} value={promo.id}>
+                            {promo.title}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -970,7 +1087,11 @@ const Products = () => {
                       {selectedPromotions.map((promo) => (
                         <div key={promo.id} className="flex items-center justify-between text-sm">
                           <span>{promotions.find((it) => it.id === promo.id)?.title}</span>
-                          <Button size="small" variant="outline" onClick={() => removeAdditionalPage('promotion', promo.id)}>
+                          <Button
+                            size="small"
+                            variant="outline"
+                            onClick={() => removeAdditionalPage('promotion', promo.id)}
+                          >
                             Remove
                           </Button>
                         </div>
@@ -990,12 +1111,12 @@ const Products = () => {
               )}
 
               {pdfStep === 3 && (
-                <GlassPanel className="p-4 space-y-4">
+                <GlassPanel className="space-y-4 p-4">
                   <div className="rounded-lg border border-white/30 bg-white/40 p-3">
                     <h4 className="mb-1 font-semibold text-zinc-900">What are you doing here?</h4>
                     <p className="text-sm text-zinc-700">
-                      Arrange where your selected Adverts and Promotions will appear in the final PDF.
-                      Corporate Info goes first, followed by the selected products.
+                      Arrange where your selected Adverts and Promotions will appear in the final PDF. Corporate Info goes
+                      first, followed by the selected products.
                     </p>
                   </div>
 
@@ -1023,36 +1144,44 @@ const Products = () => {
                     </div>
                   )}
 
-                  {clients.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <SectionTitle>Select Client (Optional)</SectionTitle>
-                        <Button variant="outline" onClick={openClientDialog}>Add Client</Button>
-                      </div>
+                  {/* Always render the header + button; show Select when you have clients */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <SectionTitle>Select Client (Optional)</SectionTitle>
+                      <Button variant="outline" onClick={openClientDialog}>
+                        Add Client
+                      </Button>
+                    </div>
+
+                    {clients.length > 0 ? (
                       <Select
-                        onValueChange={(value) => setSelectedClient(value === 'none' ? undefined : value)}
-                        value={selectedClient}
+                        value={selectedClient ?? undefined}
+                        onValueChange={(v) => setSelectedClient(v === 'none' ? undefined : v)}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select a client" />
                         </SelectTrigger>
-                        <SelectContent>
+
+                        <SelectContent
+                          className="z-[9999] max-h-[300px] overflow-y-auto bg-white"
+                          sideOffset={4}
+                        >
                           <SelectItem value="none">No Client</SelectItem>
-                          {clients.map((client) => (
-                            <SelectItem key={client.id} value={client.id}>
-                              {`${client.firstName} ${client.lastName}`}
+                          {clients.map((c) => (
+                            <SelectItem key={String(c.id)} value={String(c.id)}>
+                              {`${c.firstName} ${c.lastName}`}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                  )}
+                    ) : (
+                      <p className="text-sm text-zinc-600">No clients yet. Click "Add Client".</p>
+                    )}
+                  </div>
                 </GlassPanel>
               )}
-              {/* --- end step panels --- */}
             </div>
 
-            {/* fixed footer at bottom of dialog (no sticky) */}
             <div className="mt-2 flex shrink-0 items-center justify-end gap-3 border-t border-white/30 bg-white/60 px-3 py-3">
               {pdfStep > 1 && (
                 <Button variant="outline" onClick={() => setPdfStep((s) => s - 1)}>
@@ -1064,14 +1193,138 @@ const Products = () => {
                 onClick={pdfStep < 3 ? handleNextStep : handleGeneratePDF}
                 disabled={pdfStep === 3 && buttonLoading}
               >
-                {pdfStep < 3 ? 'Next' : (buttonLoading ? 'Generating...' : 'Generate PDF')}
+                {pdfStep < 3 ? 'Next' : buttonLoading ? 'Generating...' : 'Generate PDF'}
               </Button>
             </div>
           </div>
         </Dialog>
 
+        {/* QUICK ADD CLIENT DIALOG */}
+        <Dialog
+          isOpen={isClientDialogOpen}
+          onClose={() => setIsClientDialogOpen(false)}
+          title="Add Client"
+          onSubmit={handleClientSubmit(submitQuickClient)}
+          buttonLoading={isClientSubmitting}
+        >
+          <div className="max-h-[70vh] space-y-4 overflow-y-auto p-2">
+            <GlassPanel className="space-y-4 p-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <FloatingLabelInput
+                    label="First name"
+                    name="firstName"
+                    value={''}
+                    onChange={() => { }}
+                  />
+                  <input type="hidden" {...clientRegister('firstName')} />
+                  {clientErrors.firstName && (
+                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.firstName.message)}</p>
+                  )}
+                </div>
 
+                <div>
+                  <FloatingLabelInput
+                    label="Last name"
+                    name="lastName"
+                    value={''}
+                    onChange={() => { }}
+                  />
+                  <input type="hidden" {...clientRegister('lastName')} />
+                  {clientErrors.lastName && (
+                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.lastName.message)}</p>
+                  )}
+                </div>
 
+                <div>
+                  <FloatingLabelInput
+                    label="Company"
+                    name="company"
+                    value={''}
+                    onChange={() => { }}
+                  />
+                  <input type="hidden" {...clientRegister('company')} />
+                  {clientErrors.company && (
+                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.company.message)}</p>
+                  )}
+                </div>
+
+                <div>
+                  <FloatingLabelInput
+                    label="Nickname"
+                    name="nickname"
+                    value={''}
+                    onChange={() => { }}
+                  />
+                  <input type="hidden" {...clientRegister('nickname')} />
+                  {clientErrors.nickname && (
+                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.nickname.message)}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700">Primary Number</label>
+                  <Controller
+                    control={clientControl}
+                    name="primaryNumber"
+                    render={({ field }) => (
+                      <PhoneInput
+                        {...field}
+                        defaultCountry="AE"
+                        international
+                        className="w-full rounded-lg border border-zinc-300 bg-white p-2"
+                      />
+                    )}
+                  />
+                  {clientErrors.primaryNumber && (
+                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.primaryNumber.message)}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700">Secondary Number</label>
+                  <Controller
+                    control={clientControl}
+                    name="secondaryNumber"
+                    render={({ field }) => (
+                      <PhoneInput
+                        {...field}
+                        defaultCountry="AE"
+                        international
+                        className="w-full rounded-lg border border-zinc-300 bg-white p-2"
+                      />
+                    )}
+                  />
+                  {clientErrors.secondaryNumber && (
+                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.secondaryNumber.message)}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">Country</label>
+                <select
+                  {...clientRegister('country')}
+                  defaultValue="United Arab Emirates"
+                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
+                >
+                  {countryData.map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {clientErrors.country && (
+                  <p className="mt-1 text-sm text-red-500">{String(clientErrors.country.message)}</p>
+                )}
+              </div>
+            </GlassPanel>
+          </div>
+        </Dialog>
+
+        {/* Delete dialog */}
         <Dialog
           isOpen={isDeleteDialogOpen}
           onClose={() => setIsDeleteDialogOpen(false)}
@@ -1081,6 +1334,7 @@ const Products = () => {
           <p>Are you sure you want to delete this product?</p>
         </Dialog>
 
+        {/* Share dialog */}
         <Dialog isOpen={isShareDialogOpen} onClose={() => setIsShareDialogOpen(false)} title="PDF Generated">
           <div className="space-y-4 p-4">
             <p className="text-zinc-700">Your PDF has been generated successfully.</p>
@@ -1097,81 +1351,6 @@ const Products = () => {
               </Button>
             </div>
           </div>
-        </Dialog>
-
-        <Dialog isOpen={isClientDialogOpen} onClose={() => setIsClientDialogOpen(false)} title="Add Client">
-          <form onSubmit={handleClientSubmit(submitQuickClient)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Input placeholder="First Name" {...clientRegister('firstName')} />
-              {clientErrors.firstName && (
-                <p className="mt-1 text-sm text-red-500">{clientErrors.firstName.message}</p>
-              )}
-
-              <Input placeholder="Last Name" {...clientRegister('lastName')} />
-              {clientErrors.lastName && (
-                <p className="mt-1 text-sm text-red-500">{clientErrors.lastName.message}</p>
-              )}
-
-              <Input placeholder="Company" {...clientRegister('company')} />
-              {clientErrors.company && (
-                <p className="mt-1 text-sm text-red-500">{clientErrors.company.message}</p>
-              )}
-
-              <Input placeholder="Nickname" {...clientRegister('nickname')} />
-              {clientErrors.nickname && (
-                <p className="mt-1 text-sm text-red-500">{clientErrors.nickname.message}</p>
-              )}
-
-              <Controller
-                name="primaryNumber"
-                control={clientControl}
-                render={({ field, fieldState }) => (
-                  <>
-                    <PhoneInput
-                      international
-                      defaultCountry="AE"
-                      placeholder="Enter primary number"
-                      value={field.value ?? ''}
-                      onChange={field.onChange}
-                      onCountryChange={(country) => {
-                        const info = countryData.find((c) => c.code === country)
-                        if (info) setClientValue('country', info.name)
-                      }}
-                      inputComponent={Input}
-                    />
-                    {fieldState.error && (
-                      <p className="mt-1 text-sm text-red-500">{fieldState.error.message}</p>
-                    )}
-                  </>
-                )}
-              />
-
-              <Controller
-                name="secondaryNumber"
-                control={clientControl}
-                render={({ field, fieldState }) => (
-                  <>
-                    <PhoneInput
-                      international
-                      defaultCountry="AE"
-                      placeholder="Enter secondary number"
-                      value={field.value ?? ''}
-                      onChange={field.onChange}
-                      inputComponent={Input}
-                    />
-                    {fieldState.error && (
-                      <p className="mt-1 text-sm text-red-500">{fieldState.error.message}</p>
-                    )}
-                  </>
-                )}
-              />
-            </div>
-            <div className="flex justify-end">
-              <Button type="submit" variant="black" disabled={isClientSubmitting}>
-                {isClientSubmitting ? 'Submitting...' : 'Submit'}
-              </Button>
-            </div>
-          </form>
         </Dialog>
       </div>
     </div>

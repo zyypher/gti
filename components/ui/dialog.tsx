@@ -25,19 +25,33 @@ export function Dialog({
     buttonLoading = false,
 }: DialogProps) {
     return (
-        <DialogPrimitive.Root open={isOpen} onOpenChange={onClose}>
+        <DialogPrimitive.Root
+            open={isOpen}
+            onOpenChange={(open) => {
+                // only call onClose when closing
+                if (!open) onClose()
+            }}
+        >
             <DialogPrimitive.Portal>
-                <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-md transition-opacity" />
+                {/* Overlay ABOVE any app chrome (sidebar, header, etc.) */}
+                <DialogPrimitive.Overlay
+                    className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
+                />
                 <DialogPrimitive.Content
                     className={cn(
-                        'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-8 shadow-2xl focus:outline-none',
+                        'fixed left-1/2 top-1/2 z-[1010] w-full max-w-lg',
+                        '-translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-8 shadow-2xl focus:outline-none',
+                        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95'
                     )}
                 >
                     <div className="mb-6 flex items-center justify-between">
                         <DialogPrimitive.Title className="text-gray-900 text-xl font-semibold">
                             {title}
                         </DialogPrimitive.Title>
-                        <DialogPrimitive.Close className="text-gray-500 hover:text-gray-700 focus:outline-none">
+                        <DialogPrimitive.Close
+                            aria-label="Close"
+                            className="rounded p-1 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        >
                             <X className="h-5 w-5" />
                         </DialogPrimitive.Close>
                     </div>
@@ -49,29 +63,24 @@ export function Dialog({
                     )}
 
                     <div className="space-y-4">{children}</div>
+
                     {onSubmit && (
-
-                    <div className="mt-6 flex justify-end gap-4">
-                        <DialogPrimitive.Close asChild>
-                            <Button variant="outline-black" size="large">
-                                Cancel
+                        <div className="mt-6 flex justify-end gap-4">
+                            <DialogPrimitive.Close asChild>
+                                <Button variant="outline-black" size="large">
+                                    Cancel
+                                </Button>
+                            </DialogPrimitive.Close>
+                            <Button
+                                variant="black"
+                                size="large"
+                                onClick={onSubmit}
+                                disabled={buttonLoading}
+                            >
+                                {buttonLoading ? <span className="loader" /> : 'Submit'}
                             </Button>
-                        </DialogPrimitive.Close>
-                        <Button
-                            variant="black"
-                            size="large"
-                            onClick={onSubmit}
-                            disabled={buttonLoading}
-                        >
-                            {buttonLoading ? (
-                                <span className="loader"></span>
-                            ) : (
-                                'Submit'
-                            )}
-                        </Button>
-                    </div>
-                                    )}
-
+                        </div>
+                    )}
                 </DialogPrimitive.Content>
             </DialogPrimitive.Portal>
         </DialogPrimitive.Root>

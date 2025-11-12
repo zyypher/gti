@@ -1,25 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// Get all brands
-export async function GET(req: NextRequest) {
+/**
+ * Detect PNG/JPEG from raw bytes (no schema change needed).
+ */
+function sniffMimeFromBytes(bytes?: Uint8Array | null): 'image/png' | 'image/jpeg' | null {
+    if (!bytes || bytes.length < 4) return null
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if (
+        bytes[0] === 0x89 &&
+        bytes[1] === 0x50 &&
+        bytes[2] === 0x4e &&
+        bytes[3] === 0x47 &&
+        bytes[4] === 0x0d &&
+        bytes[5] === 0x0a &&
+        bytes[6] === 0x1a &&
+        bytes[7] === 0x0a
+    ) {
+        return 'image/png'
+    }
+    // JPEG: FF D8 FF
+    if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+        return 'image/jpeg'
+    }
+    return null
+}
+
+const ALLOWED_MIMES = new Set(['image/png', 'image/jpeg'])
+
+/**
+ * GET /api/brands
+ * Returns brands, converting stored binary into base64 data URL with correct mime.
+ */
+export async function GET(_req: NextRequest) {
     try {
         const brands = await prisma.brand.findMany({
-            orderBy: {
-                updatedAt: 'desc',
-            }
+            orderBy: { updatedAt: 'desc' },
         })
 
-        // Convert binary image data to base64 string if present
         const brandsWithImages = brands.map((brand) => {
-            let base64Image = null
-            if (brand.image) {
-                const mimeType = 'image/png' // Adjust if other formats are used
-                base64Image = `data:${mimeType};base64,${Buffer.from(brand.image).toString('base64')}`
+            if (!brand.image) {
+                return { ...brand, image: null }
             }
+            const bytes = brand.image as unknown as Uint8Array
+            const mime = sniffMimeFromBytes(bytes) || 'image/png' // fallback
+            const base64 = Buffer.from(bytes).toString('base64')
             return {
                 ...brand,
-                image: base64Image,
+                image: `data:${mime};base64,${base64}`,
             }
         })
 
@@ -30,12 +58,15 @@ export async function GET(req: NextRequest) {
     }
 }
 
-// Add a new brand
+/**
+ * POST /api/brands
+ * Accepts multipart form-data. Only PNG/JPG allowed. SVG is rejected.
+ */
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData()
-        const name = formData.get('name') as string
-        const description = formData.get('description') as string
+        const name = (formData.get('name') as string | null)?.trim()
+        const description = (formData.get('description') as string | null)?.trim()
         const image = formData.get('image') as File | null
 
         if (!name) {
@@ -44,8 +75,14 @@ export async function POST(req: NextRequest) {
 
         let imageBuffer: Uint8Array | null = null
 
-        // Convert file to Uint8Array if an image is provided
         if (image && image.size > 0) {
+            // Enforce PNG/JPG only
+            if (!ALLOWED_MIMES.has(image.type)) {
+                return NextResponse.json(
+                    { error: 'Only PNG or JPG images are allowed' },
+                    { status: 415 }
+                )
+            }
             const arrayBuffer = await image.arrayBuffer()
             imageBuffer = new Uint8Array(arrayBuffer)
         }
@@ -53,8 +90,8 @@ export async function POST(req: NextRequest) {
         const newBrand = await prisma.brand.create({
             data: {
                 name,
-                description,
-                image: imageBuffer
+                description: description ?? '',
+                image: imageBuffer,
             },
         })
 
@@ -65,19 +102,43 @@ export async function POST(req: NextRequest) {
     }
 }
 
-
-// Update an existing brand
+/**
+ * PUT /api/brands?id=...
+ * Accepts multipart form-data (to match your client). Image optional; if present, must be PNG/JPG.
+ * If no image sent, existing image is preserved.
+ */
 export async function PUT(req: NextRequest) {
     try {
-        const { id, name, description, image } = await req.json()
+        const { searchParams } = new URL(req.url)
+        const id = searchParams.get('id')
 
         if (!id) {
             return NextResponse.json({ error: 'ID is required' }, { status: 400 })
         }
 
+        const form = await req.formData()
+        const name = (form.get('name') as string | null)?.trim()
+        const description = (form.get('description') as string | null)?.trim()
+        const image = form.get('image') as File | null
+
+        const data: Record<string, any> = {}
+        if (typeof name === 'string') data.name = name
+        if (typeof description === 'string') data.description = description
+
+        if (image && image.size > 0) {
+            if (!ALLOWED_MIMES.has(image.type)) {
+                return NextResponse.json(
+                    { error: 'Only PNG or JPG images are allowed' },
+                    { status: 415 }
+                )
+            }
+            const buf = new Uint8Array(await image.arrayBuffer())
+            data.image = buf
+        }
+
         const updatedBrand = await prisma.brand.update({
             where: { id },
-            data: { name, description, image },
+            data,
         })
 
         return NextResponse.json(updatedBrand)
@@ -87,8 +148,11 @@ export async function PUT(req: NextRequest) {
     }
 }
 
-// Delete a brand
-// Delete a brand and its related products
+/**
+ * DELETE /api/brands
+ * JSON body: { id }
+ * Deletes related products then the brand.
+ */
 export async function DELETE(req: NextRequest) {
     try {
         const { id } = await req.json()
@@ -97,12 +161,7 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: 'ID is required' }, { status: 400 })
         }
 
-        // ✅ Step 1: Delete all products related to this brand
-        await prisma.product.deleteMany({
-            where: { brandId: id },
-        })
-
-        // ✅ Step 2: Delete the brand
+        await prisma.product.deleteMany({ where: { brandId: id } })
         await prisma.brand.delete({ where: { id } })
 
         return NextResponse.json({ message: 'Brand and related products deleted successfully' })
@@ -111,4 +170,3 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ error: 'Failed to delete brand' }, { status: 500 })
     }
 }
-

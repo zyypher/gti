@@ -306,27 +306,30 @@ export default function GeneratedPDFs() {
                                         </ul>
 
                                         <p className="text-sm font-medium text-zinc-800">
-                                            <strong>Created:</strong>{' '}
-                                            {new Date(pdf.createdAt).toLocaleString()}
+                                            <strong>Created:</strong> {new Date(pdf.createdAt).toLocaleString()}
                                         </p>
                                         <p className="mb-4 text-sm text-zinc-600">
-                                            <strong>Expires:</strong>{' '}
-                                            {new Date(pdf.expiresAt).toLocaleString()}
+                                            <strong>Expires:</strong> {new Date(pdf.expiresAt).toLocaleString()}
                                         </p>
 
                                         <div className="mt-auto">
                                             <Button
                                                 variant="black"
                                                 className="w-full rounded-xl"
-                                                onClick={() => handleView(pdf)}
+                                                onClick={() => {
+                                                    const shareLink = `${ORDER_HUB_BASE_URL}/${pdf.uniqueSlug}`
+                                                    navigator.clipboard.writeText(shareLink)
+                                                    toast.success('Shareable link copied!')
+                                                }}
                                             >
-                                                View PDF
+                                                Copy Shareable Link
                                             </Button>
                                         </div>
                                     </CardContent>
                                 </Card>
                             </Glass>
                         ))}
+
                     </div>
                 )}
 

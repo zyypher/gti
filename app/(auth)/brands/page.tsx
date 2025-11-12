@@ -20,8 +20,11 @@ type Brand = {
     id: string
     name: string
     description: string
-    image: string
+    image: string | null
 }
+
+const ALLOWED_MIMES = ['image/png', 'image/jpeg'] as const
+const fileTypeOk = (file?: File) => !!file && ALLOWED_MIMES.includes(file.type as any)
 
 const GlassCard = ({
     children,
@@ -57,10 +60,17 @@ const BrandsPage = () => {
         name: yup.string().required('Brand name is required'),
         description: yup.string().required('Description is required'),
         image: yup
-            .mixed()
+            .mixed<FileList>()
             .test('fileRequired', 'Brand image is required', function (value) {
+                // Require file only on create
                 if (selectedBrand) return true
-                return value && (value as FileList).length > 0
+                return !!value && value.length > 0
+            })
+            .test('fileType', 'Only PNG or JPG images are allowed', function (value) {
+                // If editing and no new file picked, skip
+                if (selectedBrand && (!value || value.length === 0)) return true
+                if (!value || value.length === 0) return false
+                return fileTypeOk(value[0])
             }),
     })
 
@@ -74,19 +84,21 @@ const BrandsPage = () => {
         resolver: yupResolver(brandSchema),
     })
 
-    useEffect(() => {
-        const fetchBrands = async () => {
-            setLoading(true)
-            try {
-                const response = await api.get('/api/brands')
-                setBrands(response.data)
-            } catch {
-                toast.error('Failed to load brands')
-            } finally {
-                setLoading(false)
-            }
+    const fetchBrands = async () => {
+        setLoading(true)
+        try {
+            const response = await api.get('/api/brands')
+            setBrands(response.data)
+        } catch {
+            toast.error('Failed to load brands')
+        } finally {
+            setLoading(false)
         }
+    }
+
+    useEffect(() => {
         fetchBrands()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const handleAddOrEditBrand = async (data: any) => {
@@ -95,27 +107,43 @@ const BrandsPage = () => {
             const formData = new FormData()
             formData.append('name', data.name)
             formData.append('description', data.description)
-            if (data.image[0]) formData.append('image', data.image[0])
 
-            const url = selectedBrand ? `/api/brands/${selectedBrand.id}` : '/api/brands'
+            const picked: File | undefined = data.image?.[0]
+            if (picked) {
+                // Extra safety on client before sending
+                if (!fileTypeOk(picked)) {
+                    toast.error('Only PNG or JPG images are allowed')
+                    setButtonLoading(false)
+                    return
+                }
+                formData.append('image', picked)
+            }
+
+            const url = selectedBrand ? `/api/brands?id=${encodeURIComponent(selectedBrand.id)}` : '/api/brands'
             const method = selectedBrand ? 'put' : 'post'
-            const response = await api({ method, url, data: formData, headers: { 'Content-Type': 'multipart/form-data' } })
+
+            const response = await api({
+                method,
+                url,
+                data: formData,
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
 
             if (response.status === 200 || response.status === 201) {
                 toast.success(`Brand ${selectedBrand ? 'updated' : 'added'} successfully`)
                 setIsDialogOpen(false)
                 reset()
                 setSelectedBrand(null)
-                setLoading(true)
-                const refreshed = await api.get('/api/brands')
-                setBrands(refreshed.data)
-            } else toast.error('Failed to save brand')
-        } catch (error) {
+                await fetchBrands()
+            } else {
+                toast.error('Failed to save brand')
+            }
+        } catch (error: any) {
             console.error(error)
-            toast.error('Error saving brand')
+            const msg = error?.response?.data?.error || 'Error saving brand'
+            toast.error(msg)
         } finally {
             setButtonLoading(false)
-            setLoading(false)
         }
     }
 
@@ -149,16 +177,8 @@ const BrandsPage = () => {
     }
 
     const onRefresh = async () => {
-        setLoading(true)
-        try {
-            const response = await api.get('/api/brands')
-            setBrands(response.data)
-            toast.success('Brands refreshed')
-        } catch {
-            toast.error('Failed to refresh brands')
-        } finally {
-            setLoading(false)
-        }
+        await fetchBrands()
+        toast.success('Brands refreshed')
     }
 
     return (
@@ -223,9 +243,7 @@ const BrandsPage = () => {
                                                 No Image
                                             </div>
                                         )}
-                                        <h3 className="mt-3 text-lg font-semibold text-zinc-900">
-                                            {brand.name}
-                                        </h3>
+                                        <h3 className="mt-3 text-lg font-semibold text-zinc-900">{brand.name}</h3>
                                         <p className="text-sm text-zinc-600">{brand.description}</p>
                                     </div>
 
@@ -234,6 +252,7 @@ const BrandsPage = () => {
                                             <button
                                                 onClick={() => openEditDialog(brand)}
                                                 className="rounded-full border border-white/30 bg-white/40 p-2 text-blue-700 hover:bg-blue-100/70"
+                                                title="Edit"
                                             >
                                                 <Pencil size={16} />
                                             </button>
@@ -247,6 +266,7 @@ const BrandsPage = () => {
                                             <button
                                                 onClick={() => openDeleteDialog(brand)}
                                                 className="rounded-full border border-white/30 bg-white/40 p-2 text-red-700 hover:bg-red-100/70"
+                                                title="Delete"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -259,11 +279,7 @@ const BrandsPage = () => {
                 </div>
 
                 {/* Delete Dialog */}
-                <Dialog
-                    isOpen={isDeleteDialogOpen}
-                    onClose={() => setIsDeleteDialogOpen(false)}
-                    title="Confirm Deletion"
-                >
+                <Dialog isOpen={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)} title="Confirm Deletion">
                     <div className="space-y-4 p-4">
                         <p className="text-zinc-800 text-lg font-medium">
                             Delete <strong>{brandToDelete?.name}</strong>?
@@ -283,45 +299,32 @@ const BrandsPage = () => {
                 </Dialog>
 
                 {/* Add/Edit Dialog */}
-                <Dialog
-                    isOpen={isDialogOpen}
-                    onClose={() => setIsDialogOpen(false)}
-                    title={selectedBrand ? 'Edit Brand' : 'Add Brand'}
-                >
+                <Dialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} title={selectedBrand ? 'Edit Brand' : 'Add Brand'}>
                     <form onSubmit={handleSubmit(handleAddOrEditBrand)} className="space-y-5 p-2">
                         <div>
                             <label className="block text-sm font-medium text-zinc-700">Brand Name</label>
                             <Input placeholder="Enter brand name" {...register('name')} />
-                            {errors.name && (
-                                <p className="mt-1 text-sm text-red-500">{errors.name.message as string}</p>
-                            )}
+                            {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name.message as string}</p>}
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-zinc-700">Description</label>
                             <Input placeholder="Enter brand description" {...register('description')} />
                             {errors.description && (
-                                <p className="mt-1 text-sm text-red-500">
-                                    {errors.description.message as string}
-                                </p>
+                                <p className="mt-1 text-sm text-red-500">{errors.description.message as string}</p>
                             )}
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-zinc-700">Select an Image</label>
-                            <Input type="file" accept="image/*" {...register('image')} />
-                            {errors.image && (
-                                <p className="mt-1 text-sm text-red-500">{errors.image.message as string}</p>
-                            )}
+                            {/* Restrict chooser to PNG/JPG */}
+                            <Input type="file" accept="image/png,image/jpeg" {...register('image')} />
+                            {errors.image && <p className="mt-1 text-sm text-red-500">{errors.image.message as string}</p>}
                         </div>
 
                         {selectedBrand?.image && (
                             <div className="mb-2">
-                                <img
-                                    src={selectedBrand.image}
-                                    alt="Current"
-                                    className="h-24 rounded-xl object-cover"
-                                />
+                                <img src={selectedBrand.image} alt="Current" className="h-24 rounded-xl object-cover" />
                                 <p className="text-xs text-zinc-500">Current image</p>
                             </div>
                         )}
@@ -331,11 +334,7 @@ const BrandsPage = () => {
                                 Cancel
                             </Button>
                             <Button type="submit" variant="black" disabled={buttonLoading}>
-                                {buttonLoading
-                                    ? 'Saving...'
-                                    : selectedBrand
-                                        ? 'Update Brand'
-                                        : 'Add Brand'}
+                                {buttonLoading ? 'Saving...' : selectedBrand ? 'Update Brand' : 'Add Brand'}
                             </Button>
                         </div>
                     </form>
