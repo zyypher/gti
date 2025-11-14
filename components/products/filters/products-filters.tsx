@@ -88,9 +88,8 @@ export default function ProductsFilters({
   const [isLoadingCarbonMonoxides, setIsLoadingCarbonMonoxides] = useState(true)
   const [isLoadingColors, setIsLoadingColors] = useState(true)
 
-  // tar: 0.1..1.2 ; nicotine: 1..12
-  const tarOptions = Array.from({ length: 12 }, (_, i) => ((i + 1) / 10).toFixed(1))
-  const nicotineOptions = Array.from({ length: 12 }, (_, i) => String(i + 1))
+  const tarOptions = Array.from({ length: 12 }, (_, i) => String(i + 1))
+  const nicotineOptions = Array.from({ length: 12 }, (_, i) => ((i + 1) / 10).toFixed(1))
 
   useEffect(() => {
     const fetchBrands = async () => {
