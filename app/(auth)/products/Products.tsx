@@ -833,7 +833,7 @@ const Products = () => {
                   onChange={(val) => setValue('co', val, { shouldValidate: true })}
                   error={String(errors.co?.message || '')}
                 />
-                <input type="hidden" {...register('co', { required: 'CO is required' })} />
+                <input type="hidden" {...register('co')} />
               </div>
 
               {/* Packet style */}

@@ -158,7 +158,6 @@ export async function POST(req: Request) {
         ['size', size],
         ['tar', tar],
         ['nicotine', nicotine],
-        ['co', co],
         ['flavor', flavor],
         ['packetStyle', packetStyle],
         ['fsp', fsp],
