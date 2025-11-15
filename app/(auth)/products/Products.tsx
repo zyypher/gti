@@ -293,11 +293,12 @@ const Products = () => {
   const [fileKey, setFileKey] = useState(0)
 
   const tarOptions = useMemo(
-    () => Array.from({ length: 12 }, (_, i) => ((i + 1) / 10).toFixed(1)),
+    () => Array.from({ length: 12 }, (_, i) => String(i + 1)),
     [],
   )
+
   const nicotineOptions = useMemo(
-    () => Array.from({ length: 12 }, (_, i) => String(i + 1)),
+    () => Array.from({ length: 12 }, (_, i) => ((i + 1) / 10).toFixed(1)),
     [],
   )
 
