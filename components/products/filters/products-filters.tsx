@@ -44,7 +44,7 @@ function applySelectUI(
   setFilters: (f: Record<string, string>) => void,
   onFilterChange: (f: Record<string, string>) => void,
   uiSelections: Record<string, string>,
-  setUiSelections: (f: Record<string, string>) => void
+  setUiSelections: (f: Record<string, string>) => void,
 ) {
   const nextUi = { ...uiSelections, [key]: value }
   setUiSelections(nextUi)
@@ -90,6 +90,9 @@ export default function ProductsFilters({
 
   const tarOptions = Array.from({ length: 12 }, (_, i) => String(i + 1))
   const nicotineOptions = Array.from({ length: 12 }, (_, i) => ((i + 1) / 10).toFixed(1))
+
+  // helper so all selects fully reset when filters/uiSelections are cleared
+  const getSelectValue = (key: string) => uiSelections[key] ?? filters[key] ?? ''
 
   useEffect(() => {
     const fetchBrands = async () => {
@@ -169,11 +172,7 @@ export default function ProductsFilters({
   // Ensure initial brandId (from URL/parent) is applied only once.
   const [hasAppliedInitialBrand, setHasAppliedInitialBrand] = useState(false)
   useEffect(() => {
-    if (
-      brands.length > 0 &&
-      initialFilters.brandId &&
-      !hasAppliedInitialBrand
-    ) {
+    if (brands.length > 0 && initialFilters.brandId && !hasAppliedInitialBrand) {
       setFilters(initialFilters)
       setUiSelections((prev) => ({ ...prev, brandId: initialFilters.brandId! }))
       onFilterChange(initialFilters)
@@ -211,8 +210,10 @@ export default function ProductsFilters({
   }
 
   // Convenience wrapper for standard selects
-  const onSelect = (key: string) => (v: string) =>
-    applySelectUI(key, v, filters, setFilters, onFilterChange, uiSelections, setUiSelections)
+  const onSelect =
+    (key: string) =>
+      (v: string) =>
+        applySelectUI(key, v, filters, setFilters, onFilterChange, uiSelections, setUiSelections)
 
   // --- SPECIAL: Flavour select (supports placeholder reset + modes) ---
   const onSelectFlavor = (v: string) => {
@@ -301,10 +302,7 @@ export default function ProductsFilters({
         </div>
 
         {/* Brand */}
-        <Select
-          value={uiSelections.brandId ?? filters.brandId ?? undefined}
-          onValueChange={onSelect('brandId')}
-        >
+        <Select value={getSelectValue('brandId')} onValueChange={onSelect('brandId')}>
           <SelectTrigger>
             <SelectValue
               placeholder={
@@ -329,10 +327,7 @@ export default function ProductsFilters({
         </Select>
 
         {/* Size */}
-        <Select
-          value={uiSelections.size ?? filters.size ?? undefined}
-          onValueChange={onSelect('size')}
-        >
+        <Select value={getSelectValue('size')} onValueChange={onSelect('size')}>
           <SelectTrigger>
             <SelectValue
               placeholder={
@@ -357,10 +352,7 @@ export default function ProductsFilters({
         </Select>
 
         {/* Flavour (with placeholder row, All Flavours, Regular, others) */}
-        <Select
-          value={uiSelections.flavor ?? filters.flavor ?? undefined}
-          onValueChange={onSelectFlavor}
-        >
+        <Select value={getSelectValue('flavor')} onValueChange={onSelectFlavor}>
           <SelectTrigger>
             <SelectValue
               placeholder={
@@ -390,7 +382,7 @@ export default function ProductsFilters({
 
         {/* Pack Format */}
         <Select
-          value={uiSelections.packetStyle ?? filters.packetStyle ?? undefined}
+          value={getSelectValue('packetStyle')}
           onValueChange={onSelect('packetStyle')}
         >
           <SelectTrigger>
@@ -420,10 +412,7 @@ export default function ProductsFilters({
         {showAllFilters && (
           <>
             {/* FSP */}
-            <Select
-              value={uiSelections.fsp ?? filters.fsp ?? undefined}
-              onValueChange={onSelect('fsp')}
-            >
+            <Select value={getSelectValue('fsp')} onValueChange={onSelect('fsp')}>
               <SelectTrigger>
                 <SelectValue placeholder="FSP" />
               </SelectTrigger>
@@ -436,7 +425,7 @@ export default function ProductsFilters({
 
             {/* Capsules (with placeholder row + special logic) */}
             <Select
-              value={uiSelections.capsules ?? filters.capsules ?? undefined}
+              value={getSelectValue('capsules')}
               onValueChange={onSelectCapsules}
             >
               <SelectTrigger>
@@ -453,10 +442,7 @@ export default function ProductsFilters({
             </Select>
 
             {/* Tar (mg) */}
-            <Select
-              value={uiSelections.tar ?? filters.tar ?? undefined}
-              onValueChange={onSelect('tar')}
-            >
+            <Select value={getSelectValue('tar')} onValueChange={onSelect('tar')}>
               <SelectTrigger>
                 <SelectValue placeholder="Tar (mg)" />
               </SelectTrigger>
@@ -472,7 +458,7 @@ export default function ProductsFilters({
 
             {/* Nicotine (mg) */}
             <Select
-              value={uiSelections.nicotine ?? filters.nicotine ?? undefined}
+              value={getSelectValue('nicotine')}
               onValueChange={onSelect('nicotine')}
             >
               <SelectTrigger>
@@ -489,6 +475,7 @@ export default function ProductsFilters({
             </Select>
 
             {/* CO (mg) */}
+            {/* CO (mg) — DESKTOP */}
             <Select
               value={uiSelections.co ?? filters.co ?? undefined}
               onValueChange={onSelect('co')}
@@ -508,19 +495,20 @@ export default function ProductsFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>All</SelectItem>
-                {carbonMonoxides.map((co) => (
-                  <SelectItem key={co} value={co}>
-                    {co}
-                  </SelectItem>
-                ))}
+                {carbonMonoxides.map((co) => {
+                  const coStr = String(co)
+                  return (
+                    <SelectItem key={coStr} value={coStr}>
+                      {coStr}
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
 
+
             {/* Color */}
-            <Select
-              value={uiSelections.color ?? filters.color ?? undefined}
-              onValueChange={onSelect('color')}
-            >
+            <Select value={getSelectValue('color')} onValueChange={onSelect('color')}>
               <SelectTrigger>
                 <SelectValue
                   placeholder={
@@ -571,11 +559,7 @@ export default function ProductsFilters({
         <Button variant="outline" onClick={() => setIsMobileFilterOpen(true)}>
           <Filter size={20} /> Filters
         </Button>
-        <Button
-          variant="outline"
-          size="small"
-          onClick={clearFilters}
-        >
+        <Button variant="outline" size="small" onClick={clearFilters}>
           <X size={18} /> Clear
         </Button>
       </div>
@@ -589,10 +573,7 @@ export default function ProductsFilters({
         <div className="space-y-4 p-4">
           {/* Product Name (mobile uses Select per your previous code) */}
           <div className="relative">
-            <Select
-              value={uiSelections.name ?? filters.name ?? undefined}
-              onValueChange={onSelect('name')}
-            >
+            <Select value={getSelectValue('name')} onValueChange={onSelect('name')}>
               <SelectTrigger>
                 <SelectValue placeholder={'Select Product Name'} />
               </SelectTrigger>
@@ -604,10 +585,7 @@ export default function ProductsFilters({
           </div>
 
           {/* Brand */}
-          <Select
-            value={uiSelections.brandId ?? filters.brandId ?? undefined}
-            onValueChange={onSelect('brandId')}
-          >
+          <Select value={getSelectValue('brandId')} onValueChange={onSelect('brandId')}>
             <SelectTrigger>
               <SelectValue
                 placeholder={
@@ -632,10 +610,7 @@ export default function ProductsFilters({
           </Select>
 
           {/* Size */}
-          <Select
-            value={uiSelections.size ?? filters.size ?? undefined}
-            onValueChange={onSelect('size')}
-          >
+          <Select value={getSelectValue('size')} onValueChange={onSelect('size')}>
             <SelectTrigger>
               <SelectValue
                 placeholder={
@@ -660,10 +635,7 @@ export default function ProductsFilters({
           </Select>
 
           {/* Flavour (same behavior as desktop) */}
-          <Select
-            value={uiSelections.flavor ?? filters.flavor ?? undefined}
-            onValueChange={onSelectFlavor}
-          >
+          <Select value={getSelectValue('flavor')} onValueChange={onSelectFlavor}>
             <SelectTrigger>
               <SelectValue placeholder="Select Flavour" />
             </SelectTrigger>
@@ -683,7 +655,7 @@ export default function ProductsFilters({
 
           {/* Pack Format */}
           <Select
-            value={uiSelections.packetStyle ?? filters.packetStyle ?? undefined}
+            value={getSelectValue('packetStyle')}
             onValueChange={onSelect('packetStyle')}
           >
             <SelectTrigger>
@@ -710,10 +682,7 @@ export default function ProductsFilters({
           </Select>
 
           {/* FSP */}
-          <Select
-            value={uiSelections.fsp ?? filters.fsp ?? undefined}
-            onValueChange={onSelect('fsp')}
-          >
+          <Select value={getSelectValue('fsp')} onValueChange={onSelect('fsp')}>
             <SelectTrigger>
               <SelectValue placeholder="FSP" />
             </SelectTrigger>
@@ -726,7 +695,7 @@ export default function ProductsFilters({
 
           {/* Capsules (same behavior as desktop) */}
           <Select
-            value={uiSelections.capsules ?? filters.capsules ?? undefined}
+            value={getSelectValue('capsules')}
             onValueChange={onSelectCapsules}
           >
             <SelectTrigger>
@@ -743,10 +712,7 @@ export default function ProductsFilters({
           </Select>
 
           {/* Tar */}
-          <Select
-            value={uiSelections.tar ?? filters.tar ?? undefined}
-            onValueChange={onSelect('tar')}
-          >
+          <Select value={getSelectValue('tar')} onValueChange={onSelect('tar')}>
             <SelectTrigger>
               <SelectValue placeholder="Tar (mg)" />
             </SelectTrigger>
@@ -762,7 +728,7 @@ export default function ProductsFilters({
 
           {/* Nicotine */}
           <Select
-            value={uiSelections.nicotine ?? filters.nicotine ?? undefined}
+            value={getSelectValue('nicotine')}
             onValueChange={onSelect('nicotine')}
           >
             <SelectTrigger>
@@ -778,7 +744,7 @@ export default function ProductsFilters({
             </SelectContent>
           </Select>
 
-          {/* CO */}
+          {/* CO (mg) — MOBILE */}
           <Select
             value={uiSelections.co ?? filters.co ?? undefined}
             onValueChange={onSelect('co')}
@@ -798,19 +764,20 @@ export default function ProductsFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>All</SelectItem>
-              {carbonMonoxides.map((co) => (
-                <SelectItem key={co} value={co}>
-                  {co}
-                </SelectItem>
-              ))}
+              {carbonMonoxides.map((co) => {
+                const coStr = String(co)
+                return (
+                  <SelectItem key={coStr} value={coStr}>
+                    {coStr}
+                  </SelectItem>
+                )
+              })}
             </SelectContent>
           </Select>
 
+
           {/* Color */}
-          <Select
-            value={uiSelections.color ?? filters.color ?? undefined}
-            onValueChange={onSelect('color')}
-          >
+          <Select value={getSelectValue('color')} onValueChange={onSelect('color')}>
             <SelectTrigger>
               <SelectValue
                 placeholder={
