@@ -13,9 +13,20 @@ type GeneratePayload = {
     clientId?: string
 }
 
+type CreatorUser = {
+    firstName: string | null
+    lastName: string | null
+} | null
+
+type ClientInfo = {
+    firstName: string | null
+    lastName: string | null
+    company: string | null
+    primaryNumber: string | null
+} | null
+
 /** Fetch a PDF by URL and append all its pages into pdfDoc */
 async function addPdfToDocument(pdfDoc: PDFDocument, pdfUrl: string): Promise<void> {
-    if (!pdfUrl) return
     try {
         const res = await fetch(pdfUrl)
         if (!res.ok) throw new Error(`Failed to fetch PDF: ${pdfUrl}`)
@@ -28,105 +39,91 @@ async function addPdfToDocument(pdfDoc: PDFDocument, pdfUrl: string): Promise<vo
     }
 }
 
-/** Draw the “Generated for …” panel on the FIRST page of the given PDF bytes. */
+const buildName = (first?: string | null, last?: string | null) => {
+    const parts = [first, last].filter(Boolean) as string[]
+    return parts.join(' ').trim()
+}
+
+/**
+ * Draw:
+ *   Created by: <user name>
+ *   Created for: <client name>
+ *
+ * Labels ("Created by:", "Created for:") are bold, values normal.
+ * Columns are vertically aligned and the whole block is right-aligned
+ * with some padding from the right edge.
+ */
 async function overlayClientPanelOnFirstPage(
     pdfBytes: ArrayBuffer,
-    client:
-        | {
-            firstName: string
-            lastName: string
-            company: string
-            primaryNumber: string
-        }
-        | null
+    client?: { firstName: string | null; lastName: string | null } | null,
+    createdBy?: { firstName: string | null; lastName: string | null } | null
 ): Promise<Uint8Array> {
     const donor = await PDFDocument.load(pdfBytes)
 
-    // Fonts
-    const helv = await donor.embedFont(StandardFonts.Helvetica)
-    const helvBold = await donor.embedFont(StandardFonts.HelveticaBold)
+    const font = await donor.embedFont(StandardFonts.Helvetica)
+    const fontBold = await donor.embedFont(StandardFonts.HelveticaBold)
 
     const page = donor.getPages()[0]
+    const { width } = page.getSize()
 
-    const { width, height } = page.getSize()
+    const fullCreator = buildName(createdBy?.firstName, createdBy?.lastName)
+    const fullClient = buildName(client?.firstName, client?.lastName)
 
-    // Box geometry (bottom-right)
-    const paddingX = 12
-    const paddingY = 10
-    const panelWidth = 320
-    const lineH = 14
-    const lines = client
-        ? [
-            { t: 'Generated For', bold: true },
-            { t: `${client.firstName} ${client.lastName}` },
-            { t: client.company },
-            { t: client.primaryNumber },
-        ]
-        : [{ t: 'Generated For', bold: true }, { t: 'Internal Use' }]
+    // Nothing to draw → just return original
+    if (!fullCreator && !fullClient) {
+        return donor.save()
+    }
 
-    const panelHeight = paddingY * 2 + lineH * lines.length + 6
-    const margin = 24
-    const x = width - panelWidth - margin
-    const y = margin
+    // Build rows explicitly so we can align label/value columns
+    const rows: { label: string; value: string }[] = []
+    if (fullCreator) rows.push({ label: 'Created by:', value: fullCreator })
+    if (fullClient) rows.push({ label: 'Created for:', value: fullClient })
 
-    // Header bar (slightly darker gray, thinner height)
-    // ---- PANEL STYLE ----
-    const headerHeight = lineH + paddingY - 2
-    const borderColor = rgb(0.8, 0.8, 0.8)
+    const fontSizeLabel = 12
+    const fontSizeValue = 12
+    const paddingRight = 60 // distance from right edge
+    const lineHeight = 18
+    const gap = 10 // space between label and value columns
 
-    // Panel background (white with soft border)
-    page.drawRectangle({
-        x,
-        y,
-        width: panelWidth,
-        height: panelHeight,
-        color: rgb(1, 1, 1),
-        borderColor,
-        borderWidth: 0.8,
+    // Measure max label width and total width for right-alignment
+    let maxLabelWidth = 0
+    let maxTotalWidth = 0
+
+    rows.forEach(({ label, value }) => {
+        const labelWidth = fontBold.widthOfTextAtSize(label, fontSizeLabel)
+        const valueWidth = font.widthOfTextAtSize(value, fontSizeValue)
+        const totalWidth = labelWidth + gap + valueWidth
+
+        if (labelWidth > maxLabelWidth) maxLabelWidth = labelWidth
+        if (totalWidth > maxTotalWidth) maxTotalWidth = totalWidth
     })
 
-    // Header bar (light gray, subtle contrast)
-    page.drawRectangle({
-        x,
-        y: y + panelHeight - headerHeight,
-        width: panelWidth,
-        height: headerHeight,
-        color: rgb(0.93, 0.93, 0.93),
-    })
+    // Right-align whole block
+    const xLabel = width - paddingRight - maxTotalWidth
+    const xValue = xLabel + maxLabelWidth + gap
+    let y = 90 // vertical position from bottom
 
-    // ---- HEADER TEXT ----
-    const headerTextY = y + panelHeight - headerHeight / 2 - 5
-    page.drawText('Generated For', {
-        x: x + paddingX,
-        y: headerTextY,
-        size: 11,
-        font: helvBold,
-        color: rgb(0.15, 0.15, 0.15),
-    })
-
-    // ---- BODY TEXT ----
-    let ty = headerTextY - lineH - 4
-    const textLines = client
-        ? [
-            `${client.firstName} ${client.lastName}`,
-            client.company,
-            client.primaryNumber,
-        ]
-        : ['Internal Use']
-
-    textLines.forEach((t) => {
-        page.drawText(t, {
-            x: x + paddingX,
-            y: ty,
-            size: 10,
-            font: helv,
-            color: rgb(0.1, 0.1, 0.1),
+    rows.forEach(({ label, value }) => {
+        // label (bold)
+        page.drawText(label, {
+            x: xLabel,
+            y,
+            size: fontSizeLabel,
+            font: fontBold,
+            color: rgb(0, 0, 0),
         })
-        ty -= lineH
+
+        // value (normal) – guaranteed space between colon and value via `gap`
+        page.drawText(value, {
+            x: xValue,
+            y,
+            size: fontSizeValue,
+            font,
+            color: rgb(0, 0, 0),
+        })
+
+        y -= lineHeight
     })
-    // ---------------------
-
-
 
     return donor.save()
 }
@@ -148,8 +145,30 @@ export async function POST(req: Request) {
     }
 
     try {
-        // Optional client (for overlay text)
-        const client = clientId
+        // current user (for "Created by")
+        let creator: CreatorUser = null
+        try {
+            const { origin } = new URL(req.url)
+            const meRes = await fetch(`${origin}/api/users/me`, {
+                headers: {
+                    cookie: req.headers.get('cookie') ?? '',
+                },
+                cache: 'no-store',
+            })
+
+            if (meRes.ok) {
+                const me = await meRes.json()
+                creator = {
+                    firstName: me.firstName ?? null,
+                    lastName: me.lastName ?? null,
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch current user for PDF overlay:', err)
+        }
+
+        // Optional client (for "Created for")
+        const client: ClientInfo = clientId
             ? await prisma.client.findUnique({
                 where: { id: clientId },
                 select: {
@@ -163,7 +182,7 @@ export async function POST(req: Request) {
 
         const main = await PDFDocument.create()
 
-        // --- Corporate FRONT (logo) as first page, with overlay panel ---
+        // Corporate FRONT as first page, with overlay panel
         const front = await prisma.promotion.findUnique({
             where: { id: frontCorporateId },
             select: { filePath: true },
@@ -171,18 +190,28 @@ export async function POST(req: Request) {
         if (!front?.filePath) {
             return NextResponse.json({ error: 'Front corporate info missing' }, { status: 400 })
         }
-        const frontRes = await fetch(front.filePath)
+        const frontUrl = front.filePath as string
+        const frontRes = await fetch(frontUrl)
         if (!frontRes.ok) {
             return NextResponse.json({ error: 'Cannot fetch corporate front PDF' }, { status: 400 })
         }
         const frontBytes = await frontRes.arrayBuffer()
-        const frontWithOverlay = await overlayClientPanelOnFirstPage(frontBytes, client)
+
+        // simplify client object to only first/last name for overlay
+        const simpleClient = client
+            ? { firstName: client.firstName, lastName: client.lastName }
+            : null
+
+        const frontWithOverlay = await overlayClientPanelOnFirstPage(
+            frontBytes,
+            simpleClient,
+            creator ?? undefined
+        )
         const donorFront = await PDFDocument.load(frontWithOverlay)
         const frontPages = await main.copyPages(donorFront, donorFront.getPageIndices())
         frontPages.forEach((p) => main.addPage(p))
-        // ---------------------------------------------------------------
 
-        // Build queue (positions unchanged from your UI logic)
+        // Build queue (positions unchanged)
         const products = await prisma.product.findMany({
             where: { id: { in: productIds } },
             select: { id: true, pdfUrl: true },
@@ -197,28 +226,26 @@ export async function POST(req: Request) {
             where: { id: { in: addlIds } },
             select: { id: true, filePath: true },
         })
-        const addlById = new Map(addl.map((x) => [x.id, x.filePath ?? null]))
+        const addlById = new Map(
+            addl.filter((x) => x.filePath).map((x) => [x.id, x.filePath as string])
+        )
 
         type QueueItem = { position: number; url: string; kind: 'extra' | 'product' }
         const queue: QueueItem[] = []
 
-        // Products keep original positions (index + 2) so they still sort after “After Corporate Info”
         orderedProducts.forEach((p, i) => {
             if (p.pdfUrl) queue.push({ position: i + 2, url: p.pdfUrl, kind: 'product' })
         })
 
-        // Additional pages
         additionalPages.forEach((a) => {
             const fp = addlById.get(a.id)
             if (fp) queue.push({ position: a.position, url: fp, kind: 'extra' })
         })
 
-        // Sort: by position; extras BEFORE products on ties
         queue.sort((a, b) =>
             a.position === b.position ? (a.kind === 'extra' ? -1 : 1) : a.position - b.position
         )
 
-        // Append queued pages
         for (const item of queue) {
             await addPdfToDocument(main, item.url)
         }
@@ -231,7 +258,8 @@ export async function POST(req: Request) {
         if (!back?.filePath) {
             return NextResponse.json({ error: 'Back corporate info missing' }, { status: 400 })
         }
-        await addPdfToDocument(main, back.filePath)
+        const backUrl = back.filePath as string
+        await addPdfToDocument(main, backUrl)
 
         const merged = await main.save()
         const pdfUrl = `data:application/pdf;base64,${Buffer.from(merged).toString('base64')}`
