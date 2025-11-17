@@ -424,7 +424,20 @@ const Products = () => {
       if (response.status === 200) {
         toast.success('PDF generated successfully!')
         const pdfUrl = response.data.url
-        const fileName = `Merged_Document_${new Date().toISOString()}.pdf`
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000) // 4-digit random number
+
+        const selectedClientObj = clients.find((c) => c.id === selectedClient)
+        const rawClientName =
+          selectedClientObj
+            ? `${selectedClientObj.firstName ?? ''} ${selectedClientObj.lastName ?? ''}`.trim()
+            : ''
+
+        // sanitize client name for filename (spaces -> -, remove double underscores, etc.)
+        const clientNameForFile = rawClientName
+          ? `_${rawClientName.replace(/\s+/g, '-')} `
+          : ''
+
+        const fileName = `GTI_Catalogue${clientNameForFile}_${randomSuffix}.pdf`
 
         try {
           const blob = await fetch(pdfUrl).then((res) => res.blob())
