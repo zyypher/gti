@@ -30,10 +30,32 @@ const ALLOWED_MIMES = new Set(['image/png', 'image/jpeg'])
 
 /**
  * GET /api/brands
- * Returns brands, converting stored binary into base64 data URL with correct mime.
+ *
+ * - Default: return *light* brand objects (no image) for filters, selects, etc.
+ * - If you really need the image, call /api/brands?withImage=1
  */
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
     try {
+        const { searchParams } = new URL(req.url)
+        const withImage = searchParams.get('withImage') === '1'
+
+        if (!withImage) {
+            // light version: no image field → much smaller / faster
+            const brands = await prisma.brand.findMany({
+                select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    createdAt: true,
+                    updatedAt: true,
+                },
+                orderBy: { updatedAt: 'desc' },
+            })
+
+            return NextResponse.json(brands)
+        }
+
+        // heavy version: include base64 data URL
         const brands = await prisma.brand.findMany({
             orderBy: { updatedAt: 'desc' },
         })
@@ -80,7 +102,7 @@ export async function POST(req: NextRequest) {
             if (!ALLOWED_MIMES.has(image.type)) {
                 return NextResponse.json(
                     { error: 'Only PNG or JPG images are allowed' },
-                    { status: 415 }
+                    { status: 415 },
                 )
             }
             const arrayBuffer = await image.arrayBuffer()
@@ -129,7 +151,7 @@ export async function PUT(req: NextRequest) {
             if (!ALLOWED_MIMES.has(image.type)) {
                 return NextResponse.json(
                     { error: 'Only PNG or JPG images are allowed' },
-                    { status: 415 }
+                    { status: 415 },
                 )
             }
             const buf = new Uint8Array(await image.arrayBuffer())

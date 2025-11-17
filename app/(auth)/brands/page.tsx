@@ -87,7 +87,7 @@ const BrandsPage = () => {
     const fetchBrands = async () => {
         setLoading(true)
         try {
-            const response = await api.get('/api/brands')
+            const response = await api.get('/api/brands?withImage=1')
             setBrands(response.data)
         } catch {
             toast.error('Failed to load brands')
