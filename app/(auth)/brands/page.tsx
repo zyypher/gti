@@ -20,7 +20,7 @@ type Brand = {
     id: string
     name: string
     description: string
-    image: string | null
+    image?: string | null
 }
 
 const ALLOWED_MIMES = ['image/png', 'image/jpeg'] as const
@@ -46,7 +46,8 @@ const GlassCard = ({
 
 const BrandsPage = () => {
     const [brands, setBrands] = useState<Brand[]>([])
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(true) // list loading
+    const [imageLoading, setImageLoading] = useState(true) // images loading
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null)
     const [buttonLoading, setButtonLoading] = useState(false)
@@ -62,12 +63,10 @@ const BrandsPage = () => {
         image: yup
             .mixed<FileList>()
             .test('fileRequired', 'Brand image is required', function (value) {
-                // Require file only on create
                 if (selectedBrand) return true
                 return !!value && value.length > 0
             })
             .test('fileType', 'Only PNG or JPG images are allowed', function (value) {
-                // If editing and no new file picked, skip
                 if (selectedBrand && (!value || value.length === 0)) return true
                 if (!value || value.length === 0) return false
                 return fileTypeOk(value[0])
@@ -86,13 +85,39 @@ const BrandsPage = () => {
 
     const fetchBrands = async () => {
         setLoading(true)
+        setImageLoading(true)
         try {
-            const response = await api.get('/api/brands?withImage=1')
-            setBrands(response.data)
+            // 1) fast, light payload (no images)
+            const lightRes = await api.get('/api/brands')
+            const lightBrands: Brand[] = lightRes.data.map((b: any) => ({
+                ...b,
+                image: b.image ?? null,
+            }))
+            setBrands(lightBrands)
+            setLoading(false)
+
+            // 2) heavy payload (with base64 images) in background
+            api
+                .get('/api/brands?withImage=1')
+                .then((fullRes) => {
+                    const fullBrands: Brand[] = fullRes.data
+                    setBrands((prev) =>
+                        prev.map((b) => {
+                            const full = fullBrands.find((fb) => fb.id === b.id)
+                            return full ? { ...b, image: full.image ?? null } : b
+                        }),
+                    )
+                })
+                .catch((err) => {
+                    console.error('Failed to fetch brand images', err)
+                })
+                .finally(() => {
+                    setImageLoading(false)
+                })
         } catch {
             toast.error('Failed to load brands')
-        } finally {
             setLoading(false)
+            setImageLoading(false)
         }
     }
 
@@ -110,7 +135,6 @@ const BrandsPage = () => {
 
             const picked: File | undefined = data.image?.[0]
             if (picked) {
-                // Extra safety on client before sending
                 if (!fileTypeOk(picked)) {
                     toast.error('Only PNG or JPG images are allowed')
                     setButtonLoading(false)
@@ -119,7 +143,9 @@ const BrandsPage = () => {
                 formData.append('image', picked)
             }
 
-            const url = selectedBrand ? `/api/brands?id=${encodeURIComponent(selectedBrand.id)}` : '/api/brands'
+            const url = selectedBrand
+                ? `/api/brands?id=${encodeURIComponent(selectedBrand.id)}`
+                : '/api/brands'
             const method = selectedBrand ? 'put' : 'post'
 
             const response = await api({
@@ -232,7 +258,9 @@ const BrandsPage = () => {
                             <GlassCard key={brand.id} className="overflow-hidden transition hover:scale-[1.02]">
                                 <CardContent className="flex h-full flex-col justify-between space-y-4 p-4">
                                     <div>
-                                        {brand.image ? (
+                                        {imageLoading ? (
+                                            <Skeleton className="h-44 w-full rounded-xl" />
+                                        ) : brand.image ? (
                                             <img
                                                 src={brand.image}
                                                 alt={brand.name}
@@ -279,7 +307,11 @@ const BrandsPage = () => {
                 </div>
 
                 {/* Delete Dialog */}
-                <Dialog isOpen={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)} title="Confirm Deletion">
+                <Dialog
+                    isOpen={isDeleteDialogOpen}
+                    onClose={() => setIsDeleteDialogOpen(false)}
+                    title="Confirm Deletion"
+                >
                     <div className="space-y-4 p-4">
                         <p className="text-zinc-800 text-lg font-medium">
                             Delete <strong>{brandToDelete?.name}</strong>?
@@ -299,32 +331,45 @@ const BrandsPage = () => {
                 </Dialog>
 
                 {/* Add/Edit Dialog */}
-                <Dialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} title={selectedBrand ? 'Edit Brand' : 'Add Brand'}>
+                <Dialog
+                    isOpen={isDialogOpen}
+                    onClose={() => setIsDialogOpen(false)}
+                    title={selectedBrand ? 'Edit Brand' : 'Add Brand'}
+                >
                     <form onSubmit={handleSubmit(handleAddOrEditBrand)} className="space-y-5 p-2">
                         <div>
                             <label className="block text-sm font-medium text-zinc-700">Brand Name</label>
                             <Input placeholder="Enter brand name" {...register('name')} />
-                            {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name.message as string}</p>}
+                            {errors.name && (
+                                <p className="mt-1 text-sm text-red-500">{errors.name.message as string}</p>
+                            )}
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-zinc-700">Description</label>
                             <Input placeholder="Enter brand description" {...register('description')} />
                             {errors.description && (
-                                <p className="mt-1 text-sm text-red-500">{errors.description.message as string}</p>
+                                <p className="mt-1 text-sm text-red-500">
+                                    {errors.description.message as string}
+                                </p>
                             )}
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-zinc-700">Select an Image</label>
-                            {/* Restrict chooser to PNG/JPG */}
                             <Input type="file" accept="image/png,image/jpeg" {...register('image')} />
-                            {errors.image && <p className="mt-1 text-sm text-red-500">{errors.image.message as string}</p>}
+                            {errors.image && (
+                                <p className="mt-1 text-sm text-red-500">{errors.image.message as string}</p>
+                            )}
                         </div>
 
                         {selectedBrand?.image && (
                             <div className="mb-2">
-                                <img src={selectedBrand.image} alt="Current" className="h-24 rounded-xl object-cover" />
+                                <img
+                                    src={selectedBrand.image}
+                                    alt="Current"
+                                    className="h-24 rounded-xl object-cover"
+                                />
                                 <p className="text-xs text-zinc-500">Current image</p>
                             </div>
                         )}

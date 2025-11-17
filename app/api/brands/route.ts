@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-/**
- * Detect PNG/JPEG from raw bytes (no schema change needed).
- */
 function sniffMimeFromBytes(bytes?: Uint8Array | null): 'image/png' | 'image/jpeg' | null {
     if (!bytes || bytes.length < 4) return null
-    // PNG: 89 50 4E 47 0D 0A 1A 0A
     if (
         bytes[0] === 0x89 &&
         bytes[1] === 0x50 &&
@@ -19,7 +15,6 @@ function sniffMimeFromBytes(bytes?: Uint8Array | null): 'image/png' | 'image/jpe
     ) {
         return 'image/png'
     }
-    // JPEG: FF D8 FF
     if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
         return 'image/jpeg'
     }
@@ -31,8 +26,8 @@ const ALLOWED_MIMES = new Set(['image/png', 'image/jpeg'])
 /**
  * GET /api/brands
  *
- * - Default: return *light* brand objects (no image) for filters, selects, etc.
- * - If you really need the image, call /api/brands?withImage=1
+ * - Default: light brands (no image data) for fast lists / filters.
+ * - ?withImage=1: includes base64 image data for full cards.
  */
 export async function GET(req: NextRequest) {
     try {
@@ -40,7 +35,6 @@ export async function GET(req: NextRequest) {
         const withImage = searchParams.get('withImage') === '1'
 
         if (!withImage) {
-            // light version: no image field → much smaller / faster
             const brands = await prisma.brand.findMany({
                 select: {
                     id: true,
@@ -52,10 +46,14 @@ export async function GET(req: NextRequest) {
                 orderBy: { updatedAt: 'desc' },
             })
 
-            return NextResponse.json(brands)
+            const normalized = brands.map((b) => ({
+                ...b,
+                image: null as null,
+            }))
+
+            return NextResponse.json(normalized)
         }
 
-        // heavy version: include base64 data URL
         const brands = await prisma.brand.findMany({
             orderBy: { updatedAt: 'desc' },
         })
@@ -65,7 +63,7 @@ export async function GET(req: NextRequest) {
                 return { ...brand, image: null }
             }
             const bytes = brand.image as unknown as Uint8Array
-            const mime = sniffMimeFromBytes(bytes) || 'image/png' // fallback
+            const mime = sniffMimeFromBytes(bytes) || 'image/png'
             const base64 = Buffer.from(bytes).toString('base64')
             return {
                 ...brand,
@@ -80,10 +78,6 @@ export async function GET(req: NextRequest) {
     }
 }
 
-/**
- * POST /api/brands
- * Accepts multipart form-data. Only PNG/JPG allowed. SVG is rejected.
- */
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData()
@@ -98,7 +92,6 @@ export async function POST(req: NextRequest) {
         let imageBuffer: Uint8Array | null = null
 
         if (image && image.size > 0) {
-            // Enforce PNG/JPG only
             if (!ALLOWED_MIMES.has(image.type)) {
                 return NextResponse.json(
                     { error: 'Only PNG or JPG images are allowed' },
@@ -124,11 +117,6 @@ export async function POST(req: NextRequest) {
     }
 }
 
-/**
- * PUT /api/brands?id=...
- * Accepts multipart form-data (to match your client). Image optional; if present, must be PNG/JPG.
- * If no image sent, existing image is preserved.
- */
 export async function PUT(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url)
@@ -170,11 +158,6 @@ export async function PUT(req: NextRequest) {
     }
 }
 
-/**
- * DELETE /api/brands
- * JSON body: { id }
- * Deletes related products then the brand.
- */
 export async function DELETE(req: NextRequest) {
     try {
         const { id } = await req.json()

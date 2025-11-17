@@ -16,6 +16,7 @@ import { FloatingLabelInput } from '@/components/ui/floating-label-input'
 import { useRouter, usePathname } from 'next/navigation'
 
 interface FilterProps {
+  filters: Record<string, string>
   onFilterChange: (filters: Record<string, string>) => void
   onRefresh: () => void
   onClearSelection?: () => void
@@ -27,16 +28,11 @@ interface IBrand {
   name: string
 }
 
-const ALL = 'all' // generic "All" sentinel for non-flavour/capsule menus
-
-// UI-only sentinels for flavour/capsule behaviors
+const ALL = 'all'
 const PLACEHOLDER = '__PLACEHOLDER__'
 const UI_ALL_FLAVOURS = '__ALL_FLAVOURS__'
 const UI_ALL_CAPS = '__ALL_CAPS__'
 
-/**
- * Keep UI "All" memory while keeping API filters clean.
- */
 function applySelectUI(
   key: string,
   value: string,
@@ -61,6 +57,7 @@ function applySelectUI(
 }
 
 export default function ProductsFilters({
+  filters,
   onFilterChange,
   onRefresh,
   onClearSelection,
@@ -68,11 +65,8 @@ export default function ProductsFilters({
 }: FilterProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [filters, setFilters] = useState<Record<string, string>>(initialFilters)
 
-  // UI-only memory for what was selected in each dropdown
   const [uiSelections, setUiSelections] = useState<Record<string, string>>({})
-
   const [brands, setBrands] = useState<IBrand[]>([])
   const [sizes, setSizes] = useState<string[]>([])
   const [flavors, setFlavors] = useState<string[]>([])
@@ -88,11 +82,19 @@ export default function ProductsFilters({
   const [isLoadingCarbonMonoxides, setIsLoadingCarbonMonoxides] = useState(true)
   const [isLoadingColors, setIsLoadingColors] = useState(true)
 
+  // local copy just to satisfy TS and keep UI in sync
+  const [filterState, setFilters] = useState<Record<string, string>>(filters)
+
   const tarOptions = Array.from({ length: 12 }, (_, i) => String(i + 1))
   const nicotineOptions = Array.from({ length: 12 }, (_, i) => ((i + 1) / 10).toFixed(1))
 
   // helper so all selects fully reset when filters/uiSelections are cleared
-  const getSelectValue = (key: string) => uiSelections[key] ?? filters[key] ?? ''
+  const getSelectValue = (key: string) => uiSelections[key] ?? filterState[key] ?? ''
+
+  useEffect(() => {
+    // whenever parent filters change (via onFilterChange), keep local copy in sync
+    setFilters(filters)
+  }, [filters])
 
   useEffect(() => {
     const fetchBrands = async () => {
@@ -106,67 +108,35 @@ export default function ProductsFilters({
       }
     }
 
-    const fetchSizes = async () => {
+    const fetchFilterOptions = async () => {
       try {
-        const response = await api.get('/api/products/sizes')
-        setSizes(response.data)
+        const response = await api.get('/api/products/filters')
+        const {
+          sizes: sizeOptions = [],
+          flavors: flavorOptions = [],
+          colors: colorOptions = [],
+          packFormats: packFormatOptions = [],
+          carbonMonoxides: coOptions = [],
+        } = response.data || {}
+
+        setSizes(sizeOptions ?? [])
+        setFlavors(flavorOptions ?? [])
+        setColors(colorOptions ?? [])
+        setPackFormats(packFormatOptions ?? [])
+        setCarbonMonoxides((coOptions ?? []).map((v: number | string) => String(v)))
       } catch (error) {
-        console.error('Failed to fetch sizes:', error)
+        console.error('Failed to fetch filter options:', error)
       } finally {
         setIsLoadingSizes(false)
-      }
-    }
-
-    const fetchFlavors = async () => {
-      try {
-        const response = await api.get('/api/products/flavors')
-        setFlavors(response.data)
-      } catch (error) {
-        console.error('Failed to fetch flavors:', error)
-      } finally {
         setIsLoadingFlavors(false)
-      }
-    }
-
-    const fetchPackFormats = async () => {
-      try {
-        const response = await api.get('/api/products/pack-formats')
-        setPackFormats(response.data)
-      } catch (error) {
-        console.error('Failed to fetch pack formats:', error)
-      } finally {
         setIsLoadingPackFormats(false)
-      }
-    }
-
-    const fetchCarbonMonoxides = async () => {
-      try {
-        const response = await api.get('/api/products/carbon-monoxides')
-        setCarbonMonoxides(response.data)
-      } catch (error) {
-        console.error('Failed to fetch carbon monoxide values:', error)
-      } finally {
         setIsLoadingCarbonMonoxides(false)
-      }
-    }
-
-    const fetchColors = async () => {
-      try {
-        const response = await api.get('/api/products/colors')
-        setColors(response.data)
-      } catch (error) {
-        console.error('Failed to fetch colors:', error)
-      } finally {
         setIsLoadingColors(false)
       }
     }
 
     fetchBrands()
-    fetchSizes()
-    fetchFlavors()
-    fetchPackFormats()
-    fetchCarbonMonoxides()
-    fetchColors()
+    fetchFilterOptions()
   }, [])
 
   // Ensure initial brandId (from URL/parent) is applied only once.
@@ -193,7 +163,7 @@ export default function ProductsFilters({
 
     setFilters(updated)
 
-    // 🔑 IMPORTANT: don't trigger API search on every keystroke for "name"
+    // don't trigger API search on every keystroke for "name"
     if (key !== 'name') {
       onFilterChange(updated)
     }
@@ -321,7 +291,6 @@ export default function ProductsFilters({
           </div>
           <Button
             variant="black"
-            // make it same height & rounded as the input
             className="h-11 rounded-xl px-4 flex items-center gap-1"
             onClick={applyNameSearch}
           >
@@ -329,7 +298,6 @@ export default function ProductsFilters({
             <span>Search</span>
           </Button>
         </div>
-
 
         {/* Brand */}
         <Select value={getSelectValue('brandId')} onValueChange={onSelect('brandId')}>
@@ -381,7 +349,7 @@ export default function ProductsFilters({
           </SelectContent>
         </Select>
 
-        {/* Flavour (with placeholder row, All Flavours, Regular, others) */}
+        {/* Flavour */}
         <Select value={getSelectValue('flavor')} onValueChange={onSelectFlavor}>
           <SelectTrigger>
             <SelectValue
@@ -411,10 +379,7 @@ export default function ProductsFilters({
         </Select>
 
         {/* Pack Format */}
-        <Select
-          value={getSelectValue('packetStyle')}
-          onValueChange={onSelect('packetStyle')}
-        >
+        <Select value={getSelectValue('packetStyle')} onValueChange={onSelect('packetStyle')}>
           <SelectTrigger>
             <SelectValue
               placeholder={
@@ -438,7 +403,7 @@ export default function ProductsFilters({
           </SelectContent>
         </Select>
 
-        {/* Conditionally visible filters */}
+        {/* Extra filters */}
         {showAllFilters && (
           <>
             {/* FSP */}
@@ -453,11 +418,8 @@ export default function ProductsFilters({
               </SelectContent>
             </Select>
 
-            {/* Capsules (with placeholder row + special logic) */}
-            <Select
-              value={getSelectValue('capsules')}
-              onValueChange={onSelectCapsules}
-            >
+            {/* Capsules */}
+            <Select value={getSelectValue('capsules')} onValueChange={onSelectCapsules}>
               <SelectTrigger>
                 <SelectValue placeholder="Number of Capsules" />
               </SelectTrigger>
@@ -471,7 +433,7 @@ export default function ProductsFilters({
               </SelectContent>
             </Select>
 
-            {/* Tar (mg) */}
+            {/* Tar */}
             <Select value={getSelectValue('tar')} onValueChange={onSelect('tar')}>
               <SelectTrigger>
                 <SelectValue placeholder="Tar (mg)" />
@@ -486,11 +448,8 @@ export default function ProductsFilters({
               </SelectContent>
             </Select>
 
-            {/* Nicotine (mg) */}
-            <Select
-              value={getSelectValue('nicotine')}
-              onValueChange={onSelect('nicotine')}
-            >
+            {/* Nicotine */}
+            <Select value={getSelectValue('nicotine')} onValueChange={onSelect('nicotine')}>
               <SelectTrigger>
                 <SelectValue placeholder="Nicotine (mg)" />
               </SelectTrigger>
@@ -504,7 +463,7 @@ export default function ProductsFilters({
               </SelectContent>
             </Select>
 
-            {/* CO (mg) — DESKTOP */}
+            {/* CO */}
             <Select
               value={uiSelections.co ?? filters.co ?? undefined}
               onValueChange={onSelect('co')}

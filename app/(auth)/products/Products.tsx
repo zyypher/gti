@@ -37,7 +37,7 @@ import { yupResolver } from '@hookform/resolvers/yup'
 interface IBrand {
   id: string
   name: string
-  position: number
+  position?: number
 }
 
 export type INonProductPageItem = {
@@ -198,6 +198,10 @@ const Products = () => {
   const [pageSize] = useState(10)
   const [total, setTotal] = useState(0)
 
+  // media state: image + pdfUrl loaded separately
+  const [mediaMap, setMediaMap] = useState<Record<string, { image?: string; pdfUrl?: string }>>({})
+  const [mediaLoading, setMediaLoading] = useState(false)
+
   const isPWA = () => window.matchMedia('(display-mode: standalone)').matches
   const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
   console.log('##clients', clients)
@@ -306,14 +310,45 @@ const Products = () => {
     setLoading(true)
     try {
       const queryParams = new URLSearchParams({
+        ...initialFilters,
         ...filters,
         page: String(page),
         pageSize: String(pageSize),
       }).toString()
+
       const response = await fetch(`/api/products?${queryParams}`)
       const result = await response.json()
-      setProducts(result.products)
+
+      const baseProducts: ITable[] = result.products
+      setProducts(baseProducts)
       setTotal(result.total)
+
+      // load media (image + pdfUrl) in background
+      if (baseProducts.length) {
+        setMediaLoading(true)
+        try {
+          const ids = baseProducts.map((p) => p.id).join(',')
+          const mediaRes = await fetch(`/api/products/media?ids=${encodeURIComponent(ids)}`)
+          const mediaJson = await mediaRes.json()
+          const map: Record<string, { image?: string; pdfUrl?: string }> = {}
+
+            ; (mediaJson.items || []).forEach((item: any) => {
+              map[item.id] = {
+                image: item.image ?? '',
+                pdfUrl: item.pdfUrl ?? '',
+              }
+            })
+
+          setMediaMap(map)
+        } catch (mediaErr) {
+          console.error('Failed to fetch product media:', mediaErr)
+          setMediaMap({})
+        } finally {
+          setMediaLoading(false)
+        }
+      } else {
+        setMediaMap({})
+      }
     } catch (e) {
       console.error('Failed to fetch products:', e)
     } finally {
@@ -353,6 +388,7 @@ const Products = () => {
 
   useEffect(() => {
     fetchProducts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, page, pageSize])
 
   useEffect(() => {
@@ -399,7 +435,24 @@ const Products = () => {
     setIsDeleteDialogOpen(true)
   }
 
-  const _columns = columns(role, handleEdit, handleDelete)
+  // merge base text products + media (image/pdfUrl)
+  const tableData: ITable[] = useMemo(
+    () =>
+      products.map((p) => {
+        const media = mediaMap[p.id] || {}
+        return {
+          ...p,
+          image: media.image ?? (p as any).image,
+          pdfUrl: media.pdfUrl ?? (p as any).pdfUrl,
+        }
+      }),
+    [products, mediaMap],
+  )
+
+  const _columns = useMemo(
+    () => columns(role, handleEdit, handleDelete, mediaLoading),
+    [role, handleEdit, handleDelete, mediaLoading],
+  )
 
   const handleRowSelection = (ids: string[]) => {
     setSelectedRows(ids)
@@ -424,7 +477,7 @@ const Products = () => {
       if (response.status === 200) {
         toast.success('PDF generated successfully!')
         const pdfUrl = response.data.url
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000) // 4-digit random number
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000)
 
         const selectedClientObj = clients.find((c) => c.id === selectedClient)
         const rawClientName =
@@ -432,7 +485,6 @@ const Products = () => {
             ? `${selectedClientObj.firstName ?? ''} ${selectedClientObj.lastName ?? ''}`.trim()
             : ''
 
-        // sanitize client name for filename (spaces -> -, remove double underscores, etc.)
         const clientNameForFile = rawClientName
           ? `_${rawClientName.replace(/\s+/g, '-')} `
           : ''
@@ -696,6 +748,7 @@ const Products = () => {
         {/* Filters */}
         <GlassPanel className="p-3">
           <ProductsFilters
+            filters={filters}
             onFilterChange={handleFilterChange}
             onRefresh={handleRefresh}
             onClearSelection={handleClearSelection}
@@ -708,7 +761,7 @@ const Products = () => {
           <DataTable<ITable>
             key={tableResetKey}
             columns={_columns}
-            data={products}
+            data={tableData}
             filterField="product"
             loading={tableLoading}
             rowSelectionCallback={handleRowSelection}
@@ -724,7 +777,7 @@ const Products = () => {
         </GlassPanel>
 
         {/* Add/Edit Dialog */}
-        <Dialog
+       <Dialog
           isOpen={isDialogOpen}
           onClose={() => {
             reset()
