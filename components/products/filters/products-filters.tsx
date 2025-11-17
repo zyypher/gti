@@ -190,6 +190,24 @@ export default function ProductsFilters({
     } else {
       updated[key] = value
     }
+
+    setFilters(updated)
+
+    // 🔑 IMPORTANT: don't trigger API search on every keystroke for "name"
+    if (key !== 'name') {
+      onFilterChange(updated)
+    }
+  }
+
+  // Fire the name search only when button is clicked
+  const applyNameSearch = () => {
+    const currentName = (filters.name ?? '').trim()
+    const updated = { ...filters }
+
+    if (!currentName) {
+      delete updated.name
+    }
+
     setFilters(updated)
     onFilterChange(updated)
   }
@@ -290,16 +308,28 @@ export default function ProductsFilters({
     <>
       {/* Desktop Filters */}
       <div className="hidden grid-cols-2 gap-4 md:grid md:grid-cols-4 lg:grid-cols-6">
-        {/* Always visible: Search by name */}
-        <div className="relative col-span-2">
-          <FloatingLabelInput
-            label="Search by name"
-            name="searchByName"
-            value={filters.name || ''}
-            onChange={(value) => handleChangeText('name', value)}
-            iconLeft={<Search className="h-4 w-4" />}
-          />
+        {/* Always visible: Search by name (text + button) */}
+        <div className="col-span-2 flex items-center gap-2">
+          <div className="relative flex-1">
+            <FloatingLabelInput
+              label="Search by name"
+              name="searchByName"
+              value={filters.name || ''}
+              onChange={(value) => handleChangeText('name', value)}
+              iconLeft={<Search className="h-4 w-4" />}
+            />
+          </div>
+          <Button
+            variant="black"
+            // make it same height & rounded as the input
+            className="h-11 rounded-xl px-4 flex items-center gap-1"
+            onClick={applyNameSearch}
+          >
+            <Search className="h-4 w-4" />
+            <span>Search</span>
+          </Button>
         </div>
+
 
         {/* Brand */}
         <Select value={getSelectValue('brandId')} onValueChange={onSelect('brandId')}>
@@ -474,7 +504,6 @@ export default function ProductsFilters({
               </SelectContent>
             </Select>
 
-            {/* CO (mg) */}
             {/* CO (mg) — DESKTOP */}
             <Select
               value={uiSelections.co ?? filters.co ?? undefined}
@@ -505,7 +534,6 @@ export default function ProductsFilters({
                 })}
               </SelectContent>
             </Select>
-
 
             {/* Color */}
             <Select value={getSelectValue('color')} onValueChange={onSelect('color')}>
@@ -774,7 +802,6 @@ export default function ProductsFilters({
               })}
             </SelectContent>
           </Select>
-
 
           {/* Color */}
           <Select value={getSelectValue('color')} onValueChange={onSelect('color')}>
