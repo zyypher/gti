@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { columns, ITable } from '@/components/custom/table/products/columns'
 import { DataTable } from '@/components/custom/table/data-table'
 import ProductsFilters from '@/components/products/filters/products-filters'
@@ -37,7 +37,7 @@ import { yupResolver } from '@hookform/resolvers/yup'
 interface IBrand {
   id: string
   name: string
-  position: number
+  position?: number
 }
 
 export type INonProductPageItem = {
@@ -183,13 +183,23 @@ const Products = () => {
 
   const [nonProductItems, setNonProductItems] = useState<NonProductPageItem[]>([])
   const [clients, setClients] = useState<Client[]>([])
-  const [selectedCorporateInfo, setSelectedCorporateInfo] = useState<string | undefined>(undefined)
-  const [addedPromotions, setAddedPromotions] = useState<{ id: string; position: number }[]>([])
+  const [selectedCorporateInfo, setSelectedCorporateInfo] = useState<string | undefined>(
+    undefined,
+  )
+  const [addedPromotions, setAddedPromotions] = useState<{ id: string; position: number }[]>(
+    [],
+  )
   const [selectedClient, setSelectedClient] = useState<string | undefined>(undefined)
 
   const searchParams = useSearchParams()
   const initialBrandId = searchParams.get('brandId')
-  const initialFilters: Record<string, string> = initialBrandId ? { brandId: initialBrandId } : {}
+
+  // *** FIXED TYPING HERE ***
+  const initialFilters = useMemo<Record<string, string> | undefined>(
+    () => (initialBrandId ? { brandId: initialBrandId } : undefined),
+    [initialBrandId],
+  )
+
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false)
   const [isClientSubmitting, setIsClientSubmitting] = useState(false)
   const [tableResetKey, setTableResetKey] = useState(0)
@@ -198,9 +208,18 @@ const Products = () => {
   const [pageSize] = useState(10)
   const [total, setTotal] = useState(0)
 
+  // media state: image + pdfUrl loaded separately
+  const [mediaMap, setMediaMap] = useState<Record<string, { image?: string; pdfUrl?: string }>>(
+    {},
+  )
+  const [mediaLoading, setMediaLoading] = useState(false)
+
+  // lazy-load flags for heavy data
+  const [hasLoadedNonProductItems, setHasLoadedNonProductItems] = useState(false)
+  const [hasLoadedClients, setHasLoadedClients] = useState(false)
+
   const isPWA = () => window.matchMedia('(display-mode: standalone)').matches
   const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-  console.log('##clients', clients)
 
   /* -------- client form (quick add) -------- */
   const {
@@ -208,7 +227,6 @@ const Products = () => {
     register: clientRegister,
     handleSubmit: handleClientSubmit,
     reset: resetClientForm,
-    setValue: setClientValue,
     formState: { errors: clientErrors },
   } = useForm<QuickClientForm>({
     resolver: yupResolver(clientSchema),
@@ -244,35 +262,6 @@ const Products = () => {
     }
   }
 
-  /* -------- non-product page lists -------- */
-  useEffect(() => {
-    const fetchNonProductPageItems = async () => {
-      try {
-        const response = await api.get('/api/non-product-pages')
-        const data: INonProductPageItem[] = response.data
-        setCorporateFronts(data.filter((i) => i.type === 'banner_front' || i.type === 'banner'))
-        setCorporateBacks(data.filter((i) => i.type === 'banner_back'))
-        setAdvertisements(data.filter((i) => i.type === 'advertisement'))
-        setPromotions(data.filter((i) => i.type === 'promotion'))
-      } catch (e) {
-        console.error('Failed to load non-product page items:', e)
-      }
-    }
-    fetchNonProductPageItems()
-  }, [])
-
-  const handleNextStep = () => {
-    if (pdfStep === 1 && (!selectedCorporateFront || !selectedCorporateBack)) {
-      toast.error('Please select Corporate Info (Front) and (Back).')
-      return
-    }
-    if (pdfStep === 2 && (selectedAdverts.length === 0 || selectedPromotions.length === 0)) {
-      toast.error('Please select at least one Advert and one Promotion.')
-      return
-    }
-    setPdfStep((s) => s + 1)
-  }
-
   /* -------------- Product form -------------- */
   const {
     register,
@@ -302,7 +291,7 @@ const Products = () => {
     [],
   )
 
-  const fetchProducts = async () => {
+const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
       const queryParams = new URLSearchParams({
@@ -310,18 +299,50 @@ const Products = () => {
         page: String(page),
         pageSize: String(pageSize),
       }).toString()
+
       const response = await fetch(`/api/products?${queryParams}`)
       const result = await response.json()
-      setProducts(result.products)
+
+      const baseProducts: ITable[] = result.products
+      setProducts(baseProducts)
       setTotal(result.total)
+
+      // load media (image + pdfUrl) in background
+      if (baseProducts.length) {
+        setMediaLoading(true)
+        try {
+          const ids = baseProducts.map((p) => p.id).join(',')
+          const mediaRes = await fetch(
+            `/api/products/media?ids=${encodeURIComponent(ids)}`,
+          )
+          const mediaJson = await mediaRes.json()
+          const map: Record<string, { image?: string; pdfUrl?: string }> = {}
+
+            ; (mediaJson.items || []).forEach((item: any) => {
+              map[item.id] = {
+                image: item.image ?? '',
+                pdfUrl: item.pdfUrl ?? '',
+              }
+            })
+
+          setMediaMap(map)
+        } catch (mediaErr) {
+          console.error('Failed to fetch product media:', mediaErr)
+          setMediaMap({})
+        } finally {
+          setMediaLoading(false)
+        }
+      } else {
+        setMediaMap({})
+      }
     } catch (e) {
       console.error('Failed to fetch products:', e)
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, page, pageSize])
 
-  const fetchBrands = async () => {
+  const fetchBrands = useCallback(async () => {
     try {
       const response = await fetch('/api/brands')
       const data = await response.json()
@@ -329,19 +350,27 @@ const Products = () => {
     } catch (e) {
       console.error('Failed to fetch brands:', e)
     }
-  }
+  }, [])
 
-  const fetchNonProductItems = async () => {
+  const fetchNonProductItems = useCallback(async () => {
     try {
       const response = await api.get('/api/non-product-pages')
-      setNonProductItems(response.data)
+      const data: INonProductPageItem[] = response.data
+
+      setNonProductItems(data)
+      setCorporateFronts(
+        data.filter((i) => i.type === 'banner_front' || i.type === 'banner'),
+      )
+      setCorporateBacks(data.filter((i) => i.type === 'banner_back'))
+      setAdvertisements(data.filter((i) => i.type === 'advertisement'))
+      setPromotions(data.filter((i) => i.type === 'promotion'))
     } catch (e) {
       console.error('Failed to fetch non-product items', e)
       toast.error('Failed to fetch non-product items.')
     }
-  }
+  }, [])
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     try {
       const response = await api.get('/api/clients')
       setClients(response.data)
@@ -349,17 +378,27 @@ const Products = () => {
       console.error('Failed to fetch clients', e)
       toast.error('Failed to fetch clients.')
     }
-  }
+  }, [])
+
+  const ensureNonProductItemsLoaded = useCallback(async () => {
+    if (hasLoadedNonProductItems) return
+    await fetchNonProductItems()
+    setHasLoadedNonProductItems(true)
+  }, [hasLoadedNonProductItems, fetchNonProductItems])
+
+  const ensureClientsLoaded = useCallback(async () => {
+    if (hasLoadedClients) return
+    await fetchClients()
+    setHasLoadedClients(true)
+  }, [hasLoadedClients, fetchClients])
 
   useEffect(() => {
     fetchProducts()
-  }, [filters, page, pageSize])
+  }, [fetchProducts])
 
   useEffect(() => {
     fetchBrands()
-    fetchNonProductItems()
-    fetchClients()
-  }, [])
+  }, [fetchBrands])
 
   const handleFilterChange = (newFilters: { [key: string]: string }) => {
     setFilters(newFilters)
@@ -372,7 +411,9 @@ const Products = () => {
 
     const fspNormalized: 'true' | 'false' =
       typeof item.fsp === 'boolean'
-        ? (item.fsp ? 'true' : 'false')
+        ? item.fsp
+          ? 'true'
+          : 'false'
         : /^(true|yes|1)$/i.test(String(item.fsp))
           ? 'true'
           : 'false'
@@ -399,7 +440,24 @@ const Products = () => {
     setIsDeleteDialogOpen(true)
   }
 
-  const _columns = columns(role, handleEdit, handleDelete)
+  // merge base text products + media (image/pdfUrl)
+  const tableData: ITable[] = useMemo(
+    () =>
+      products.map((p) => {
+        const media = mediaMap[p.id] || {}
+        return {
+          ...p,
+          image: media.image ?? (p as any).image,
+          pdfUrl: media.pdfUrl ?? (p as any).pdfUrl,
+        }
+      }),
+    [products, mediaMap],
+  )
+
+  const _columns = useMemo(
+    () => columns(role, handleEdit, handleDelete, mediaLoading),
+    [role, handleEdit, handleDelete, mediaLoading],
+  )
 
   const handleRowSelection = (ids: string[]) => {
     setSelectedRows(ids)
@@ -424,15 +482,14 @@ const Products = () => {
       if (response.status === 200) {
         toast.success('PDF generated successfully!')
         const pdfUrl = response.data.url
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000) // 4-digit random number
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000)
 
         const selectedClientObj = clients.find((c) => c.id === selectedClient)
-        const rawClientName =
-          selectedClientObj
-            ? `${selectedClientObj.firstName ?? ''} ${selectedClientObj.lastName ?? ''}`.trim()
-            : ''
+        const rawClientName = selectedClientObj
+          ? `${selectedClientObj.firstName ?? ''} ${selectedClientObj.lastName ?? ''
+            }`.trim()
+          : ''
 
-        // sanitize client name for filename (spaces -> -, remove double underscores, etc.)
         const clientNameForFile = rawClientName
           ? `_${rawClientName.replace(/\s+/g, '-')} `
           : ''
@@ -632,7 +689,9 @@ const Products = () => {
     return (
       <select
         value={page.position}
-        onChange={(e) => updateAdditionalPagePosition(type, page.id, parseInt(e.target.value, 10))}
+        onChange={(e) =>
+          updateAdditionalPagePosition(type, page.id, parseInt(e.target.value, 10))
+        }
         className="rounded border bg-white/60 p-1"
       >
         {options}
@@ -640,19 +699,27 @@ const Products = () => {
     )
   }
 
-  const tableLoading = initialBrandId ? filters.brandId !== initialBrandId || loading : loading
+  const tableLoading = loading
 
   /* PDF preview helper */
   const PdfPreview = ({ src, className }: { src?: string; className?: string }) => {
     if (!src) return null
-    const url = `${src}${src.includes('#') ? '' : '#'}toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
+    const url = `${src}${src.includes('#') ? '' : '#'
+      }toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
     return (
       <embed
         src={url}
         type="application/pdf"
-        className={className ?? 'h-64 w-full rounded-md border overflow-hidden pointer-events-none'}
+        className={
+          className ?? 'h-64 w-full rounded-md border overflow-hidden pointer-events-none'
+        }
       />
     )
+  }
+
+  const openPdfDialog = async () => {
+    setIsPdfDialogOpen(true)
+    await Promise.all([ensureNonProductItemsLoaded(), ensureClientsLoaded()])
   }
 
   return (
@@ -686,7 +753,7 @@ const Products = () => {
             <Button
               variant="outline-black"
               disabled={selectedRows.length === 0}
-              onClick={() => setIsPdfDialogOpen(true)}
+              onClick={openPdfDialog}
             >
               Create PDF
             </Button>
@@ -696,6 +763,7 @@ const Products = () => {
         {/* Filters */}
         <GlassPanel className="p-3">
           <ProductsFilters
+            filters={filters}
             onFilterChange={handleFilterChange}
             onRefresh={handleRefresh}
             onClearSelection={handleClearSelection}
@@ -708,7 +776,7 @@ const Products = () => {
           <DataTable<ITable>
             key={tableResetKey}
             columns={_columns}
-            data={products}
+            data={tableData}
             filterField="product"
             loading={tableLoading}
             rowSelectionCallback={handleRowSelection}
@@ -747,12 +815,17 @@ const Products = () => {
                   onChange={(val) => setValue('name', val, { shouldValidate: true })}
                   error={String(errors.name?.message || '')}
                 />
-                <input type="hidden" {...register('name', { required: 'Name is required' })} />
+                <input
+                  type="hidden"
+                  {...register('name', { required: 'Name is required' })}
+                />
               </div>
 
               {/* Brand */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Brand</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Brand
+                </label>
                 <select
                   {...register('brandId', { required: 'Brand is required' })}
                   className="block w-full rounded-lg border border-zinc-500 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
@@ -767,7 +840,9 @@ const Products = () => {
                   ))}
                 </select>
                 {errors.brandId?.message && (
-                  <p className="mt-1 text-sm text-red-500">{String(errors.brandId.message)}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {String(errors.brandId.message)}
+                  </p>
                 )}
               </div>
 
@@ -780,7 +855,10 @@ const Products = () => {
                   onChange={(val) => setValue('size', val, { shouldValidate: true })}
                   error={String(errors.size?.message || '')}
                 />
-                <input type="hidden" {...register('size', { required: 'Stick format is required' })} />
+                <input
+                  type="hidden"
+                  {...register('size', { required: 'Stick format is required' })}
+                />
               </div>
 
               {/* Flavor */}
@@ -792,15 +870,22 @@ const Products = () => {
                   onChange={(val) => setValue('flavor', val, { shouldValidate: true })}
                   error={String(errors.flavor?.message || '')}
                 />
-                <input type="hidden" {...register('flavor', { required: 'Flavour is required' })} />
+                <input
+                  type="hidden"
+                  {...register('flavor', { required: 'Flavour is required' })}
+                />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Tar (mg)</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Tar (mg)
+                </label>
                 <select
                   {...register('tar', { required: 'Tar is required' })}
                   value={watch('tar') ?? ''}
-                  onChange={(e) => setValue('tar', e.target.value, { shouldValidate: true })}
+                  onChange={(e) =>
+                    setValue('tar', e.target.value, { shouldValidate: true })
+                  }
                   className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                   style={{ border: '1px solid #d1d5db' }}
                 >
@@ -812,16 +897,22 @@ const Products = () => {
                   ))}
                 </select>
                 {errors.tar?.message && (
-                  <p className="mt-1 text-sm text-red-500">{String(errors.tar.message)}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {String(errors.tar.message)}
+                  </p>
                 )}
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Nicotine (mg)</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Nicotine (mg)
+                </label>
                 <select
                   {...register('nicotine', { required: 'Nicotine is required' })}
                   value={watch('nicotine') ?? ''}
-                  onChange={(e) => setValue('nicotine', e.target.value, { shouldValidate: true })}
+                  onChange={(e) =>
+                    setValue('nicotine', e.target.value, { shouldValidate: true })
+                  }
                   className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                   style={{ border: '1px solid #d1d5db' }}
                 >
@@ -833,7 +924,9 @@ const Products = () => {
                   ))}
                 </select>
                 {errors.nicotine?.message && (
-                  <p className="mt-1 text-sm text-red-500">{String(errors.nicotine.message)}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {String(errors.nicotine.message)}
+                  </p>
                 )}
               </div>
 
@@ -856,23 +949,31 @@ const Products = () => {
                   label="Pack Format (e.g., Fan Pack, Slide Pack, Regular)"
                   name="packetStyle"
                   value={watch('packetStyle') || ''}
-                  onChange={(val) => setValue('packetStyle', val, { shouldValidate: true })}
+                  onChange={(val) =>
+                    setValue('packetStyle', val, { shouldValidate: true })
+                  }
                   error={String(errors.packetStyle?.message || '')}
                 />
                 <input
                   type="hidden"
-                  {...register('packetStyle', { required: 'Pack format is required' })}
+                  {...register('packetStyle', {
+                    required: 'Pack format is required',
+                  })}
                 />
               </div>
 
               {/* FSP */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">FSP</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  FSP
+                </label>
                 <select
                   {...register('fsp', { required: 'FSP selection is required' })}
                   className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                   value={watch('fsp') ?? ''}
-                  onChange={(e) => setValue('fsp', e.target.value, { shouldValidate: true })}
+                  onChange={(e) =>
+                    setValue('fsp', e.target.value, { shouldValidate: true })
+                  }
                   style={{ border: '1px solid #d1d5db' }}
                 >
                   <option value="">Select FSP</option>
@@ -880,18 +981,24 @@ const Products = () => {
                   <option value="false">No</option>
                 </select>
                 {errors.fsp?.message && (
-                  <p className="mt-1 text-sm text-red-500">{String(errors.fsp.message)}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {String(errors.fsp.message)}
+                  </p>
                 )}
               </div>
 
               {/* Capsules */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Capsules</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Capsules
+                </label>
                 <select
                   {...register('capsules', { required: 'Select number of capsules' })}
                   className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
                   value={watch('capsules') ?? ''}
-                  onChange={(e) => setValue('capsules', e.target.value, { shouldValidate: true })}
+                  onChange={(e) =>
+                    setValue('capsules', e.target.value, { shouldValidate: true })
+                  }
                   style={{ border: '1px solid #d1d5db' }}
                 >
                   <option value="">Select Capsules</option>
@@ -901,7 +1008,9 @@ const Products = () => {
                   <option value="3">3</option>
                 </select>
                 {errors.capsules?.message && (
-                  <p className="mt-1 text-sm text-red-500">{String(errors.capsules.message)}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {String(errors.capsules.message)}
+                  </p>
                 )}
               </div>
 
@@ -914,7 +1023,10 @@ const Products = () => {
                   onChange={(val) => setValue('color', val, { shouldValidate: true })}
                   error={String(errors.color?.message || '')}
                 />
-                <input type="hidden" {...register('color', { required: 'Packet color is required' })} />
+                <input
+                  type="hidden"
+                  {...register('color', { required: 'Packet color is required' })}
+                />
               </div>
 
               {/* Existing previews on EDIT */}
@@ -932,14 +1044,20 @@ const Products = () => {
               {selectedProduct && (selectedProduct as any).pdfUrl && (
                 <div className="mb-2">
                   <p className="mb-1 text-sm text-zinc-600">Current PDF Preview:</p>
-                  <PdfPreview src={(selectedProduct as any).pdfUrl} className="h-64 w-full rounded-md border" />
+                  <PdfPreview
+                    src={(selectedProduct as any).pdfUrl}
+                    className="h-64 w-full rounded-md border"
+                  />
                 </div>
               )}
 
               {/* New file inputs (optional on edit) */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Upload Product Image</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Upload Product Image
+                </label>
                 <Input
+                  key={`image-${fileKey}`}
                   type="file"
                   accept="image/*"
                   {...register('image', {
@@ -947,13 +1065,18 @@ const Products = () => {
                   })}
                 />
                 {errors.image && (
-                  <p className="mt-1 text-sm text-red-500">{String((errors as any).image?.message)}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {String((errors as any).image?.message)}
+                  </p>
                 )}
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Upload Product PDF</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Upload Product PDF
+                </label>
                 <Input
+                  key={`pdf-${fileKey}`}
                   type="file"
                   accept="application/pdf"
                   {...register('pdf', {
@@ -961,7 +1084,9 @@ const Products = () => {
                   })}
                 />
                 {errors.pdf && (
-                  <p className="mt-1 text-sm text-red-500">{String((errors as any).pdf?.message)}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {String((errors as any).pdf?.message)}
+                  </p>
                 )}
               </div>
             </GlassPanel>
@@ -980,14 +1105,21 @@ const Products = () => {
             setSelectedCorporateFront(null)
             setSelectedCorporateBack(null)
           }}
-          title={`Step ${pdfStep}: ${pdfStep === 1 ? 'Select Corporate Infos' : pdfStep === 2 ? 'Add Adverts & Promotions' : 'Confirm & Generate'}`}
+          title={`Step ${pdfStep}: ${pdfStep === 1
+              ? 'Select Corporate Infos'
+              : pdfStep === 2
+                ? 'Add Adverts & Promotions'
+                : 'Confirm & Generate'
+            }`}
         >
           <div className="flex max-h-[75vh] flex-col">
             <div className="flex-1 space-y-4 overflow-y-auto p-2 pr-3">
               {pdfStep === 1 && (
                 <GlassPanel className="space-y-6 p-4">
                   <div>
-                    <p className="mb-2 text-sm text-zinc-700">Corporate Info (Front):</p>
+                    <p className="mb-2 text-sm text-zinc-700">
+                      Corporate Info (Front):
+                    </p>
                     <select
                       className="w-full rounded border border-white/40 bg-white/70 p-2"
                       value={selectedCorporateFront || ''}
@@ -1004,7 +1136,11 @@ const Products = () => {
                       <div className="mt-3">
                         <p className="mb-2 text-sm text-zinc-600">Preview</p>
                         <PdfPreview
-                          src={corporateFronts.find((b) => b.id === selectedCorporateFront)?.filePath}
+                          src={
+                            corporateFronts.find(
+                              (b) => b.id === selectedCorporateFront,
+                            )?.filePath
+                          }
                           className="h-64 w-full rounded-md border"
                         />
                       </div>
@@ -1012,7 +1148,9 @@ const Products = () => {
                   </div>
 
                   <div>
-                    <p className="mb-2 text-sm text-zinc-700">Corporate Info (Back):</p>
+                    <p className="mb-2 text-sm text-zinc-700">
+                      Corporate Info (Back):
+                    </p>
                     <select
                       className="w-full rounded border border-white/40 bg-white/70 p-2"
                       value={selectedCorporateBack || ''}
@@ -1029,7 +1167,11 @@ const Products = () => {
                       <div className="mt-3">
                         <p className="mb-2 text-sm text-zinc-600">Preview</p>
                         <PdfPreview
-                          src={corporateBacks.find((b) => b.id === selectedCorporateBack)?.filePath}
+                          src={
+                            corporateBacks.find(
+                              (b) => b.id === selectedCorporateBack,
+                            )?.filePath
+                          }
                           className="h-64 w-full rounded-md border"
                         />
                       </div>
@@ -1058,8 +1200,13 @@ const Products = () => {
                     </div>
                     <div className="mt-2 space-y-1">
                       {selectedAdverts.map((ad) => (
-                        <div key={ad.id} className="flex items-center justify-between text-sm">
-                          <span>{advertisements.find((it) => it.id === ad.id)?.title}</span>
+                        <div
+                          key={ad.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span>
+                            {advertisements.find((it) => it.id === ad.id)?.title}
+                          </span>
                           <Button
                             size="small"
                             variant="outline"
@@ -1074,8 +1221,16 @@ const Products = () => {
                     {selectedAdverts.length > 0 && (
                       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                         {selectedAdverts.map((ad) => {
-                          const src = advertisements.find((it) => it.id === ad.id)?.filePath
-                          return <PdfPreview key={ad.id} src={src} className="h-64 w-full rounded-md border" />
+                          const src = advertisements.find(
+                            (it) => it.id === ad.id,
+                          )?.filePath
+                          return (
+                            <PdfPreview
+                              key={ad.id}
+                              src={src}
+                              className="h-64 w-full rounded-md border"
+                            />
+                          )
                         })}
                       </div>
                     )}
@@ -1099,12 +1254,19 @@ const Products = () => {
                     </div>
                     <div className="mt-2 space-y-1">
                       {selectedPromotions.map((promo) => (
-                        <div key={promo.id} className="flex items-center justify-between text-sm">
-                          <span>{promotions.find((it) => it.id === promo.id)?.title}</span>
+                        <div
+                          key={promo.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span>
+                            {promotions.find((it) => it.id === promo.id)?.title}
+                          </span>
                           <Button
                             size="small"
                             variant="outline"
-                            onClick={() => removeAdditionalPage('promotion', promo.id)}
+                            onClick={() =>
+                              removeAdditionalPage('promotion', promo.id)
+                            }
                           >
                             Remove
                           </Button>
@@ -1115,8 +1277,16 @@ const Products = () => {
                     {selectedPromotions.length > 0 && (
                       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                         {selectedPromotions.map((promo) => {
-                          const src = promotions.find((it) => it.id === promo.id)?.filePath
-                          return <PdfPreview key={promo.id} src={src} className="h-64 w-full rounded-md border" />
+                          const src = promotions.find(
+                            (it) => it.id === promo.id,
+                          )?.filePath
+                          return (
+                            <PdfPreview
+                              key={promo.id}
+                              src={src}
+                              className="h-64 w-full rounded-md border"
+                            />
+                          )
                         })}
                       </div>
                     )}
@@ -1127,10 +1297,13 @@ const Products = () => {
               {pdfStep === 3 && (
                 <GlassPanel className="space-y-4 p-4">
                   <div className="rounded-lg border border-white/30 bg-white/40 p-3">
-                    <h4 className="mb-1 font-semibold text-zinc-900">What are you doing here?</h4>
+                    <h4 className="mb-1 font-semibold text-zinc-900">
+                      What are you doing here?
+                    </h4>
                     <p className="text-sm text-zinc-700">
-                      Arrange where your selected Adverts and Promotions will appear in the final PDF. Corporate Info goes
-                      first, followed by the selected products.
+                      Arrange where your selected Adverts and Promotions will
+                      appear in the final PDF. Corporate Info goes first,
+                      followed by the selected products.
                     </p>
                   </div>
 
@@ -1138,8 +1311,16 @@ const Products = () => {
                     <div className="space-y-2">
                       <SectionTitle>Selected Adverts</SectionTitle>
                       {selectedAdverts.map((advert) => (
-                        <div key={advert.id} className="flex items-center justify-between">
-                          <p>{advertisements.find((a) => a.id === advert.id)?.title}</p>
+                        <div
+                          key={advert.id}
+                          className="flex items-center justify-between"
+                        >
+                          <p>
+                            {
+                              advertisements.find((a) => a.id === advert.id)
+                                ?.title
+                            }
+                          </p>
                           {renderPositionDropdown('advert', advert)}
                         </div>
                       ))}
@@ -1150,8 +1331,16 @@ const Products = () => {
                     <div className="space-y-2">
                       <SectionTitle>Selected Promotions</SectionTitle>
                       {selectedPromotions.map((promo) => (
-                        <div key={promo.id} className="flex items-center justify-between">
-                          <p>{promotions.find((p) => p.id === promo.id)?.title}</p>
+                        <div
+                          key={promo.id}
+                          className="flex items-center justify-between"
+                        >
+                          <p>
+                            {
+                              promotions.find((p) => p.id === promo.id)
+                                ?.title
+                            }
+                          </p>
                           {renderPositionDropdown('promotion', promo)}
                         </div>
                       ))}
@@ -1170,7 +1359,9 @@ const Products = () => {
                     {clients.length > 0 ? (
                       <Select
                         value={selectedClient ?? undefined}
-                        onValueChange={(v) => setSelectedClient(v === 'none' ? undefined : v)}
+                        onValueChange={(v) =>
+                          setSelectedClient(v === 'none' ? undefined : v)
+                        }
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select a client" />
@@ -1189,7 +1380,9 @@ const Products = () => {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <p className="text-sm text-zinc-600">No clients yet. Click "Add Client".</p>
+                      <p className="text-sm text-zinc-600">
+                        No clients yet. Click &quot;Add Client&quot;.
+                      </p>
                     )}
                   </div>
                 </GlassPanel>
@@ -1198,13 +1391,16 @@ const Products = () => {
 
             <div className="mt-2 flex shrink-0 items-center justify-end gap-3 border-t border-white/30 bg-white/60 px-3 py-3">
               {pdfStep > 1 && (
-                <Button variant="outline" onClick={() => setPdfStep((s) => s - 1)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setPdfStep((s) => s - 1)}
+                >
                   Back
                 </Button>
               )}
               <Button
                 variant="black"
-                onClick={pdfStep < 3 ? handleNextStep : handleGeneratePDF}
+                onClick={pdfStep < 3 ? () => setPdfStep((s) => s + 1) : handleGeneratePDF}
                 disabled={pdfStep === 3 && buttonLoading}
               >
                 {pdfStep < 3 ? 'Next' : buttonLoading ? 'Generating...' : 'Generate PDF'}
@@ -1233,7 +1429,9 @@ const Products = () => {
                   />
                   <input type="hidden" {...clientRegister('firstName')} />
                   {clientErrors.firstName && (
-                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.firstName.message)}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {String(clientErrors.firstName.message)}
+                    </p>
                   )}
                 </div>
 
@@ -1246,7 +1444,9 @@ const Products = () => {
                   />
                   <input type="hidden" {...clientRegister('lastName')} />
                   {clientErrors.lastName && (
-                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.lastName.message)}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {String(clientErrors.lastName.message)}
+                    </p>
                   )}
                 </div>
 
@@ -1259,7 +1459,9 @@ const Products = () => {
                   />
                   <input type="hidden" {...clientRegister('company')} />
                   {clientErrors.company && (
-                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.company.message)}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {String(clientErrors.company.message)}
+                    </p>
                   )}
                 </div>
 
@@ -1272,14 +1474,18 @@ const Products = () => {
                   />
                   <input type="hidden" {...clientRegister('nickname')} />
                   {clientErrors.nickname && (
-                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.nickname.message)}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {String(clientErrors.nickname.message)}
+                    </p>
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-700">Primary Number</label>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700">
+                    Primary Number
+                  </label>
                   <Controller
                     control={clientControl}
                     name="primaryNumber"
@@ -1293,12 +1499,16 @@ const Products = () => {
                     )}
                   />
                   {clientErrors.primaryNumber && (
-                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.primaryNumber.message)}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {String(clientErrors.primaryNumber.message)}
+                    </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-700">Secondary Number</label>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700">
+                    Secondary Number
+                  </label>
                   <Controller
                     control={clientControl}
                     name="secondaryNumber"
@@ -1312,13 +1522,17 @@ const Products = () => {
                     )}
                   />
                   {clientErrors.secondaryNumber && (
-                    <p className="mt-1 text-sm text-red-500">{String(clientErrors.secondaryNumber.message)}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {String(clientErrors.secondaryNumber.message)}
+                    </p>
                   )}
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">Country</label>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Country
+                </label>
                 <select
                   {...clientRegister('country')}
                   defaultValue="United Arab Emirates"
@@ -1331,7 +1545,9 @@ const Products = () => {
                   ))}
                 </select>
                 {clientErrors.country && (
-                  <p className="mt-1 text-sm text-red-500">{String(clientErrors.country.message)}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {String(clientErrors.country.message)}
+                  </p>
                 )}
               </div>
             </GlassPanel>
@@ -1349,7 +1565,11 @@ const Products = () => {
         </Dialog>
 
         {/* Share dialog */}
-        <Dialog isOpen={isShareDialogOpen} onClose={() => setIsShareDialogOpen(false)} title="PDF Generated">
+        <Dialog
+          isOpen={isShareDialogOpen}
+          onClose={() => setIsShareDialogOpen(false)}
+          title="PDF Generated"
+        >
           <div className="space-y-4 p-4">
             <p className="text-zinc-700">Your PDF has been generated successfully.</p>
             <div className="flex items-center space-x-2 rounded-md border border-white/30 bg-white/50 p-2">

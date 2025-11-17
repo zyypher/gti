@@ -3,20 +3,21 @@ import { ColumnDef } from '@tanstack/react-table'
 import { Edit, Trash } from 'lucide-react'
 import PDFDownloadButton from '../../PDFDownloadButton'
 import { Role } from '@/hooks/useUserRole'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export type ITable = {
     id: string
     name: string
-    brand: { name: string; description: string | null; image: string | null }
-    image: string
+    brand: { name: string; description: string | null; image?: string | null }
+    image?: string
     size: string
-    tar: string
-    nicotine: string
-    co: string
+    tar: string | number
+    nicotine: string | number
+    co: string | number
     flavor: string
     fsp: boolean | string | number
-    corners: string
-    capsules: string
+    corners?: string
+    capsules: string | number
     packetStyle?: string
     color?: string
     pdfUrl?: string
@@ -27,6 +28,7 @@ export const columns = (
     role: Role | null,
     handleEdit: (item: ITable) => void,
     handleDelete: (id: string) => void,
+    mediaLoading: boolean = false,
 ): ColumnDef<ITable>[] => [
         {
             id: 'select',
@@ -37,9 +39,7 @@ export const columns = (
                         table.getIsAllPageRowsSelected() ||
                         (table.getIsSomePageRowsSelected() && 'indeterminate')
                     }
-                    onCheckedChange={(value) =>
-                        table.toggleAllPageRowsSelected(!!value)
-                    }
+                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
                     aria-label="Select all"
                 />
             ),
@@ -69,16 +69,27 @@ export const columns = (
             header: 'Image',
             cell: ({ row }) => {
                 const imageUrl = row.original.image
-                return imageUrl ? (
+
+                if (!imageUrl) {
+                    // while media is loading, show skeleton square
+                    if (mediaLoading) {
+                        return <Skeleton className="h-12 w-12 rounded" />
+                    }
+
+                    // fallback when there is really no image (should be rare)
+                    return (
+                        <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-200 text-[10px] text-gray-700">
+                            No Image
+                        </div>
+                    )
+                }
+
+                return (
                     <img
                         src={imageUrl}
                         alt="Product Image"
                         className="h-12 w-12 rounded object-cover"
                     />
-                ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-200 text-sm text-gray-700">
-                        No Image
-                    </div>
                 )
             },
         },
@@ -144,12 +155,19 @@ export const columns = (
         {
             accessorKey: 'pdfContent',
             header: 'PDF',
-            cell: ({ row }) => (
-                <PDFDownloadButton
-                    productId={row.original.id}
-                    productName={row.original.name}
-                />
-            ),
+            cell: ({ row }) => {
+                // while media not yet attached, show a small skeleton instead of the button
+                if (!row.original.pdfUrl && mediaLoading) {
+                    return <Skeleton className="h-8 w-24 rounded" />
+                }
+
+                return (
+                    <PDFDownloadButton
+                        productId={row.original.id}
+                        productName={row.original.name}
+                    />
+                )
+            },
         },
         {
             header: 'Actions',

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { S3Client } from '@aws-sdk/client-s3'
+import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { Upload } from '@aws-sdk/lib-storage'
 import { Readable } from 'stream'
-import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { prisma } from '@/lib/prisma'
 
 // AWS S3 Configuration
@@ -48,7 +47,7 @@ const uploadToS3 = async (file: File, folder: string): Promise<string> => {
     return `https://${BUCKET_NAME}.s3.amazonaws.com/${key}`
 }
 
-// **GET Products (Fetch All)**
+// **GET Products (Fetch All – light, no image/pdfUrl)**
 export async function GET(req: NextRequest) {
     try {
         const url = new URL(req.url)
@@ -119,7 +118,30 @@ export async function GET(req: NextRequest) {
             prisma.product.count({ where }),
             prisma.product.findMany({
                 where,
-                include: { brand: true },
+                // light: no image/pdfUrl here, just text + brand name
+                select: {
+                    id: true,
+                    name: true,
+                    size: true,
+                    tar: true,
+                    nicotine: true,
+                    co: true,
+                    flavor: true,
+                    packetStyle: true,
+                    fsp: true,
+                    capsules: true,
+                    color: true,
+                    brandId: true,
+                    brand: {
+                        select: {
+                            id: true,
+                            name: true,
+                            // Brand has no `position` in your schema, so we don't select it
+                        },
+                    },
+                    createdAt: true,
+                    updatedAt: true,
+                },
                 skip,
                 take,
                 orderBy: { updatedAt: 'desc' },
@@ -158,7 +180,6 @@ export async function POST(req: Request) {
         color,
     } = productData
 
-    // 🔒 hard validation: ALL fields + both files required
     const missing = [
         ['brandId', brandId],
         ['name', name],
