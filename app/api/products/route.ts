@@ -57,16 +57,18 @@ export async function GET(req: NextRequest) {
         const where: any = {}
         const and: any[] = []
 
-        const contains = (k: string) => {
-            const v = sp.get(k)
-            return v && v.trim() ? { contains: v.trim(), mode: 'insensitive' } : undefined
+        const contains = (paramKey: string, fieldKey: string) => {
+            const v = sp.get(paramKey)
+            if (v && v.trim()) {
+                where[fieldKey] = { contains: v.trim(), mode: 'insensitive' }
+            }
         }
 
-        where.name = contains('name')
-        where.size = contains('size')
-        where.packetStyle = contains('packetStyle')
-        where.color = contains('color')
-        where.corners = contains('corners')
+        contains('name', 'name')
+        contains('size', 'size')
+        contains('packetStyle', 'packetStyle')
+        contains('color', 'color')
+        contains('corners', 'corners')
 
         const brandId = sp.get('brandId')
         if (brandId) where.brandId = brandId
@@ -86,8 +88,10 @@ export async function GET(req: NextRequest) {
 
         const tar = sp.get('tar')
         if (tar) where.tar = parseFloat(tar)
+
         const nicotine = sp.get('nicotine')
         if (nicotine) where.nicotine = parseFloat(nicotine)
+
         const co = sp.get('co')
         if (co) where.co = parseFloat(co)
 
@@ -110,14 +114,17 @@ export async function GET(req: NextRequest) {
         const skip = (page - 1) * pageSize
         const take = pageSize
 
-        const total = await prisma.product.count({ where })
-        const products = await prisma.product.findMany({
-            where,
-            include: { brand: true },
-            skip,
-            take,
-            orderBy: { updatedAt: 'desc' }
-        })
+        // run count + data query in parallel
+        const [total, products] = await Promise.all([
+            prisma.product.count({ where }),
+            prisma.product.findMany({
+                where,
+                include: { brand: true },
+                skip,
+                take,
+                orderBy: { updatedAt: 'desc' },
+            }),
+        ])
 
         return NextResponse.json({ products, total })
     } catch (error) {
@@ -168,7 +175,7 @@ export async function POST(req: Request) {
     if (missing.length) {
         return NextResponse.json(
             { error: `Missing fields: ${missing.map(([k]) => k).join(', ')}` },
-            { status: 400 }
+            { status: 400 },
         )
     }
     if (!imageFile || imageFile.size === 0) {
@@ -223,10 +230,7 @@ export async function POST(req: Request) {
         return response
     } catch (error) {
         console.error('Error creating product:', error)
-        return NextResponse.json(
-            { error: 'Failed to create product' },
-            { status: 500 },
-        )
+        return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
     }
 }
 
@@ -240,10 +244,7 @@ export async function DELETE(req: Request) {
         })
 
         if (!product) {
-            return NextResponse.json(
-                { error: 'Product not found' },
-                { status: 404 },
-            )
+            return NextResponse.json({ error: 'Product not found' }, { status: 404 })
         }
 
         if (product.image) {
@@ -261,9 +262,6 @@ export async function DELETE(req: Request) {
         return NextResponse.json({ message: 'Product deleted' }, { status: 200 })
     } catch (error) {
         console.error('Error deleting product:', error)
-        return NextResponse.json(
-            { error: 'Failed to delete product' },
-            { status: 500 },
-        )
+        return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 })
     }
 }
