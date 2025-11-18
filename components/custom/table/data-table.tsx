@@ -13,7 +13,6 @@ import {
     VisibilityState,
     RowSelectionState,
 } from '@tanstack/react-table'
-
 import {
     Table,
     TableBody,
@@ -54,13 +53,9 @@ export function DataTable<TData extends { id: string; status?: string }>({
     selectedRowIds,
 }: DataTableProps<TData>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
-    const [columnFilters, setColumnFilters] =
-        React.useState<ColumnFiltersState>([])
-    const [columnVisibility, setColumnVisibility] =
-        React.useState<VisibilityState>({})
-    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
-        {},
-    )
+    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
     const table = useReactTable({
         data,
@@ -73,6 +68,8 @@ export function DataTable<TData extends { id: string; status?: string }>({
         getFilteredRowModel: getFilteredRowModel(),
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
+        // ✅ KEY FIX: Use actual data ID instead of row index
+        getRowId: (row) => row.id,
         state: {
             sorting,
             columnFilters,
@@ -84,58 +81,62 @@ export function DataTable<TData extends { id: string; status?: string }>({
 
     const TableData = isFilterRow
         ? table
-              .getRowModel()
-              .rows.filter((rowItems) =>
-                  isFilterRowBasedOnValue === isAllRowKey
-                      ? rowItems
-                      : rowItems.original.status === isFilterRowBasedOnValue,
-              )
+            .getRowModel()
+            .rows.filter((rowItems) =>
+                isFilterRowBasedOnValue === isAllRowKey
+                    ? rowItems
+                    : rowItems.original.status === isFilterRowBasedOnValue,
+            )
         : table.getRowModel().rows
 
     const [mounted, setMounted] = React.useState<boolean>(false)
 
+    // Use ref to track if we're programmatically setting selection
+    const isProgrammaticUpdate = React.useRef(false)
+
+    // Sync incoming selectedRowIds to rowSelection
     useEffect(() => {
         if (selectedRowIds && selectedRowIds.length > 0) {
-            const currentSelected = Object.keys(rowSelection)
-            const currentSet = new Set(currentSelected)
-            const incomingSet = new Set<string>()
-    
+            const newSelectionState: RowSelectionState = {}
             selectedRowIds.forEach((id) => {
-                const matchingRow = table
-                    .getRowModel()
-                    .rows.find((row) => row.original.id === id)
-                if (matchingRow) {
-                    incomingSet.add(matchingRow.id)
-                }
+                newSelectionState[id] = true
             })
-    
-            const areEqual =
-                currentSet.size === incomingSet.size &&
-                Array.from(currentSet).every((id) => incomingSet.has(id)) // ✅ fix here
-    
-            if (!areEqual) {
-                const newSelectionState: RowSelectionState = {}
-                incomingSet.forEach((id) => (newSelectionState[id] = true))
+
+            const currentKeys = Object.keys(rowSelection).sort()
+            const newKeys = Object.keys(newSelectionState).sort()
+            const isDifferent =
+                currentKeys.length !== newKeys.length ||
+                currentKeys.join(',') !== newKeys.join(',')
+
+            if (isDifferent) {
+                isProgrammaticUpdate.current = true
                 setRowSelection(newSelectionState)
             }
+        } else if (selectedRowIds && selectedRowIds.length === 0 && Object.keys(rowSelection).length > 0) {
+            isProgrammaticUpdate.current = true
+            setRowSelection({})
         }
-    }, [selectedRowIds, table.getRowModel().rows])
-    
-    
+    }, [selectedRowIds])
 
     useEffect(() => {
         setMounted(true)
         return () => setMounted(false)
     }, [])
 
-    // Track row selection changes
+    // Track row selection changes and notify parent
     useEffect(() => {
-        const selectedIds = Object.keys(rowSelection)
-            .map((key) => table.getRow(key)?.original.id)
-            .filter(Boolean)
+        // Skip callback if this was a programmatic update from parent
+        if (isProgrammaticUpdate.current) {
+            isProgrammaticUpdate.current = false
+            return
+        }
+
+        const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id])
         console.log('Row selection updated. Selected IDs:', selectedIds)
-        if (rowSelectionCallback) rowSelectionCallback(selectedIds)
-    }, [rowSelection, table])
+        if (rowSelectionCallback) {
+            rowSelectionCallback(selectedIds)
+        }
+    }, [rowSelection])
 
     return (
         <div>
@@ -166,17 +167,13 @@ export function DataTable<TData extends { id: string; status?: string }>({
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
                                     return (
-                                        <TableHead
-                                            key={header.id}
-                                            className="last:w-0"
-                                        >
+                                        <TableHead key={header.id} className="last:w-0">
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
-                                                      header.column.columnDef
-                                                          .header,
-                                                      header.getContext(),
-                                                  )}
+                                                    header.column.columnDef.header,
+                                                    header.getContext(),
+                                                )}
                                         </TableHead>
                                     )
                                 })}
@@ -199,9 +196,7 @@ export function DataTable<TData extends { id: string; status?: string }>({
                                 return (
                                     <TableRow
                                         key={row.id}
-                                        data-state={
-                                            row.getIsSelected() && 'selected'
-                                        }
+                                        data-state={row.getIsSelected() && 'selected'}
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell key={cell.id}>
@@ -227,9 +222,7 @@ export function DataTable<TData extends { id: string; status?: string }>({
                     </TableBody>
                 </Table>
             </div>
-            {isRemovePagination && (
-                <PaginationTable table={table} data={data} />
-            )}
+            {isRemovePagination && <PaginationTable table={table} data={data} />}
         </div>
     )
 }

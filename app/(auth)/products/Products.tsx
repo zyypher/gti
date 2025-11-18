@@ -779,6 +779,7 @@ const fetchProducts = useCallback(async () => {
             data={tableData}
             filterField="product"
             loading={tableLoading}
+            selectedRowIds={selectedRows} 
             rowSelectionCallback={handleRowSelection}
             isRemovePagination={false}
           />
