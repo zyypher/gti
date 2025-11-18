@@ -291,7 +291,7 @@ const Products = () => {
     [],
   )
 
-const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
       const queryParams = new URLSearchParams({
@@ -755,7 +755,7 @@ const fetchProducts = useCallback(async () => {
               disabled={selectedRows.length === 0}
               onClick={openPdfDialog}
             >
-              Create PDF
+              Next Step
             </Button>
           </GlassPanel>
         </div>
@@ -1106,10 +1106,10 @@ const fetchProducts = useCallback(async () => {
             setSelectedCorporateBack(null)
           }}
           title={`Step ${pdfStep}: ${pdfStep === 1
-              ? 'Select Corporate Infos'
-              : pdfStep === 2
-                ? 'Add Adverts & Promotions'
-                : 'Confirm & Generate'
+            ? 'Select Corporate Infos'
+            : pdfStep === 2
+              ? 'Add Adverts & Promotions'
+              : 'Confirm & Generate'
             }`}
         >
           <div className="flex max-h-[75vh] flex-col">
@@ -1421,63 +1421,67 @@ const fetchProducts = useCallback(async () => {
             <GlassPanel className="space-y-4 p-4">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
-                  <FloatingLabelInput
-                    label="First name"
+                  <Controller
+                    control={clientControl}
                     name="firstName"
-                    value={''}
-                    onChange={() => { }}
+                    render={({ field }) => (
+                      <FloatingLabelInput
+                        label="First name"
+                        name={field.name}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        error={clientErrors.firstName?.message as string | undefined}
+                      />
+                    )}
                   />
-                  <input type="hidden" {...clientRegister('firstName')} />
-                  {clientErrors.firstName && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {String(clientErrors.firstName.message)}
-                    </p>
-                  )}
                 </div>
 
                 <div>
-                  <FloatingLabelInput
-                    label="Last name"
+                  <Controller
+                    control={clientControl}
                     name="lastName"
-                    value={''}
-                    onChange={() => { }}
+                    render={({ field }) => (
+                      <FloatingLabelInput
+                        label="Last name"
+                        name={field.name}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        error={clientErrors.lastName?.message as string | undefined}
+                      />
+                    )}
                   />
-                  <input type="hidden" {...clientRegister('lastName')} />
-                  {clientErrors.lastName && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {String(clientErrors.lastName.message)}
-                    </p>
-                  )}
                 </div>
 
                 <div>
-                  <FloatingLabelInput
-                    label="Company"
+                  <Controller
+                    control={clientControl}
                     name="company"
-                    value={''}
-                    onChange={() => { }}
+                    render={({ field }) => (
+                      <FloatingLabelInput
+                        label="Company"
+                        name={field.name}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        error={clientErrors.company?.message as string | undefined}
+                      />
+                    )}
                   />
-                  <input type="hidden" {...clientRegister('company')} />
-                  {clientErrors.company && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {String(clientErrors.company.message)}
-                    </p>
-                  )}
                 </div>
 
                 <div>
-                  <FloatingLabelInput
-                    label="Nickname"
+                  <Controller
+                    control={clientControl}
                     name="nickname"
-                    value={''}
-                    onChange={() => { }}
+                    render={({ field }) => (
+                      <FloatingLabelInput
+                        label="Nickname"
+                        name={field.name}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        error={clientErrors.nickname?.message as string | undefined}
+                      />
+                    )}
                   />
-                  <input type="hidden" {...clientRegister('nickname')} />
-                  {clientErrors.nickname && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {String(clientErrors.nickname.message)}
-                    </p>
-                  )}
                 </div>
               </div>
 

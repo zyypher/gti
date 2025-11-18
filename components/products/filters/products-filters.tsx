@@ -298,7 +298,7 @@ export default function ProductsFilters({
         <div className="col-span-2 flex items-center gap-2">
           <div className="relative flex-1">
             <FloatingLabelInput
-              label="Search by name"
+              label="Search for products"
               name="searchByName"
               value={nameInput}
               onChange={(value) => handleChangeText('name', value)}

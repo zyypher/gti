@@ -50,7 +50,7 @@ export function FloatingLabelInput({
         onBlur={() => setIsFocused(false)}
         onChange={(e) => onChange?.(e.target.value)}
         className={cn(
-          "peer placeholder-transparent pt-5", 
+          "peer placeholder-transparent pt-5",
           iconLeft ? "pl-9" : "pl-3.5", // Conditional padding for icon
           className
         )}
