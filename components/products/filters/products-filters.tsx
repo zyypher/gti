@@ -558,7 +558,7 @@ export default function ProductsFilters({
           </Button>
 
           <Button variant="outline" size="small" onClick={clearFilters}>
-            <X size={18} /> Clear
+            <X size={18} /> Clear filters
           </Button>
         </div>
       </div>
@@ -569,7 +569,7 @@ export default function ProductsFilters({
           <Filter size={20} /> Filters
         </Button>
         <Button variant="outline" size="small" onClick={clearFilters}>
-          <X size={18} /> Clear
+          <X size={18} /> Clear filters
         </Button>
       </div>
 
