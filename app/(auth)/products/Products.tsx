@@ -1,7 +1,12 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react'
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from 'react'
 import { columns, ITable } from '@/components/custom/table/products/columns'
 import { DataTable } from '@/components/custom/table/data-table'
 import ProductsFilters from '@/components/products/filters/products-filters'
@@ -10,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import api from '@/lib/api'
 import routes from '@/lib/routes'
 import toast from 'react-hot-toast'
-import { Plus } from 'lucide-react'
+import { Plus, ShoppingCart } from 'lucide-react'
 import { Dialog } from '@/components/ui/dialog'
 import PageHeading from '@/components/layout/page-heading'
 import { FloatingLabelInput } from '@/components/ui/floating-label-input'
@@ -158,9 +163,17 @@ const Products = () => {
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [buttonLoading, setButtonLoading] = useState(false)
+
+  // this is still the list of selected IDs used for PDF generation
   const [selectedRows, setSelectedRows] = useState<string[]>([])
+
+  // cart preview items (full product objects)
+  const [cartItems, setCartItems] = useState<ITable[]>([])
+  const [isCartDialogOpen, setIsCartDialogOpen] = useState(false)
+
   const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false)
   const [pdfStep, setPdfStep] = useState(1)
+  const [pdfStepError, setPdfStepError] = useState<string | null>(null)
 
   const [corporateFronts, setCorporateFronts] = useState<INonProductPageItem[]>([])
   const [corporateBacks, setCorporateBacks] = useState<INonProductPageItem[]>([])
@@ -183,18 +196,16 @@ const Products = () => {
 
   const [nonProductItems, setNonProductItems] = useState<NonProductPageItem[]>([])
   const [clients, setClients] = useState<Client[]>([])
-  const [selectedCorporateInfo, setSelectedCorporateInfo] = useState<string | undefined>(
-    undefined,
-  )
-  const [addedPromotions, setAddedPromotions] = useState<{ id: string; position: number }[]>(
-    [],
-  )
+  const [selectedCorporateInfo, setSelectedCorporateInfo] =
+    useState<string | undefined>(undefined)
+  const [addedPromotions, setAddedPromotions] = useState<
+    { id: string; position: number }[]
+  >([])
   const [selectedClient, setSelectedClient] = useState<string | undefined>(undefined)
 
   const searchParams = useSearchParams()
   const initialBrandId = searchParams.get('brandId')
 
-  // *** FIXED TYPING HERE ***
   const initialFilters = useMemo<Record<string, string> | undefined>(
     () => (initialBrandId ? { brandId: initialBrandId } : undefined),
     [initialBrandId],
@@ -208,18 +219,23 @@ const Products = () => {
   const [pageSize] = useState(10)
   const [total, setTotal] = useState(0)
 
-  // media state: image + pdfUrl loaded separately
-  const [mediaMap, setMediaMap] = useState<Record<string, { image?: string; pdfUrl?: string }>>(
-    {},
+  const totalPages = React.useMemo(
+    () => (total > 0 ? Math.ceil(total / pageSize) : 1),
+    [total, pageSize],
   )
+
+  const [mediaMap, setMediaMap] = useState<
+    Record<string, { image?: string; pdfUrl?: string }>
+  >({})
   const [mediaLoading, setMediaLoading] = useState(false)
 
-  // lazy-load flags for heavy data
   const [hasLoadedNonProductItems, setHasLoadedNonProductItems] = useState(false)
   const [hasLoadedClients, setHasLoadedClients] = useState(false)
 
   const isPWA = () => window.matchMedia('(display-mode: standalone)').matches
   const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+  const CART_KEY = 'gti-products-cart'
 
   /* -------- client form (quick add) -------- */
   const {
@@ -291,7 +307,7 @@ const Products = () => {
     [],
   )
 
-const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
       const queryParams = new URLSearchParams({
@@ -307,7 +323,6 @@ const fetchProducts = useCallback(async () => {
       setProducts(baseProducts)
       setTotal(result.total)
 
-      // load media (image + pdfUrl) in background
       if (baseProducts.length) {
         setMediaLoading(true)
         try {
@@ -318,12 +333,12 @@ const fetchProducts = useCallback(async () => {
           const mediaJson = await mediaRes.json()
           const map: Record<string, { image?: string; pdfUrl?: string }> = {}
 
-            ; (mediaJson.items || []).forEach((item: any) => {
-              map[item.id] = {
-                image: item.image ?? '',
-                pdfUrl: item.pdfUrl ?? '',
-              }
-            })
+          ;(mediaJson.items || []).forEach((item: any) => {
+            map[item.id] = {
+              image: item.image ?? '',
+              pdfUrl: item.pdfUrl ?? '',
+            }
+          })
 
           setMediaMap(map)
         } catch (mediaErr) {
@@ -400,11 +415,44 @@ const fetchProducts = useCallback(async () => {
     fetchBrands()
   }, [fetchBrands])
 
+  // 🧺 Load cart from localStorage on first render
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const stored = window.localStorage.getItem(CART_KEY)
+      if (!stored) return
+
+      const parsed: ITable[] = JSON.parse(stored)
+      if (!Array.isArray(parsed) || !parsed.length) return
+
+      setCartItems(parsed)
+      setSelectedRows(parsed.map((p) => p.id))
+    } catch (e) {
+      console.error('Failed to load cart from localStorage', e)
+    }
+  }, [])
+
+  // 🧺 Persist cart whenever it changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    if (!cartItems.length) {
+      window.localStorage.removeItem(CART_KEY)
+      return
+    }
+
+    try {
+      window.localStorage.setItem(CART_KEY, JSON.stringify(cartItems))
+    } catch (e) {
+      console.error('Failed to save cart to localStorage', e)
+    }
+  }, [cartItems])
+
   const handleFilterChange = (newFilters: { [key: string]: string }) => {
     setFilters(newFilters)
   }
 
-  /** Prefill edit form correctly (fixes FSP/boolean mismatch) */
   const handleEdit = (item: ITable) => {
     setSelectedProduct(item)
     setIsDialogOpen(true)
@@ -440,30 +488,78 @@ const fetchProducts = useCallback(async () => {
     setIsDeleteDialogOpen(true)
   }
 
-  // merge base text products + media (image/pdfUrl)
-  const tableData: ITable[] = useMemo(
-    () =>
-      products.map((p) => {
-        const media = mediaMap[p.id] || {}
-        return {
-          ...p,
-          image: media.image ?? (p as any).image,
-          pdfUrl: media.pdfUrl ?? (p as any).pdfUrl,
-        }
-      }),
-    [products, mediaMap],
-  )
-
-  const _columns = useMemo(
-    () => columns(role, handleEdit, handleDelete, mediaLoading),
-    [role, handleEdit, handleDelete, mediaLoading],
-  )
-
-  const handleRowSelection = (ids: string[]) => {
-    setSelectedRows(ids)
+  // 🔹 Add product to cart
+  const handleAddToCart = (product: ITable) => {
+    setSelectedRows((prev) =>
+      prev.includes(product.id) ? prev : [...prev, product.id],
+    )
+    setCartItems((prev) =>
+      prev.some((p) => p.id === product.id) ? prev : [...prev, product],
+    )
   }
 
+  // 🔹 Remove from cart
+  const handleRemoveFromCart = (id: string) => {
+    setSelectedRows((prev) => prev.filter((pid) => pid !== id))
+    setCartItems((prev) => prev.filter((p) => p.id !== id))
+  }
+
+  // merge base text products + media and hide cart items from table
+  const tableData: ITable[] = useMemo(
+    () =>
+      products
+        .filter((p) => !selectedRows.includes(p.id))
+        .map((p) => {
+          const media = mediaMap[p.id] || {}
+          return {
+            ...p,
+            image: media.image ?? (p as any).image,
+            pdfUrl: media.pdfUrl ?? (p as any).pdfUrl,
+          }
+        }),
+    [products, mediaMap, selectedRows],
+  )
+
+  useEffect(() => {
+    if (loading) return
+
+    if (products.length > 0 && tableData.length === 0) {
+      setPage((prev) => {
+        if (prev < totalPages) return prev + 1
+        if (prev > 1) return prev - 1
+        return prev
+      })
+    }
+  }, [loading, products.length, tableData.length, totalPages, setPage])
+
+  const _columns = useMemo(
+    () =>
+      columns(
+        role,
+        handleEdit,
+        handleDelete,
+        mediaLoading,
+        handleAddToCart,
+        (id) => selectedRows.includes(id),
+      ),
+    [role, handleEdit, handleDelete, mediaLoading, handleAddToCart, selectedRows],
+  )
+
   const handleGeneratePDF = async () => {
+    if (!selectedCorporateFront || !selectedCorporateBack) {
+      toast.error('Please select both Corporate Info (Front and Back) before generating the PDF.')
+      setPdfStep(1)
+      toast.error('Please select both Corporate Info (Front and Back) before generating the PDF.')
+      return
+    }
+
+    if (selectedAdverts.length === 0 || selectedPromotions.length === 0) {
+      toast.error('Please select at least one Advert and one Promotion before generating the PDF.')
+      setPdfStep(2)
+      toast.error('Please select at least one Advert and one Promotion before generating the PDF.')
+      return
+    }
+
     setButtonLoading(true)
     try {
       const additionalPages = [
@@ -524,11 +620,13 @@ const fetchProducts = useCallback(async () => {
 
         setIsPdfDialogOpen(false)
         setPdfStep(1)
+        setPdfStepError(null)
         setSelectedBanner(null)
         setSelectedAdverts([])
         setSelectedPromotions([])
         reset()
         setSelectedRows([])
+        setCartItems([])
         setSelectedClient(undefined)
         setSelectedCorporateFront(null)
         setSelectedCorporateBack(null)
@@ -559,7 +657,6 @@ const fetchProducts = useCallback(async () => {
     }
   }
 
-  /** Create/Update (files optional during edit; text fields always sent) */
   const handleAddOrUpdateProduct = async (data: ProductFormValues) => {
     if (role !== 'ADMIN') {
       toast.error('You are not authorized to perform this action.')
@@ -584,7 +681,9 @@ const fetchProducts = useCallback(async () => {
     if (data.pdf?.length) formData.append('pdf', data.pdf[0])
 
     try {
-      const url = selectedProduct ? `/api/products/${selectedProduct.id}/pdf` : routes.addProduct
+      const url = selectedProduct
+        ? `/api/products/${selectedProduct.id}/pdf`
+        : routes.addProduct
       const method = selectedProduct ? 'PUT' : 'POST'
 
       const response = await api({
@@ -595,13 +694,17 @@ const fetchProducts = useCallback(async () => {
       })
 
       if (response.status === 200 || response.status === 201) {
-        toast.success(`Product ${selectedProduct ? 'updated' : 'added'} successfully`)
+        toast.success(
+          `Product ${selectedProduct ? 'updated' : 'added'} successfully`,
+        )
         fetchProducts()
         reset()
         setSelectedProduct(null)
         setIsDialogOpen(false)
       } else {
-        toast.error(`Failed to ${selectedProduct ? 'update' : 'add'} product`)
+        toast.error(
+          `Failed to ${selectedProduct ? 'update' : 'add'} product`,
+        )
       }
     } catch (error: any) {
       console.error(error)
@@ -622,7 +725,9 @@ const fetchProducts = useCallback(async () => {
     }
     if (!deleteProductId) return
     try {
-      const response = await api.delete(`/api/products/${deleteProductId}/pdf`)
+      const response = await api.delete(
+        `/api/products/${deleteProductId}/pdf`,
+      )
       if (response.status === 200) {
         toast.success('Product deleted successfully')
         fetchProducts()
@@ -637,7 +742,9 @@ const fetchProducts = useCallback(async () => {
   }
 
   const handleRefresh = () => fetchProducts()
-  const handleClearSelection = () => setSelectedRows([])
+  const handleClearSelection = () => {
+    // filters clear, cart stays
+  }
 
   const addAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
     if (!id) return
@@ -651,7 +758,8 @@ const fetchProducts = useCallback(async () => {
   }
 
   const removeAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
-    if (type === 'advert') setSelectedAdverts((prev) => prev.filter((p) => p.id !== id))
+    if (type === 'advert')
+      setSelectedAdverts((prev) => prev.filter((p) => p.id !== id))
     else setSelectedPromotions((prev) => prev.filter((p) => p.id !== id))
   }
 
@@ -666,7 +774,10 @@ const fetchProducts = useCallback(async () => {
     else setSelectedPromotions(updater)
   }
 
-  const renderPositionDropdown = (type: 'advert' | 'promotion', page: AdditionalPage) => {
+  const renderPositionDropdown = (
+    type: 'advert' | 'promotion',
+    page: AdditionalPage,
+  ) => {
     const totalProductPages = selectedRows.length
     const options = []
     options.push(
@@ -690,7 +801,11 @@ const fetchProducts = useCallback(async () => {
       <select
         value={page.position}
         onChange={(e) =>
-          updateAdditionalPagePosition(type, page.id, parseInt(e.target.value, 10))
+          updateAdditionalPagePosition(
+            type,
+            page.id,
+            parseInt(e.target.value, 10),
+          )
         }
         className="rounded border bg-white/60 p-1"
       >
@@ -701,17 +816,26 @@ const fetchProducts = useCallback(async () => {
 
   const tableLoading = loading
 
-  /* PDF preview helper */
-  const PdfPreview = ({ src, className }: { src?: string; className?: string }) => {
+  // PDF preview helper – scrollable, but still allows card click on outer button
+  const PdfPreview = ({
+    src,
+    className,
+    stopClickPropagation = false,
+  }: {
+    src?: string
+    className?: string
+    stopClickPropagation?: boolean
+  }) => {
     if (!src) return null
-    const url = `${src}${src.includes('#') ? '' : '#'
-      }toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
+    const url = `${src}${src.includes('#') ? '' : '#'}toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
     return (
       <embed
         src={url}
         type="application/pdf"
+        onClick={stopClickPropagation ? (e) => e.stopPropagation() : undefined}
         className={
-          className ?? 'h-64 w-full rounded-md border overflow-hidden pointer-events-none'
+          className ??
+          'h-64 w-full rounded-md border overflow-hidden'
         }
       />
     )
@@ -719,7 +843,37 @@ const fetchProducts = useCallback(async () => {
 
   const openPdfDialog = async () => {
     setIsPdfDialogOpen(true)
-    await Promise.all([ensureNonProductItemsLoaded(), ensureClientsLoaded()])
+    setPdfStep(1)
+    setPdfStepError(null)
+    await Promise.all([
+      ensureNonProductItemsLoaded(),
+      ensureClientsLoaded(),
+    ])
+  }
+
+  const handlePdfNext = () => {
+    if (pdfStep === 1) {
+      if (!selectedCorporateFront || !selectedCorporateBack) {
+        toast.error(
+          'Please select both Corporate Info (Front) and Corporate Info (Back) before continuing.',
+        )
+        return
+      }
+    }
+
+    if (pdfStep === 2) {
+      const hasAdvert = selectedAdverts.length > 0
+      const hasPromo = selectedPromotions.length > 0
+      if (!hasAdvert || !hasPromo) {
+        toast.error(
+          'Please select at least one Advert and one Promotion before continuing.',
+        )
+        return
+      }
+    }
+
+    setPdfStepError(null)
+    setPdfStep((s) => s + 1)
   }
 
   return (
@@ -750,12 +904,25 @@ const fetchProducts = useCallback(async () => {
                 New Product
               </Button>
             )}
+
+            {/* Cart button */}
+            <Button
+              variant="outline-black"
+              className="flex items-center gap-2"
+              disabled={cartItems.length === 0}
+              onClick={() => setIsCartDialogOpen(true)}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              <span>Cart ({cartItems.length})</span>
+            </Button>
+
+            {/* Next step */}
             <Button
               variant="outline-black"
               disabled={selectedRows.length === 0}
               onClick={openPdfDialog}
             >
-              Create PDF
+              Next Step
             </Button>
           </GlassPanel>
         </div>
@@ -779,13 +946,12 @@ const fetchProducts = useCallback(async () => {
             data={tableData}
             filterField="product"
             loading={tableLoading}
-            rowSelectionCallback={handleRowSelection}
             isRemovePagination={false}
           />
           <div className="border-t border-white/20 pt-3">
             <PaginationBar
               currentPage={page}
-              totalPages={Math.ceil(total / pageSize)}
+              totalPages={totalPages}
               onPageChange={setPage}
             />
           </div>
@@ -1046,7 +1212,8 @@ const fetchProducts = useCallback(async () => {
                   <p className="mb-1 text-sm text-zinc-600">Current PDF Preview:</p>
                   <PdfPreview
                     src={(selectedProduct as any).pdfUrl}
-                    className="h-64 w-full rounded-md border"
+                    className="h-64 w-full border-t"
+                    stopClickPropagation
                   />
                 </div>
               )}
@@ -1099,6 +1266,7 @@ const fetchProducts = useCallback(async () => {
           onClose={() => {
             setIsPdfDialogOpen(false)
             setPdfStep(1)
+            setPdfStepError(null)
             setSelectedBanner(null)
             setSelectedAdverts([])
             setSelectedPromotions([])
@@ -1106,190 +1274,222 @@ const fetchProducts = useCallback(async () => {
             setSelectedCorporateBack(null)
           }}
           title={`Step ${pdfStep}: ${pdfStep === 1
-              ? 'Select Corporate Infos'
-              : pdfStep === 2
-                ? 'Add Adverts & Promotions'
-                : 'Confirm & Generate'
+            ? 'Select Corporate Infos'
+            : pdfStep === 2
+              ? 'Add Adverts & Promotions'
+              : 'Confirm & Generate'
             }`}
         >
-          <div className="flex max-h-[75vh] flex-col">
+          <div className="flex max-h-[85vh] flex-col">
             <div className="flex-1 space-y-4 overflow-y-auto p-2 pr-3">
               {pdfStep === 1 && (
                 <GlassPanel className="space-y-6 p-4">
                   <div>
-                    <p className="mb-2 text-sm text-zinc-700">
-                      Corporate Info (Front):
-                    </p>
-                    <select
-                      className="w-full rounded border border-white/40 bg-white/70 p-2"
-                      value={selectedCorporateFront || ''}
-                      onChange={(e) => setSelectedCorporateFront(e.target.value)}
-                    >
-                      <option value="">Select Corporate Info (Front)</option>
-                      {corporateFronts.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.title}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedCorporateFront && (
-                      <div className="mt-3">
-                        <p className="mb-2 text-sm text-zinc-600">Preview</p>
-                        <PdfPreview
-                          src={
-                            corporateFronts.find(
-                              (b) => b.id === selectedCorporateFront,
-                            )?.filePath
-                          }
-                          className="h-64 w-full rounded-md border"
-                        />
-                      </div>
-                    )}
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm font-medium text-zinc-700">
+                        Corporate Info (Front) <span className="text-red-500">*</span>
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        Tap a card to select
+                      </p>
+                    </div>
+                    {/* STEP 1 – Corporate Info (Front) cards */}
+                    <div className="mt-4 space-y-3">
+                      {corporateFronts.map((item) => {
+                        const isSelected = selectedCorporateFront === item.id
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedCorporateFront((prev) => (prev === item.id ? null : item.id))
+                            }
+                            className={`relative w-full rounded-2xl border bg-white/80 p-3 text-left transition
+  ${isSelected
+                                ? 'border-black shadow-lg ring-2 ring-black/30'
+                                : 'border-zinc-200 hover:border-zinc-400 hover:shadow-sm'
+                              }`}
+                          >
+                            <span className="mb-2 block text-sm font-medium text-zinc-900">
+                              {item.title}
+                            </span>
+
+                            <PdfPreview
+                              src={item.filePath}
+                              className="h-64 w-full rounded-md border"
+                              stopClickPropagation
+                            />
+
+                            {isSelected && (
+                              <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
+                                ✓
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
 
                   <div>
-                    <p className="mb-2 text-sm text-zinc-700">
-                      Corporate Info (Back):
-                    </p>
-                    <select
-                      className="w-full rounded border border-white/40 bg-white/70 p-2"
-                      value={selectedCorporateBack || ''}
-                      onChange={(e) => setSelectedCorporateBack(e.target.value)}
-                    >
-                      <option value="">Select Corporate Info (Back)</option>
-                      {corporateBacks.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.title}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedCorporateBack && (
-                      <div className="mt-3">
-                        <p className="mb-2 text-sm text-zinc-600">Preview</p>
-                        <PdfPreview
-                          src={
-                            corporateBacks.find(
-                              (b) => b.id === selectedCorporateBack,
-                            )?.filePath
-                          }
-                          className="h-64 w-full rounded-md border"
-                        />
-                      </div>
-                    )}
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm font-medium text-zinc-700">
+                        Corporate Info (Back) <span className="text-red-500">*</span>
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        Tap a card to select
+                      </p>
+                    </div>
+                    {/* STEP 1 – Corporate Info (Back) cards */}
+                    <div className="mt-4 space-y-3">
+                      {corporateBacks.map((item) => {
+                        const isSelected = selectedCorporateBack === item.id
+
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedCorporateBack((prev) => (prev === item.id ? null : item.id))
+                            }
+                            className={`relative w-full rounded-2xl border bg-white/80 p-3 text-left transition
+  ${isSelected
+                                ? 'border-black shadow-lg ring-2 ring-black/30'
+                                : 'border-zinc-200 hover:border-zinc-400 hover:shadow-sm'
+                              }`}
+                          >
+                            <span className="mb-2 block text-sm font-medium text-zinc-900">
+                              {item.title}
+                            </span>
+
+                            <PdfPreview
+                              src={item.filePath}
+                              className="h-64 w-full rounded-md border"
+                              stopClickPropagation
+                            />
+
+                            {isSelected && (
+                              <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
+                                ✓
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+
                   </div>
                 </GlassPanel>
               )}
 
               {pdfStep === 2 && (
-                <GlassPanel className="p-4">
-                  <div className="mb-4">
-                    <SectionTitle>Adverts</SectionTitle>
-                    <div className="mt-2 flex items-center gap-2">
-                      <select
-                        className="w-full rounded border border-white/40 bg-white/70 p-2"
-                        value=""
-                        onChange={(e) => addAdditionalPage('advert', e.target.value)}
-                      >
-                        <option value="">Select an Advert to add</option>
-                        {advertisements.map((advert) => (
-                          <option key={advert.id} value={advert.id}>
-                            {advert.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      {selectedAdverts.map((ad) => (
-                        <div
-                          key={ad.id}
-                          className="flex items-center justify-between text-sm"
-                        >
-                          <span>
-                            {advertisements.find((it) => it.id === ad.id)?.title}
-                          </span>
-                          <Button
-                            size="small"
-                            variant="outline"
-                            onClick={() => removeAdditionalPage('advert', ad.id)}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      ))}
+                <GlassPanel className="space-y-6 p-4">
+                  {/* STEP 2 – Adverts */}
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <SectionTitle>
+                        Adverts <span className="text-red-500">*</span>
+                      </SectionTitle>
+                      <p className="text-xs text-zinc-500">
+                        Tap cards to select / unselect
+                      </p>
                     </div>
 
-                    {selectedAdverts.length > 0 && (
-                      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                        {selectedAdverts.map((ad) => {
-                          const src = advertisements.find(
-                            (it) => it.id === ad.id,
-                          )?.filePath
-                          return (
+                    <div className="mt-4 space-y-3">
+                      {advertisements.map((advert) => {
+                        const isSelected = selectedAdverts.some((a) => a.id === advert.id)
+                        return (
+                          <button
+                            key={advert.id}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                removeAdditionalPage('advert', advert.id)
+                              } else {
+                                addAdditionalPage('advert', advert.id)
+                              }
+                              setPdfStepError(null)
+                            }}
+                            className={[
+                              'relative w-full overflow-hidden rounded-2xl border bg-white/80 text-left transition',
+                              isSelected
+                                ? 'border-black ring-1 ring-black'
+                                : 'border-zinc-200 hover:border-zinc-400',
+                            ].join(' ')}
+                          >
+                            <div className="flex items-center justify-between p-2">
+                              <p className="line-clamp-2 text-sm font-medium text-zinc-900">
+                                {advert.title}
+                              </p>
+                              {isSelected && (
+                                <span className="rounded-full bg-black px-2 py-0.5 text-xs font-medium text-white">
+                                  Selected
+                                </span>
+                              )}
+                            </div>
                             <PdfPreview
-                              key={ad.id}
-                              src={src}
-                              className="h-64 w-full rounded-md border"
+                              src={advert.filePath}
+                              className="h-64 w-full border-t"
+                              stopClickPropagation
                             />
-                          )
-                        })}
-                      </div>
-                    )}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
 
+                  {/* STEP 2 – Promotions (single, full-width section) */}
                   <div>
-                    <SectionTitle>Promotions</SectionTitle>
-                    <div className="mt-2 flex items-center gap-2">
-                      <select
-                        className="w-full rounded border border-white/40 bg-white/70 p-2"
-                        value=""
-                        onChange={(e) => addAdditionalPage('promotion', e.target.value)}
-                      >
-                        <option value="">Select a Promotion to add</option>
-                        {promotions.map((promo) => (
-                          <option key={promo.id} value={promo.id}>
-                            {promo.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      {selectedPromotions.map((promo) => (
-                        <div
-                          key={promo.id}
-                          className="flex items-center justify-between text-sm"
-                        >
-                          <span>
-                            {promotions.find((it) => it.id === promo.id)?.title}
-                          </span>
-                          <Button
-                            size="small"
-                            variant="outline"
-                            onClick={() =>
-                              removeAdditionalPage('promotion', promo.id)
-                            }
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      ))}
+                    <div className="mb-2 flex items-center justify-between">
+                      <SectionTitle>
+                        Promotions <span className="text-red-500">*</span>
+                      </SectionTitle>
+                      <p className="text-xs text-zinc-500">
+                        Tap cards to select / unselect
+                      </p>
                     </div>
 
-                    {selectedPromotions.length > 0 && (
-                      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                        {selectedPromotions.map((promo) => {
-                          const src = promotions.find(
-                            (it) => it.id === promo.id,
-                          )?.filePath
-                          return (
+                    <div className="mt-4 space-y-3">
+                      {promotions.map((promo) => {
+                        const isSelected = selectedPromotions.some((p) => p.id === promo.id)
+                        return (
+                          <button
+                            key={promo.id}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                removeAdditionalPage('promotion', promo.id)
+                              } else {
+                                addAdditionalPage('promotion', promo.id)
+                              }
+                              setPdfStepError(null)
+                            }}
+                            className={[
+                              'relative w-full overflow-hidden rounded-2xl border bg-white/80 text-left transition',
+                              isSelected
+                                ? 'border-black ring-1 ring-black'
+                                : 'border-zinc-200 hover:border-zinc-400',
+                            ].join(' ')}
+                          >
+                            <div className="flex items-center justify-between p-2">
+                              <p className="line-clamp-2 text-sm font-medium text-zinc-900">
+                                {promo.title}
+                              </p>
+                              {isSelected && (
+                                <span className="rounded-full bg-black px-2 py-0.5 text-xs font-medium text-white">
+                                  Selected
+                                </span>
+                              )}
+                            </div>
                             <PdfPreview
-                              key={promo.id}
-                              src={src}
-                              className="h-64 w-full rounded-md border"
+                              src={promo.filePath}
+                              className="h-64 w-full border-t"
+                              stopClickPropagation
                             />
-                          )
-                        })}
-                      </div>
-                    )}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 </GlassPanel>
               )}
@@ -1387,20 +1587,24 @@ const fetchProducts = useCallback(async () => {
                   </div>
                 </GlassPanel>
               )}
+
             </div>
 
             <div className="mt-2 flex shrink-0 items-center justify-end gap-3 border-t border-white/30 bg-white/60 px-3 py-3">
               {pdfStep > 1 && (
                 <Button
                   variant="outline"
-                  onClick={() => setPdfStep((s) => s - 1)}
+                  onClick={() => {
+                    setPdfStep((s) => Math.max(1, s - 1))
+                    setPdfStepError(null)
+                  }}
                 >
                   Back
                 </Button>
               )}
               <Button
                 variant="black"
-                onClick={pdfStep < 3 ? () => setPdfStep((s) => s + 1) : handleGeneratePDF}
+                onClick={pdfStep < 3 ? handlePdfNext : handleGeneratePDF}
                 disabled={pdfStep === 3 && buttonLoading}
               >
                 {pdfStep < 3 ? 'Next' : buttonLoading ? 'Generating...' : 'Generate PDF'}
@@ -1417,67 +1621,71 @@ const fetchProducts = useCallback(async () => {
           onSubmit={handleClientSubmit(submitQuickClient)}
           buttonLoading={isClientSubmitting}
         >
-          <div className="max-h-[70vh] space-y-4 overflow-y-auto p-2">
+          <div className="max-h-[70vh] space-y-4 overflow-visible p-2">
             <GlassPanel className="space-y-4 p-4">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
-                  <FloatingLabelInput
-                    label="First name"
+                  <Controller
+                    control={clientControl}
                     name="firstName"
-                    value={''}
-                    onChange={() => { }}
+                    render={({ field }) => (
+                      <FloatingLabelInput
+                        label="First name"
+                        name={field.name}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        error={clientErrors.firstName?.message as string | undefined}
+                      />
+                    )}
                   />
-                  <input type="hidden" {...clientRegister('firstName')} />
-                  {clientErrors.firstName && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {String(clientErrors.firstName.message)}
-                    </p>
-                  )}
                 </div>
 
                 <div>
-                  <FloatingLabelInput
-                    label="Last name"
+                  <Controller
+                    control={clientControl}
                     name="lastName"
-                    value={''}
-                    onChange={() => { }}
+                    render={({ field }) => (
+                      <FloatingLabelInput
+                        label="Last name"
+                        name={field.name}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        error={clientErrors.lastName?.message as string | undefined}
+                      />
+                    )}
                   />
-                  <input type="hidden" {...clientRegister('lastName')} />
-                  {clientErrors.lastName && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {String(clientErrors.lastName.message)}
-                    </p>
-                  )}
                 </div>
 
                 <div>
-                  <FloatingLabelInput
-                    label="Company"
+                  <Controller
+                    control={clientControl}
                     name="company"
-                    value={''}
-                    onChange={() => { }}
+                    render={({ field }) => (
+                      <FloatingLabelInput
+                        label="Company"
+                        name={field.name}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        error={clientErrors.company?.message as string | undefined}
+                      />
+                    )}
                   />
-                  <input type="hidden" {...clientRegister('company')} />
-                  {clientErrors.company && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {String(clientErrors.company.message)}
-                    </p>
-                  )}
                 </div>
 
                 <div>
-                  <FloatingLabelInput
-                    label="Nickname"
+                  <Controller
+                    control={clientControl}
                     name="nickname"
-                    value={''}
-                    onChange={() => { }}
+                    render={({ field }) => (
+                      <FloatingLabelInput
+                        label="Nickname"
+                        name={field.name}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        error={clientErrors.nickname?.message as string | undefined}
+                      />
+                    )}
                   />
-                  <input type="hidden" {...clientRegister('nickname')} />
-                  {clientErrors.nickname && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {String(clientErrors.nickname.message)}
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -1530,25 +1738,37 @@ const fetchProducts = useCallback(async () => {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
-                  Country
-                </label>
-                <select
-                  {...clientRegister('country')}
-                  defaultValue="United Arab Emirates"
-                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
-                >
-                  {countryData.map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                {clientErrors.country && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {String(clientErrors.country.message)}
-                  </p>
-                )}
+                <Controller
+                  control={clientControl}
+                  name="country"
+                  render={({ field }) => (
+                    <div className="space-y-1">
+                      <label className="mb-1 block text-sm font-medium text-zinc-700">
+                        Country
+                      </label>
+                      <Select
+                        value={field.value || 'United Arab Emirates'}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999] max-h-60 overflow-y-auto bg-white">
+                          {countryData.map((c) => (
+                            <SelectItem key={c.name} value={c.name}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {clientErrors.country && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {String(clientErrors.country.message)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                />
               </div>
             </GlassPanel>
           </div>
@@ -1571,7 +1791,9 @@ const fetchProducts = useCallback(async () => {
           title="PDF Generated"
         >
           <div className="space-y-4 p-4">
-            <p className="text-zinc-700">Your PDF has been generated successfully.</p>
+            <p className="text-zinc-700">
+              Your PDF has been generated successfully.
+            </p>
             <div className="flex items-center space-x-2 rounded-md border border-white/30 bg-white/50 p-2">
               <span className="truncate">{shareableUrl}</span>
               <Button
@@ -1584,6 +1806,53 @@ const fetchProducts = useCallback(async () => {
                 Copy Link
               </Button>
             </div>
+          </div>
+        </Dialog>
+
+        {/* 🛒 Cart preview dialog */}
+        <Dialog
+          isOpen={isCartDialogOpen}
+          onClose={() => setIsCartDialogOpen(false)}
+          title="Selected Products"
+        >
+          <div className="max-h-[70vh] space-y-3 overflow-y-auto p-3">
+            {cartItems.length === 0 ? (
+              <p className="text-sm text-zinc-600">
+                No products in cart yet.
+              </p>
+            ) : (
+              cartItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white/80 p-2"
+                >
+                  <div className="flex items-center gap-3">
+                    {item.image && (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="h-12 w-12 rounded object-cover"
+                      />
+                    )}
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium text-zinc-900">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-zinc-600">
+                        {item.brand?.name} • {item.size} • {item.flavor}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="small"
+                    onClick={() => handleRemoveFromCart(item.id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))
+            )}
           </div>
         </Dialog>
       </div>

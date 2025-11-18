@@ -18,6 +18,7 @@ import { logout } from '@/lib/auth'
 const Header = () => {
     const router = useRouter()
     const pathName = usePathname()
+    const CART_KEY = 'gti-products-cart'
 
     const [user, setUser] = useState<{ firstName: string; lastName: string; email: string } | null>(null)
     const [loading, setLoading] = useState(true)
@@ -100,6 +101,9 @@ const Header = () => {
 
     const handleLogout = async () => {
         await logout()
+        if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(CART_KEY)
+        }
         router.push('/login')
     }
 
