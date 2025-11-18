@@ -85,8 +85,13 @@ export default function ProductsFilters({
   // local copy just to satisfy TS and keep UI in sync
   const [filterState, setFilters] = useState<Record<string, string>>(filters)
 
+  // local state for "Search by name" input (desktop)
+  const [nameInput, setNameInput] = useState<string>(filters.name ?? '')
+
   const tarOptions = Array.from({ length: 12 }, (_, i) => String(i + 1))
-  const nicotineOptions = Array.from({ length: 12 }, (_, i) => ((i + 1) / 10).toFixed(1))
+  const nicotineOptions = Array.from({ length: 12 }, (_, i) =>
+    ((i + 1) / 10).toFixed(1),
+  )
 
   // helper so all selects fully reset when filters/uiSelections are cleared
   const getSelectValue = (key: string) => uiSelections[key] ?? filterState[key] ?? ''
@@ -94,13 +99,19 @@ export default function ProductsFilters({
   useEffect(() => {
     // whenever parent filters change (via onFilterChange), keep local copy in sync
     setFilters(filters)
+    // keep name input in sync with parent filter (clear filters, initial filters, etc.)
+    setNameInput(filters.name ?? '')
   }, [filters])
 
   useEffect(() => {
     const fetchBrands = async () => {
       try {
         const response = await api.get('/api/brands')
-        setBrands(response.data.sort((a: IBrand, b: IBrand) => a.name.localeCompare(b.name)))
+        setBrands(
+          response.data.sort((a: IBrand, b: IBrand) =>
+            a.name.localeCompare(b.name),
+          ),
+        )
       } catch (error) {
         console.error('Failed to fetch brands:', error)
       } finally {
@@ -144,7 +155,10 @@ export default function ProductsFilters({
   useEffect(() => {
     if (brands.length > 0 && initialFilters.brandId && !hasAppliedInitialBrand) {
       setFilters(initialFilters)
-      setUiSelections((prev) => ({ ...prev, brandId: initialFilters.brandId! }))
+      setUiSelections((prev) => ({
+        ...prev,
+        brandId: initialFilters.brandId!,
+      }))
       onFilterChange(initialFilters)
       setHasAppliedInitialBrand(true)
     } else if (brands.length > 0 && filters.brandId) {
@@ -153,29 +167,22 @@ export default function ProductsFilters({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brands, filters.brandId, initialFilters.brandId, hasAppliedInitialBrand])
 
+  // Only used for "Search by name" now
   const handleChangeText = (key: string, value: string) => {
-    const updated = { ...filters }
-    if (value.trim() === '') {
-      delete updated[key]
-    } else {
-      updated[key] = value
-    }
-
-    setFilters(updated)
-
-    // don't trigger API search on every keystroke for "name"
-    if (key !== 'name') {
-      onFilterChange(updated)
+    if (key === 'name') {
+      setNameInput(value)
     }
   }
 
   // Fire the name search only when button is clicked
   const applyNameSearch = () => {
-    const currentName = (filters.name ?? '').trim()
+    const trimmed = nameInput.trim()
     const updated = { ...filters }
 
-    if (!currentName) {
+    if (!trimmed) {
       delete updated.name
+    } else {
+      updated.name = trimmed
     }
 
     setFilters(updated)
@@ -189,6 +196,7 @@ export default function ProductsFilters({
     // wipe filters + UI selections (including the Brand dropdown)
     setFilters({})
     setUiSelections({})
+    setNameInput('')
 
     onFilterChange({})
     onClearSelection?.()
@@ -201,7 +209,15 @@ export default function ProductsFilters({
   const onSelect =
     (key: string) =>
       (v: string) =>
-        applySelectUI(key, v, filters, setFilters, onFilterChange, uiSelections, setUiSelections)
+        applySelectUI(
+          key,
+          v,
+          filters,
+          setFilters,
+          onFilterChange,
+          uiSelections,
+          setUiSelections,
+        )
 
   // --- SPECIAL: Flavour select (supports placeholder reset + modes) ---
   const onSelectFlavor = (v: string) => {
@@ -284,14 +300,14 @@ export default function ProductsFilters({
             <FloatingLabelInput
               label="Search by name"
               name="searchByName"
-              value={filters.name || ''}
+              value={nameInput}
               onChange={(value) => handleChangeText('name', value)}
               iconLeft={<Search className="h-4 w-4" />}
             />
           </div>
           <Button
             variant="black"
-            className="h-11 rounded-xl px-4 flex items-center gap-1"
+            className="flex h-11 items-center gap-1 rounded-xl px-4"
             onClick={applyNameSearch}
           >
             <Search className="h-4 w-4" />
@@ -379,7 +395,10 @@ export default function ProductsFilters({
         </Select>
 
         {/* Pack Format */}
-        <Select value={getSelectValue('packetStyle')} onValueChange={onSelect('packetStyle')}>
+        <Select
+          value={getSelectValue('packetStyle')}
+          onValueChange={onSelect('packetStyle')}
+        >
           <SelectTrigger>
             <SelectValue
               placeholder={
@@ -449,7 +468,10 @@ export default function ProductsFilters({
             </Select>
 
             {/* Nicotine */}
-            <Select value={getSelectValue('nicotine')} onValueChange={onSelect('nicotine')}>
+            <Select
+              value={getSelectValue('nicotine')}
+              onValueChange={onSelect('nicotine')}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Nicotine (mg)" />
               </SelectTrigger>
@@ -681,10 +703,7 @@ export default function ProductsFilters({
           </Select>
 
           {/* Capsules (same behavior as desktop) */}
-          <Select
-            value={getSelectValue('capsules')}
-            onValueChange={onSelectCapsules}
-          >
+          <Select value={getSelectValue('capsules')} onValueChange={onSelectCapsules}>
             <SelectTrigger>
               <SelectValue placeholder="Number of Capsules" />
             </SelectTrigger>
@@ -792,7 +811,7 @@ export default function ProductsFilters({
             <Button
               variant="black"
               onClick={() => {
-                onFilterChange(filters)
+                onFilterChange(filterState)
                 setIsMobileFilterOpen(false)
               }}
             >
