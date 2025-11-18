@@ -193,7 +193,7 @@ const Products = () => {
 
   const searchParams = useSearchParams()
   const initialBrandId = searchParams.get('brandId')
-
+  
   // *** FIXED TYPING HERE ***
   const initialFilters = useMemo<Record<string, string> | undefined>(
     () => (initialBrandId ? { brandId: initialBrandId } : undefined),
@@ -1417,7 +1417,7 @@ const Products = () => {
           onSubmit={handleClientSubmit(submitQuickClient)}
           buttonLoading={isClientSubmitting}
         >
-          <div className="max-h-[70vh] space-y-4 overflow-y-auto p-2">
+          <div className="max-h-[70vh] space-y-4 overflow-visible p-2">
             <GlassPanel className="space-y-4 p-4">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
@@ -1534,25 +1534,37 @@ const Products = () => {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
-                  Country
-                </label>
-                <select
-                  {...clientRegister('country')}
-                  defaultValue="United Arab Emirates"
-                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
-                >
-                  {countryData.map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                {clientErrors.country && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {String(clientErrors.country.message)}
-                  </p>
-                )}
+                <Controller
+                  control={clientControl}
+                  name="country"
+                  render={({ field }) => (
+                    <div className="space-y-1">
+                      <label className="mb-1 block text-sm font-medium text-zinc-700">
+                        Country
+                      </label>
+                      <Select
+                        value={field.value || 'United Arab Emirates'}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                       <SelectContent className="z-[9999] max-h-60 overflow-y-auto bg-white">
+                          {countryData.map((c) => (
+                            <SelectItem key={c.name} value={c.name}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {clientErrors.country && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {String(clientErrors.country.message)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                />
               </div>
             </GlassPanel>
           </div>
