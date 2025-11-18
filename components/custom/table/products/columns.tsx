@@ -1,6 +1,5 @@
-import { Checkbox } from '@/components/ui/checkbox'
 import { ColumnDef } from '@tanstack/react-table'
-import { Edit, Trash } from 'lucide-react'
+import { Edit, Trash, ShoppingCart } from 'lucide-react'
 import PDFDownloadButton from '../../PDFDownloadButton'
 import { Role } from '@/hooks/useUserRole'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,31 +28,32 @@ export const columns = (
     handleEdit: (item: ITable) => void,
     handleDelete: (id: string) => void,
     mediaLoading: boolean = false,
+    onAddToCart?: (item: ITable) => void,
+    isInCart?: (id: string) => boolean,
 ): ColumnDef<ITable>[] => [
+        // 🛒 Cart column
         {
-            id: 'select',
-            header: ({ table }) => (
-                <Checkbox
-                    className="h-3 w-3 scale-150"
-                    checked={
-                        table.getIsAllPageRowsSelected() ||
-                        (table.getIsSomePageRowsSelected() && 'indeterminate')
-                    }
-                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                    aria-label="Select all"
-                />
-            ),
-            cell: ({ row }) => (
-                <Checkbox
-                    className="h-3 w-3 scale-150"
-                    checked={row.getIsSelected()}
-                    onCheckedChange={(value) => row.toggleSelected(!!value)}
-                    aria-label="Select row"
-                />
-            ),
+            id: 'cart',
+            header: '',
+            cell: ({ row }) => {
+                const disabled = isInCart ? isInCart(row.original.id) : false
+
+                return (
+                    <button
+                        type="button"
+                        onClick={() => onAddToCart?.(row.original)}
+                        disabled={disabled}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="Add product to cart"
+                    >
+                        <ShoppingCart className="h-4 w-4" />
+                    </button>
+                )
+            },
             enableSorting: false,
             enableHiding: false,
         },
+
         {
             accessorKey: 'brand.name',
             header: 'Brand',
@@ -71,12 +71,10 @@ export const columns = (
                 const imageUrl = row.original.image
 
                 if (!imageUrl) {
-                    // while media is loading, show skeleton square
                     if (mediaLoading) {
                         return <Skeleton className="h-12 w-12 rounded" />
                     }
 
-                    // fallback when there is really no image (should be rare)
                     return (
                         <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-200 text-[10px] text-gray-700">
                             No Image
@@ -156,7 +154,6 @@ export const columns = (
             accessorKey: 'pdfContent',
             header: 'PDF',
             cell: ({ row }) => {
-                // while media not yet attached, show a small skeleton instead of the button
                 if (!row.original.pdfUrl && mediaLoading) {
                     return <Skeleton className="h-8 w-24 rounded" />
                 }

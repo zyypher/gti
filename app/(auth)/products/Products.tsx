@@ -1,7 +1,12 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react'
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from 'react'
 import { columns, ITable } from '@/components/custom/table/products/columns'
 import { DataTable } from '@/components/custom/table/data-table'
 import ProductsFilters from '@/components/products/filters/products-filters'
@@ -10,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import api from '@/lib/api'
 import routes from '@/lib/routes'
 import toast from 'react-hot-toast'
-import { Plus } from 'lucide-react'
+import { Plus, ShoppingCart } from 'lucide-react'
 import { Dialog } from '@/components/ui/dialog'
 import PageHeading from '@/components/layout/page-heading'
 import { FloatingLabelInput } from '@/components/ui/floating-label-input'
@@ -158,7 +163,14 @@ const Products = () => {
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [buttonLoading, setButtonLoading] = useState(false)
+
+  // this is still the list of selected IDs used for PDF generation
   const [selectedRows, setSelectedRows] = useState<string[]>([])
+
+  // cart preview items (full product objects)
+  const [cartItems, setCartItems] = useState<ITable[]>([])
+  const [isCartDialogOpen, setIsCartDialogOpen] = useState(false)
+
   const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false)
   const [pdfStep, setPdfStep] = useState(1)
 
@@ -183,18 +195,16 @@ const Products = () => {
 
   const [nonProductItems, setNonProductItems] = useState<NonProductPageItem[]>([])
   const [clients, setClients] = useState<Client[]>([])
-  const [selectedCorporateInfo, setSelectedCorporateInfo] = useState<string | undefined>(
-    undefined,
-  )
-  const [addedPromotions, setAddedPromotions] = useState<{ id: string; position: number }[]>(
-    [],
-  )
+  const [selectedCorporateInfo, setSelectedCorporateInfo] =
+    useState<string | undefined>(undefined)
+  const [addedPromotions, setAddedPromotions] = useState<
+    { id: string; position: number }[]
+  >([])
   const [selectedClient, setSelectedClient] = useState<string | undefined>(undefined)
 
   const searchParams = useSearchParams()
   const initialBrandId = searchParams.get('brandId')
-  
-  // *** FIXED TYPING HERE ***
+
   const initialFilters = useMemo<Record<string, string> | undefined>(
     () => (initialBrandId ? { brandId: initialBrandId } : undefined),
     [initialBrandId],
@@ -208,18 +218,24 @@ const Products = () => {
   const [pageSize] = useState(10)
   const [total, setTotal] = useState(0)
 
-  // media state: image + pdfUrl loaded separately
-  const [mediaMap, setMediaMap] = useState<Record<string, { image?: string; pdfUrl?: string }>>(
-    {},
+  const totalPages = React.useMemo(
+    () => (total > 0 ? Math.ceil(total / pageSize) : 1),
+    [total, pageSize],
   )
+
+  const [mediaMap, setMediaMap] = useState<
+    Record<string, { image?: string; pdfUrl?: string }>
+  >({})
   const [mediaLoading, setMediaLoading] = useState(false)
 
-  // lazy-load flags for heavy data
   const [hasLoadedNonProductItems, setHasLoadedNonProductItems] = useState(false)
   const [hasLoadedClients, setHasLoadedClients] = useState(false)
 
   const isPWA = () => window.matchMedia('(display-mode: standalone)').matches
   const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+  const CART_KEY = 'gti-products-cart'
+
 
   /* -------- client form (quick add) -------- */
   const {
@@ -307,7 +323,6 @@ const Products = () => {
       setProducts(baseProducts)
       setTotal(result.total)
 
-      // load media (image + pdfUrl) in background
       if (baseProducts.length) {
         setMediaLoading(true)
         try {
@@ -400,11 +415,45 @@ const Products = () => {
     fetchBrands()
   }, [fetchBrands])
 
+  // 🧺 Load cart from localStorage on first render
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const stored = window.localStorage.getItem(CART_KEY)
+      if (!stored) return
+
+      const parsed: ITable[] = JSON.parse(stored)
+      if (!Array.isArray(parsed) || !parsed.length) return
+
+      setCartItems(parsed)
+      setSelectedRows(parsed.map((p) => p.id))
+    } catch (e) {
+      console.error('Failed to load cart from localStorage', e)
+    }
+  }, [])
+
+  // 🧺 Persist cart whenever it changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    if (!cartItems.length) {
+      window.localStorage.removeItem(CART_KEY)
+      return
+    }
+
+    try {
+      window.localStorage.setItem(CART_KEY, JSON.stringify(cartItems))
+    } catch (e) {
+      console.error('Failed to save cart to localStorage', e)
+    }
+  }, [cartItems])
+
+
   const handleFilterChange = (newFilters: { [key: string]: string }) => {
     setFilters(newFilters)
   }
 
-  /** Prefill edit form correctly (fixes FSP/boolean mismatch) */
   const handleEdit = (item: ITable) => {
     setSelectedProduct(item)
     setIsDialogOpen(true)
@@ -440,28 +489,67 @@ const Products = () => {
     setIsDeleteDialogOpen(true)
   }
 
-  // merge base text products + media (image/pdfUrl)
+  // 🔹 Add product to cart
+  const handleAddToCart = (product: ITable) => {
+    setSelectedRows((prev) =>
+      prev.includes(product.id) ? prev : [...prev, product.id],
+    )
+    setCartItems((prev) =>
+      prev.some((p) => p.id === product.id) ? prev : [...prev, product],
+    )
+  }
+
+  // 🔹 Remove from cart
+  const handleRemoveFromCart = (id: string) => {
+    setSelectedRows((prev) => prev.filter((pid) => pid !== id))
+    setCartItems((prev) => prev.filter((p) => p.id !== id))
+  }
+
+  // merge base text products + media and hide cart items from table
   const tableData: ITable[] = useMemo(
     () =>
-      products.map((p) => {
-        const media = mediaMap[p.id] || {}
-        return {
-          ...p,
-          image: media.image ?? (p as any).image,
-          pdfUrl: media.pdfUrl ?? (p as any).pdfUrl,
-        }
-      }),
-    [products, mediaMap],
+      products
+        .filter((p) => !selectedRows.includes(p.id))
+        .map((p) => {
+          const media = mediaMap[p.id] || {}
+          return {
+            ...p,
+            image: media.image ?? (p as any).image,
+            pdfUrl: media.pdfUrl ?? (p as any).pdfUrl,
+          }
+        }),
+    [products, mediaMap, selectedRows],
   )
+
+  useEffect(() => {
+    // still loading or no pagination yet → do nothing
+    if (loading) return
+
+    // products.length > 0  => API did return rows for this page
+    // tableData.length === 0 => but all of them are hidden (cart filtered them out)
+    if (products.length > 0 && tableData.length === 0) {
+      setPage((prev) => {
+        // if there is a next page, go forward
+        if (prev < totalPages) return prev + 1
+        // otherwise, if we’re on the last page, go back one
+        if (prev > 1) return prev - 1
+        return prev
+      })
+    }
+  }, [loading, products.length, tableData.length, totalPages, setPage])
 
   const _columns = useMemo(
-    () => columns(role, handleEdit, handleDelete, mediaLoading),
-    [role, handleEdit, handleDelete, mediaLoading],
+    () =>
+      columns(
+        role,
+        handleEdit,
+        handleDelete,
+        mediaLoading,
+        handleAddToCart,
+        (id) => selectedRows.includes(id),
+      ),
+    [role, handleEdit, handleDelete, mediaLoading, handleAddToCart, selectedRows],
   )
-
-  const handleRowSelection = (ids: string[]) => {
-    setSelectedRows(ids)
-  }
 
   const handleGeneratePDF = async () => {
     setButtonLoading(true)
@@ -529,6 +617,7 @@ const Products = () => {
         setSelectedPromotions([])
         reset()
         setSelectedRows([])
+        setCartItems([]) // 🔹 clear cart
         setSelectedClient(undefined)
         setSelectedCorporateFront(null)
         setSelectedCorporateBack(null)
@@ -559,7 +648,6 @@ const Products = () => {
     }
   }
 
-  /** Create/Update (files optional during edit; text fields always sent) */
   const handleAddOrUpdateProduct = async (data: ProductFormValues) => {
     if (role !== 'ADMIN') {
       toast.error('You are not authorized to perform this action.')
@@ -584,7 +672,9 @@ const Products = () => {
     if (data.pdf?.length) formData.append('pdf', data.pdf[0])
 
     try {
-      const url = selectedProduct ? `/api/products/${selectedProduct.id}/pdf` : routes.addProduct
+      const url = selectedProduct
+        ? `/api/products/${selectedProduct.id}/pdf`
+        : routes.addProduct
       const method = selectedProduct ? 'PUT' : 'POST'
 
       const response = await api({
@@ -595,13 +685,17 @@ const Products = () => {
       })
 
       if (response.status === 200 || response.status === 201) {
-        toast.success(`Product ${selectedProduct ? 'updated' : 'added'} successfully`)
+        toast.success(
+          `Product ${selectedProduct ? 'updated' : 'added'} successfully`,
+        )
         fetchProducts()
         reset()
         setSelectedProduct(null)
         setIsDialogOpen(false)
       } else {
-        toast.error(`Failed to ${selectedProduct ? 'update' : 'add'} product`)
+        toast.error(
+          `Failed to ${selectedProduct ? 'update' : 'add'} product`,
+        )
       }
     } catch (error: any) {
       console.error(error)
@@ -622,7 +716,9 @@ const Products = () => {
     }
     if (!deleteProductId) return
     try {
-      const response = await api.delete(`/api/products/${deleteProductId}/pdf`)
+      const response = await api.delete(
+        `/api/products/${deleteProductId}/pdf`,
+      )
       if (response.status === 200) {
         toast.success('Product deleted successfully')
         fetchProducts()
@@ -637,7 +733,9 @@ const Products = () => {
   }
 
   const handleRefresh = () => fetchProducts()
-  const handleClearSelection = () => setSelectedRows([])
+  const handleClearSelection = () => {
+    // filters clear, cart stays
+  }
 
   const addAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
     if (!id) return
@@ -651,7 +749,8 @@ const Products = () => {
   }
 
   const removeAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
-    if (type === 'advert') setSelectedAdverts((prev) => prev.filter((p) => p.id !== id))
+    if (type === 'advert')
+      setSelectedAdverts((prev) => prev.filter((p) => p.id !== id))
     else setSelectedPromotions((prev) => prev.filter((p) => p.id !== id))
   }
 
@@ -666,7 +765,10 @@ const Products = () => {
     else setSelectedPromotions(updater)
   }
 
-  const renderPositionDropdown = (type: 'advert' | 'promotion', page: AdditionalPage) => {
+  const renderPositionDropdown = (
+    type: 'advert' | 'promotion',
+    page: AdditionalPage,
+  ) => {
     const totalProductPages = selectedRows.length
     const options = []
     options.push(
@@ -690,7 +792,11 @@ const Products = () => {
       <select
         value={page.position}
         onChange={(e) =>
-          updateAdditionalPagePosition(type, page.id, parseInt(e.target.value, 10))
+          updateAdditionalPagePosition(
+            type,
+            page.id,
+            parseInt(e.target.value, 10),
+          )
         }
         className="rounded border bg-white/60 p-1"
       >
@@ -701,17 +807,22 @@ const Products = () => {
 
   const tableLoading = loading
 
-  /* PDF preview helper */
-  const PdfPreview = ({ src, className }: { src?: string; className?: string }) => {
+  const PdfPreview = ({
+    src,
+    className,
+  }: {
+    src?: string
+    className?: string
+  }) => {
     if (!src) return null
-    const url = `${src}${src.includes('#') ? '' : '#'
-      }toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
+    const url = `${src}${src.includes('#') ? '' : '#'}toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
     return (
       <embed
         src={url}
         type="application/pdf"
         className={
-          className ?? 'h-64 w-full rounded-md border overflow-hidden pointer-events-none'
+          className ??
+          'h-64 w-full rounded-md border overflow-hidden pointer-events-none'
         }
       />
     )
@@ -719,7 +830,10 @@ const Products = () => {
 
   const openPdfDialog = async () => {
     setIsPdfDialogOpen(true)
-    await Promise.all([ensureNonProductItemsLoaded(), ensureClientsLoaded()])
+    await Promise.all([
+      ensureNonProductItemsLoaded(),
+      ensureClientsLoaded(),
+    ])
   }
 
   return (
@@ -750,6 +864,19 @@ const Products = () => {
                 New Product
               </Button>
             )}
+
+            {/* Cart button */}
+            <Button
+              variant="outline-black"
+              className="flex items-center gap-2"
+              disabled={cartItems.length === 0}
+              onClick={() => setIsCartDialogOpen(true)}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              <span>Cart ({cartItems.length})</span>
+            </Button>
+
+            {/* Next step (unchanged) */}
             <Button
               variant="outline-black"
               disabled={selectedRows.length === 0}
@@ -779,13 +906,12 @@ const Products = () => {
             data={tableData}
             filterField="product"
             loading={tableLoading}
-            rowSelectionCallback={handleRowSelection}
             isRemovePagination={false}
           />
           <div className="border-t border-white/20 pt-3">
             <PaginationBar
               currentPage={page}
-              totalPages={Math.ceil(total / pageSize)}
+              totalPages={totalPages}
               onPageChange={setPage}
             />
           </div>
@@ -1549,7 +1675,7 @@ const Products = () => {
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select country" />
                         </SelectTrigger>
-                       <SelectContent className="z-[9999] max-h-60 overflow-y-auto bg-white">
+                        <SelectContent className="z-[9999] max-h-60 overflow-y-auto bg-white">
                           {countryData.map((c) => (
                             <SelectItem key={c.name} value={c.name}>
                               {c.name}
@@ -1569,6 +1695,11 @@ const Products = () => {
             </GlassPanel>
           </div>
         </Dialog>
+        {/* Generate PDF flow */}
+        {/* ... existing PDF dialogs unchanged, except where we already edited above ... */}
+
+        {/* QUICK ADD CLIENT DIALOG */}
+        {/* ... unchanged ... */}
 
         {/* Delete dialog */}
         <Dialog
@@ -1587,7 +1718,9 @@ const Products = () => {
           title="PDF Generated"
         >
           <div className="space-y-4 p-4">
-            <p className="text-zinc-700">Your PDF has been generated successfully.</p>
+            <p className="text-zinc-700">
+              Your PDF has been generated successfully.
+            </p>
             <div className="flex items-center space-x-2 rounded-md border border-white/30 bg-white/50 p-2">
               <span className="truncate">{shareableUrl}</span>
               <Button
@@ -1600,6 +1733,53 @@ const Products = () => {
                 Copy Link
               </Button>
             </div>
+          </div>
+        </Dialog>
+
+        {/* 🛒 Cart preview dialog */}
+        <Dialog
+          isOpen={isCartDialogOpen}
+          onClose={() => setIsCartDialogOpen(false)}
+          title="Selected Products"
+        >
+          <div className="max-h-[70vh] space-y-3 overflow-y-auto p-3">
+            {cartItems.length === 0 ? (
+              <p className="text-sm text-zinc-600">
+                No products in cart yet.
+              </p>
+            ) : (
+              cartItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white/80 p-2"
+                >
+                  <div className="flex items-center gap-3">
+                    {item.image && (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="h-12 w-12 rounded object-cover"
+                      />
+                    )}
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium text-zinc-900">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-zinc-600">
+                        {item.brand?.name} • {item.size} • {item.flavor}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="small"
+                    onClick={() => handleRemoveFromCart(item.id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))
+            )}
           </div>
         </Dialog>
       </div>
