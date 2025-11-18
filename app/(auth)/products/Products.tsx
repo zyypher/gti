@@ -173,6 +173,7 @@ const Products = () => {
 
   const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false)
   const [pdfStep, setPdfStep] = useState(1)
+  const [pdfStepError, setPdfStepError] = useState<string | null>(null)
 
   const [corporateFronts, setCorporateFronts] = useState<INonProductPageItem[]>([])
   const [corporateBacks, setCorporateBacks] = useState<INonProductPageItem[]>([])
@@ -235,7 +236,6 @@ const Products = () => {
   const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
   const CART_KEY = 'gti-products-cart'
-
 
   /* -------- client form (quick add) -------- */
   const {
@@ -333,12 +333,12 @@ const Products = () => {
           const mediaJson = await mediaRes.json()
           const map: Record<string, { image?: string; pdfUrl?: string }> = {}
 
-            ; (mediaJson.items || []).forEach((item: any) => {
-              map[item.id] = {
-                image: item.image ?? '',
-                pdfUrl: item.pdfUrl ?? '',
-              }
-            })
+          ;(mediaJson.items || []).forEach((item: any) => {
+            map[item.id] = {
+              image: item.image ?? '',
+              pdfUrl: item.pdfUrl ?? '',
+            }
+          })
 
           setMediaMap(map)
         } catch (mediaErr) {
@@ -449,7 +449,6 @@ const Products = () => {
     }
   }, [cartItems])
 
-
   const handleFilterChange = (newFilters: { [key: string]: string }) => {
     setFilters(newFilters)
   }
@@ -522,16 +521,11 @@ const Products = () => {
   )
 
   useEffect(() => {
-    // still loading or no pagination yet → do nothing
     if (loading) return
 
-    // products.length > 0  => API did return rows for this page
-    // tableData.length === 0 => but all of them are hidden (cart filtered them out)
     if (products.length > 0 && tableData.length === 0) {
       setPage((prev) => {
-        // if there is a next page, go forward
         if (prev < totalPages) return prev + 1
-        // otherwise, if we’re on the last page, go back one
         if (prev > 1) return prev - 1
         return prev
       })
@@ -552,6 +546,20 @@ const Products = () => {
   )
 
   const handleGeneratePDF = async () => {
+    if (!selectedCorporateFront || !selectedCorporateBack) {
+      toast.error('Please select both Corporate Info (Front and Back) before generating the PDF.')
+      setPdfStep(1)
+      toast.error('Please select both Corporate Info (Front and Back) before generating the PDF.')
+      return
+    }
+
+    if (selectedAdverts.length === 0 || selectedPromotions.length === 0) {
+      toast.error('Please select at least one Advert and one Promotion before generating the PDF.')
+      setPdfStep(2)
+      toast.error('Please select at least one Advert and one Promotion before generating the PDF.')
+      return
+    }
+
     setButtonLoading(true)
     try {
       const additionalPages = [
@@ -612,12 +620,13 @@ const Products = () => {
 
         setIsPdfDialogOpen(false)
         setPdfStep(1)
+        setPdfStepError(null)
         setSelectedBanner(null)
         setSelectedAdverts([])
         setSelectedPromotions([])
         reset()
         setSelectedRows([])
-        setCartItems([]) // 🔹 clear cart
+        setCartItems([])
         setSelectedClient(undefined)
         setSelectedCorporateFront(null)
         setSelectedCorporateBack(null)
@@ -807,12 +816,15 @@ const Products = () => {
 
   const tableLoading = loading
 
+  // PDF preview helper – scrollable, but still allows card click on outer button
   const PdfPreview = ({
     src,
     className,
+    stopClickPropagation = false,
   }: {
     src?: string
     className?: string
+    stopClickPropagation?: boolean
   }) => {
     if (!src) return null
     const url = `${src}${src.includes('#') ? '' : '#'}toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
@@ -820,9 +832,10 @@ const Products = () => {
       <embed
         src={url}
         type="application/pdf"
+        onClick={stopClickPropagation ? (e) => e.stopPropagation() : undefined}
         className={
           className ??
-          'h-64 w-full rounded-md border overflow-hidden pointer-events-none'
+          'h-64 w-full rounded-md border overflow-hidden'
         }
       />
     )
@@ -830,10 +843,37 @@ const Products = () => {
 
   const openPdfDialog = async () => {
     setIsPdfDialogOpen(true)
+    setPdfStep(1)
+    setPdfStepError(null)
     await Promise.all([
       ensureNonProductItemsLoaded(),
       ensureClientsLoaded(),
     ])
+  }
+
+  const handlePdfNext = () => {
+    if (pdfStep === 1) {
+      if (!selectedCorporateFront || !selectedCorporateBack) {
+        toast.error(
+          'Please select both Corporate Info (Front) and Corporate Info (Back) before continuing.',
+        )
+        return
+      }
+    }
+
+    if (pdfStep === 2) {
+      const hasAdvert = selectedAdverts.length > 0
+      const hasPromo = selectedPromotions.length > 0
+      if (!hasAdvert || !hasPromo) {
+        toast.error(
+          'Please select at least one Advert and one Promotion before continuing.',
+        )
+        return
+      }
+    }
+
+    setPdfStepError(null)
+    setPdfStep((s) => s + 1)
   }
 
   return (
@@ -876,7 +916,7 @@ const Products = () => {
               <span>Cart ({cartItems.length})</span>
             </Button>
 
-            {/* Next step (unchanged) */}
+            {/* Next step */}
             <Button
               variant="outline-black"
               disabled={selectedRows.length === 0}
@@ -1172,7 +1212,8 @@ const Products = () => {
                   <p className="mb-1 text-sm text-zinc-600">Current PDF Preview:</p>
                   <PdfPreview
                     src={(selectedProduct as any).pdfUrl}
-                    className="h-64 w-full rounded-md border"
+                    className="h-64 w-full border-t"
+                    stopClickPropagation
                   />
                 </div>
               )}
@@ -1225,6 +1266,7 @@ const Products = () => {
           onClose={() => {
             setIsPdfDialogOpen(false)
             setPdfStep(1)
+            setPdfStepError(null)
             setSelectedBanner(null)
             setSelectedAdverts([])
             setSelectedPromotions([])
@@ -1238,184 +1280,216 @@ const Products = () => {
               : 'Confirm & Generate'
             }`}
         >
-          <div className="flex max-h-[75vh] flex-col">
+          <div className="flex max-h-[85vh] flex-col">
             <div className="flex-1 space-y-4 overflow-y-auto p-2 pr-3">
               {pdfStep === 1 && (
                 <GlassPanel className="space-y-6 p-4">
                   <div>
-                    <p className="mb-2 text-sm text-zinc-700">
-                      Corporate Info (Front):
-                    </p>
-                    <select
-                      className="w-full rounded border border-white/40 bg-white/70 p-2"
-                      value={selectedCorporateFront || ''}
-                      onChange={(e) => setSelectedCorporateFront(e.target.value)}
-                    >
-                      <option value="">Select Corporate Info (Front)</option>
-                      {corporateFronts.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.title}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedCorporateFront && (
-                      <div className="mt-3">
-                        <p className="mb-2 text-sm text-zinc-600">Preview</p>
-                        <PdfPreview
-                          src={
-                            corporateFronts.find(
-                              (b) => b.id === selectedCorporateFront,
-                            )?.filePath
-                          }
-                          className="h-64 w-full rounded-md border"
-                        />
-                      </div>
-                    )}
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm font-medium text-zinc-700">
+                        Corporate Info (Front) <span className="text-red-500">*</span>
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        Tap a card to select
+                      </p>
+                    </div>
+                    {/* STEP 1 – Corporate Info (Front) cards */}
+                    <div className="mt-4 space-y-3">
+                      {corporateFronts.map((item) => {
+                        const isSelected = selectedCorporateFront === item.id
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedCorporateFront((prev) => (prev === item.id ? null : item.id))
+                            }
+                            className={`relative w-full rounded-2xl border bg-white/80 p-3 text-left transition
+  ${isSelected
+                                ? 'border-black shadow-lg ring-2 ring-black/30'
+                                : 'border-zinc-200 hover:border-zinc-400 hover:shadow-sm'
+                              }`}
+                          >
+                            <span className="mb-2 block text-sm font-medium text-zinc-900">
+                              {item.title}
+                            </span>
+
+                            <PdfPreview
+                              src={item.filePath}
+                              className="h-64 w-full rounded-md border"
+                              stopClickPropagation
+                            />
+
+                            {isSelected && (
+                              <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
+                                ✓
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
 
                   <div>
-                    <p className="mb-2 text-sm text-zinc-700">
-                      Corporate Info (Back):
-                    </p>
-                    <select
-                      className="w-full rounded border border-white/40 bg-white/70 p-2"
-                      value={selectedCorporateBack || ''}
-                      onChange={(e) => setSelectedCorporateBack(e.target.value)}
-                    >
-                      <option value="">Select Corporate Info (Back)</option>
-                      {corporateBacks.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.title}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedCorporateBack && (
-                      <div className="mt-3">
-                        <p className="mb-2 text-sm text-zinc-600">Preview</p>
-                        <PdfPreview
-                          src={
-                            corporateBacks.find(
-                              (b) => b.id === selectedCorporateBack,
-                            )?.filePath
-                          }
-                          className="h-64 w-full rounded-md border"
-                        />
-                      </div>
-                    )}
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm font-medium text-zinc-700">
+                        Corporate Info (Back) <span className="text-red-500">*</span>
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        Tap a card to select
+                      </p>
+                    </div>
+                    {/* STEP 1 – Corporate Info (Back) cards */}
+                    <div className="mt-4 space-y-3">
+                      {corporateBacks.map((item) => {
+                        const isSelected = selectedCorporateBack === item.id
+
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedCorporateBack((prev) => (prev === item.id ? null : item.id))
+                            }
+                            className={`relative w-full rounded-2xl border bg-white/80 p-3 text-left transition
+  ${isSelected
+                                ? 'border-black shadow-lg ring-2 ring-black/30'
+                                : 'border-zinc-200 hover:border-zinc-400 hover:shadow-sm'
+                              }`}
+                          >
+                            <span className="mb-2 block text-sm font-medium text-zinc-900">
+                              {item.title}
+                            </span>
+
+                            <PdfPreview
+                              src={item.filePath}
+                              className="h-64 w-full rounded-md border"
+                              stopClickPropagation
+                            />
+
+                            {isSelected && (
+                              <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
+                                ✓
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+
                   </div>
                 </GlassPanel>
               )}
 
               {pdfStep === 2 && (
-                <GlassPanel className="p-4">
-                  <div className="mb-4">
-                    <SectionTitle>Adverts</SectionTitle>
-                    <div className="mt-2 flex items-center gap-2">
-                      <select
-                        className="w-full rounded border border-white/40 bg-white/70 p-2"
-                        value=""
-                        onChange={(e) => addAdditionalPage('advert', e.target.value)}
-                      >
-                        <option value="">Select an Advert to add</option>
-                        {advertisements.map((advert) => (
-                          <option key={advert.id} value={advert.id}>
-                            {advert.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      {selectedAdverts.map((ad) => (
-                        <div
-                          key={ad.id}
-                          className="flex items-center justify-between text-sm"
-                        >
-                          <span>
-                            {advertisements.find((it) => it.id === ad.id)?.title}
-                          </span>
-                          <Button
-                            size="small"
-                            variant="outline"
-                            onClick={() => removeAdditionalPage('advert', ad.id)}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      ))}
+                <GlassPanel className="space-y-6 p-4">
+                  {/* STEP 2 – Adverts */}
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <SectionTitle>
+                        Adverts <span className="text-red-500">*</span>
+                      </SectionTitle>
+                      <p className="text-xs text-zinc-500">
+                        Tap cards to select / unselect
+                      </p>
                     </div>
 
-                    {selectedAdverts.length > 0 && (
-                      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                        {selectedAdverts.map((ad) => {
-                          const src = advertisements.find(
-                            (it) => it.id === ad.id,
-                          )?.filePath
-                          return (
+                    <div className="mt-4 space-y-3">
+                      {advertisements.map((advert) => {
+                        const isSelected = selectedAdverts.some((a) => a.id === advert.id)
+                        return (
+                          <button
+                            key={advert.id}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                removeAdditionalPage('advert', advert.id)
+                              } else {
+                                addAdditionalPage('advert', advert.id)
+                              }
+                              setPdfStepError(null)
+                            }}
+                            className={[
+                              'relative w-full overflow-hidden rounded-2xl border bg-white/80 text-left transition',
+                              isSelected
+                                ? 'border-black ring-1 ring-black'
+                                : 'border-zinc-200 hover:border-zinc-400',
+                            ].join(' ')}
+                          >
+                            <div className="flex items-center justify-between p-2">
+                              <p className="line-clamp-2 text-sm font-medium text-zinc-900">
+                                {advert.title}
+                              </p>
+                              {isSelected && (
+                                <span className="rounded-full bg-black px-2 py-0.5 text-xs font-medium text-white">
+                                  Selected
+                                </span>
+                              )}
+                            </div>
                             <PdfPreview
-                              key={ad.id}
-                              src={src}
-                              className="h-64 w-full rounded-md border"
+                              src={advert.filePath}
+                              className="h-64 w-full border-t"
+                              stopClickPropagation
                             />
-                          )
-                        })}
-                      </div>
-                    )}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
 
+                  {/* STEP 2 – Promotions (single, full-width section) */}
                   <div>
-                    <SectionTitle>Promotions</SectionTitle>
-                    <div className="mt-2 flex items-center gap-2">
-                      <select
-                        className="w-full rounded border border-white/40 bg-white/70 p-2"
-                        value=""
-                        onChange={(e) => addAdditionalPage('promotion', e.target.value)}
-                      >
-                        <option value="">Select a Promotion to add</option>
-                        {promotions.map((promo) => (
-                          <option key={promo.id} value={promo.id}>
-                            {promo.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      {selectedPromotions.map((promo) => (
-                        <div
-                          key={promo.id}
-                          className="flex items-center justify-between text-sm"
-                        >
-                          <span>
-                            {promotions.find((it) => it.id === promo.id)?.title}
-                          </span>
-                          <Button
-                            size="small"
-                            variant="outline"
-                            onClick={() =>
-                              removeAdditionalPage('promotion', promo.id)
-                            }
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      ))}
+                    <div className="mb-2 flex items-center justify-between">
+                      <SectionTitle>
+                        Promotions <span className="text-red-500">*</span>
+                      </SectionTitle>
+                      <p className="text-xs text-zinc-500">
+                        Tap cards to select / unselect
+                      </p>
                     </div>
 
-                    {selectedPromotions.length > 0 && (
-                      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                        {selectedPromotions.map((promo) => {
-                          const src = promotions.find(
-                            (it) => it.id === promo.id,
-                          )?.filePath
-                          return (
+                    <div className="mt-4 space-y-3">
+                      {promotions.map((promo) => {
+                        const isSelected = selectedPromotions.some((p) => p.id === promo.id)
+                        return (
+                          <button
+                            key={promo.id}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                removeAdditionalPage('promotion', promo.id)
+                              } else {
+                                addAdditionalPage('promotion', promo.id)
+                              }
+                              setPdfStepError(null)
+                            }}
+                            className={[
+                              'relative w-full overflow-hidden rounded-2xl border bg-white/80 text-left transition',
+                              isSelected
+                                ? 'border-black ring-1 ring-black'
+                                : 'border-zinc-200 hover:border-zinc-400',
+                            ].join(' ')}
+                          >
+                            <div className="flex items-center justify-between p-2">
+                              <p className="line-clamp-2 text-sm font-medium text-zinc-900">
+                                {promo.title}
+                              </p>
+                              {isSelected && (
+                                <span className="rounded-full bg-black px-2 py-0.5 text-xs font-medium text-white">
+                                  Selected
+                                </span>
+                              )}
+                            </div>
                             <PdfPreview
-                              key={promo.id}
-                              src={src}
-                              className="h-64 w-full rounded-md border"
+                              src={promo.filePath}
+                              className="h-64 w-full border-t"
+                              stopClickPropagation
                             />
-                          )
-                        })}
-                      </div>
-                    )}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 </GlassPanel>
               )}
@@ -1513,20 +1587,24 @@ const Products = () => {
                   </div>
                 </GlassPanel>
               )}
+
             </div>
 
             <div className="mt-2 flex shrink-0 items-center justify-end gap-3 border-t border-white/30 bg-white/60 px-3 py-3">
               {pdfStep > 1 && (
                 <Button
                   variant="outline"
-                  onClick={() => setPdfStep((s) => s - 1)}
+                  onClick={() => {
+                    setPdfStep((s) => Math.max(1, s - 1))
+                    setPdfStepError(null)
+                  }}
                 >
                   Back
                 </Button>
               )}
               <Button
                 variant="black"
-                onClick={pdfStep < 3 ? () => setPdfStep((s) => s + 1) : handleGeneratePDF}
+                onClick={pdfStep < 3 ? handlePdfNext : handleGeneratePDF}
                 disabled={pdfStep === 3 && buttonLoading}
               >
                 {pdfStep < 3 ? 'Next' : buttonLoading ? 'Generating...' : 'Generate PDF'}
@@ -1695,11 +1773,6 @@ const Products = () => {
             </GlassPanel>
           </div>
         </Dialog>
-        {/* Generate PDF flow */}
-        {/* ... existing PDF dialogs unchanged, except where we already edited above ... */}
-
-        {/* QUICK ADD CLIENT DIALOG */}
-        {/* ... unchanged ... */}
 
         {/* Delete dialog */}
         <Dialog
