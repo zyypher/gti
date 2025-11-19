@@ -36,15 +36,22 @@ export const columns = (
             id: 'cart',
             header: '',
             cell: ({ row }) => {
-                const disabled = isInCart ? isInCart(row.original.id) : false
+                const inCart = isInCart ? isInCart(row.original.id) : false
 
                 return (
                     <button
                         type="button"
                         onClick={() => onAddToCart?.(row.original)}
-                        disabled={disabled}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label="Add product to cart"
+                        disabled={inCart}
+                        className={`
+            inline-flex h-8 w-8 items-center justify-center rounded-full border 
+            transition-all duration-200
+            ${inCart
+                                ? 'border-red-500 bg-red-500 text-white cursor-not-allowed'
+                                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300'
+                            }
+          `}
+                        aria-label={inCart ? 'Product in cart' : 'Add product to cart'}
                     >
                         <ShoppingCart className="h-4 w-4" />
                     </button>

@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import api from '@/lib/api'
 import routes from '@/lib/routes'
 import toast from 'react-hot-toast'
-import { Plus, ShoppingCart } from 'lucide-react'
+import { Plus, ShoppingCart, Trash } from 'lucide-react'
 import { Dialog } from '@/components/ui/dialog'
 import PageHeading from '@/components/layout/page-heading'
 import { FloatingLabelInput } from '@/components/ui/floating-label-input'
@@ -37,6 +37,15 @@ import { countryData } from '@/lib/country-data'
 import { isValidPhoneNumber } from 'react-phone-number-input'
 import * as yup from 'yup'
 import { yupResolver } from '@hookform/resolvers/yup'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 /* -------------------- types -------------------- */
 interface IBrand {
@@ -111,8 +120,8 @@ const GlassPanel = ({
 }) => (
   <div
     className={[
-      'rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl',
-      'shadow-[0_6px_24px_rgba(0,0,0,0.08)]',
+      'rounded-2xl border border-white/20 bg-white/80 backdrop-blur-xl',
+      'shadow-[0_18px_60px_rgba(15,23,42,0.14)]',
       className,
     ].join(' ')}
   >
@@ -121,7 +130,9 @@ const GlassPanel = ({
 )
 
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <h3 className="text-base font-semibold text-zinc-900">{children}</h3>
+  <h3 className="text-sm font-semibold tracking-tight text-zinc-900">
+    {children}
+  </h3>
 )
 
 /* ------------------ product form ----------------- */
@@ -213,7 +224,6 @@ const Products = () => {
 
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false)
   const [isClientSubmitting, setIsClientSubmitting] = useState(false)
-  const [tableResetKey, setTableResetKey] = useState(0)
 
   const [page, setPage] = useState(1)
   const [pageSize] = useState(10)
@@ -231,6 +241,9 @@ const Products = () => {
 
   const [hasLoadedNonProductItems, setHasLoadedNonProductItems] = useState(false)
   const [hasLoadedClients, setHasLoadedClients] = useState(false)
+
+  const [nonProductLoading, setNonProductLoading] = useState(false)
+  const [clientsLoading, setClientsLoading] = useState(false)
 
   const isPWA = () => window.matchMedia('(display-mode: standalone)').matches
   const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -333,12 +346,12 @@ const Products = () => {
           const mediaJson = await mediaRes.json()
           const map: Record<string, { image?: string; pdfUrl?: string }> = {}
 
-          ;(mediaJson.items || []).forEach((item: any) => {
-            map[item.id] = {
-              image: item.image ?? '',
-              pdfUrl: item.pdfUrl ?? '',
-            }
-          })
+            ; (mediaJson.items || []).forEach((item: any) => {
+              map[item.id] = {
+                image: item.image ?? '',
+                pdfUrl: item.pdfUrl ?? '',
+              }
+            })
 
           setMediaMap(map)
         } catch (mediaErr) {
@@ -369,6 +382,7 @@ const Products = () => {
 
   const fetchNonProductItems = useCallback(async () => {
     try {
+      setNonProductLoading(true)
       const response = await api.get('/api/non-product-pages')
       const data: INonProductPageItem[] = response.data
 
@@ -382,16 +396,21 @@ const Products = () => {
     } catch (e) {
       console.error('Failed to fetch non-product items', e)
       toast.error('Failed to fetch non-product items.')
+    } finally {
+      setNonProductLoading(false)
     }
   }, [])
 
   const fetchClients = useCallback(async () => {
     try {
+      setClientsLoading(true)
       const response = await api.get('/api/clients')
       setClients(response.data)
     } catch (e) {
       console.error('Failed to fetch clients', e)
       toast.error('Failed to fetch clients.')
+    } finally {
+      setClientsLoading(false)
     }
   }, [])
 
@@ -507,30 +526,17 @@ const Products = () => {
   // merge base text products + media and hide cart items from table
   const tableData: ITable[] = useMemo(
     () =>
-      products
-        .filter((p) => !selectedRows.includes(p.id))
-        .map((p) => {
-          const media = mediaMap[p.id] || {}
-          return {
-            ...p,
-            image: media.image ?? (p as any).image,
-            pdfUrl: media.pdfUrl ?? (p as any).pdfUrl,
-          }
-        }),
-    [products, mediaMap, selectedRows],
+      products.map((p) => {
+        const media = mediaMap[p.id] || {}
+        return {
+          ...p,
+          image: media.image ?? (p as any).image,
+          pdfUrl: media.pdfUrl ?? (p as any).pdfUrl,
+        }
+      }),
+    [products, mediaMap],
   )
 
-  useEffect(() => {
-    if (loading) return
-
-    if (products.length > 0 && tableData.length === 0) {
-      setPage((prev) => {
-        if (prev < totalPages) return prev + 1
-        if (prev > 1) return prev - 1
-        return prev
-      })
-    }
-  }, [loading, products.length, tableData.length, totalPages, setPage])
 
   const _columns = useMemo(
     () =>
@@ -630,7 +636,6 @@ const Products = () => {
         setSelectedClient(undefined)
         setSelectedCorporateFront(null)
         setSelectedCorporateBack(null)
-        setTableResetKey((k) => k + 1)
 
         if ((isPWA() || isMobile()) && navigator.share) {
           const blob = await fetch(pdfUrl).then((res) => res.blob())
@@ -807,7 +812,7 @@ const Products = () => {
             parseInt(e.target.value, 10),
           )
         }
-        className="rounded border bg-white/60 p-1"
+        className="rounded-lg border border-zinc-200 bg-white/80 px-2 py-1 text-xs font-medium text-zinc-700 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-800"
       >
         {options}
       </select>
@@ -816,7 +821,9 @@ const Products = () => {
 
   const tableLoading = loading
 
-  // PDF preview helper – scrollable, but still allows card click on outer button
+  /* ---------- PDF preview & card helpers ---------- */
+
+  // clean preview, remove browser blue outline
   const PdfPreview = ({
     src,
     className,
@@ -827,7 +834,9 @@ const Products = () => {
     stopClickPropagation?: boolean
   }) => {
     if (!src) return null
-    const url = `${src}${src.includes('#') ? '' : '#'}toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
+    const url = `${src}${src.includes('#') ? '' : '#'
+      }toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
+
     return (
       <embed
         src={url}
@@ -835,11 +844,47 @@ const Products = () => {
         onClick={stopClickPropagation ? (e) => e.stopPropagation() : undefined}
         className={
           className ??
-          'h-64 w-full rounded-md border overflow-hidden'
+          'h-56 w-full rounded-xl border border-zinc-200 bg-zinc-50 overflow-hidden'
         }
+        style={{ outline: 'none' }}
       />
     )
   }
+
+  // Single card for corporate/adverts/promotions
+  const PdfChoiceCard = ({
+    item,
+    isSelected,
+    onClick,
+  }: {
+    item: INonProductPageItem
+    isSelected: boolean
+    onClick: () => void
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-3 text-left shadow-sm transition-all',
+        'hover:-translate-y-[1px] hover:shadow-md',
+        isSelected
+          ? 'border-zinc-900 ring-2 ring-zinc-900/60'   // ⬅️ STRONG, DARK BORDER WHEN SELECTED
+          : 'border-zinc-200 hover:border-zinc-400',
+      ].join(' ')}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="line-clamp-2 text-xs font-semibold tracking-tight text-zinc-900">
+          {item.title}
+        </p>
+      </div>
+
+      <PdfPreview
+        src={item.filePath}
+        className="h-56 w-full rounded-xl border border-zinc-200 bg-zinc-50"
+        stopClickPropagation
+      />
+    </button>
+  )
 
   const openPdfDialog = async () => {
     setIsPdfDialogOpen(true)
@@ -876,18 +921,27 @@ const Products = () => {
     setPdfStep((s) => s + 1)
   }
 
+  const renderPdfCardSkeleton = () => (
+    <div className="rounded-2xl border border-zinc-200/80 bg-white/60 p-3 shadow-sm">
+      <div className="mb-2 h-4 w-2/3 rounded-full bg-zinc-200/70" />
+      <Skeleton className="h-56 w-full rounded-xl" />
+    </div>
+  )
+
+  /* ----------------------- JSX ----------------------- */
+
   return (
     <div className="relative">
       {/* Background */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-zinc-50 via-white to-zinc-100" />
-        <div className="absolute left-1/2 top-[-120px] h-[420px] w-[620px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.12),rgba(255,255,255,0)_60%)]" />
+        <div className="absolute left-1/2 top-[-120px] h-[420px] w-[620px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(15,23,42,0.16),rgba(255,255,255,0)_60%)]" />
       </div>
 
       <div className="space-y-6">
         <div className="flex items-start justify-between">
           <PageHeading heading="Products" />
-          <GlassPanel className="flex items-center gap-3 p-2">
+          <GlassPanel className="flex items-center gap-2 p-2">
             {role === 'ADMIN' && (
               <Button
                 variant="black"
@@ -898,7 +952,7 @@ const Products = () => {
                   reset()
                   setIsDialogOpen(true)
                 }}
-                className="gap-2"
+                className="gap-2 rounded-xl px-3 py-2 text-sm font-medium"
               >
                 <Plus size={18} />
                 New Product
@@ -908,7 +962,7 @@ const Products = () => {
             {/* Cart button */}
             <Button
               variant="outline-black"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm"
               disabled={cartItems.length === 0}
               onClick={() => setIsCartDialogOpen(true)}
             >
@@ -921,6 +975,7 @@ const Products = () => {
               variant="outline-black"
               disabled={selectedRows.length === 0}
               onClick={openPdfDialog}
+              className="rounded-xl px-3 py-2 text-sm font-medium"
             >
               Next Step
             </Button>
@@ -941,14 +996,13 @@ const Products = () => {
         {/* Table */}
         <GlassPanel className="p-3">
           <DataTable<ITable>
-            key={tableResetKey}
             columns={_columns}
             data={tableData}
             filterField="product"
             loading={tableLoading}
             isRemovePagination={false}
           />
-          <div className="border-t border-white/20 pt-3">
+          <div className="border-t border-white/30 pt-3">
             <PaginationBar
               currentPage={page}
               totalPages={totalPages}
@@ -994,9 +1048,8 @@ const Products = () => {
                 </label>
                 <select
                   {...register('brandId', { required: 'Brand is required' })}
-                  className="block w-full rounded-lg border border-zinc-500 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                   defaultValue={watch('brandId') || ''}
-                  style={{ border: '1px solid #d1d5db' }}
                 >
                   <option value="">Select a brand</option>
                   {brands.map((b) => (
@@ -1006,7 +1059,7 @@ const Products = () => {
                   ))}
                 </select>
                 {errors.brandId?.message && (
-                  <p className="mt-1 text-sm text-red-500">
+                  <p className="mt-1 text-xs text-red-500">
                     {String(errors.brandId.message)}
                   </p>
                 )}
@@ -1052,8 +1105,7 @@ const Products = () => {
                   onChange={(e) =>
                     setValue('tar', e.target.value, { shouldValidate: true })
                   }
-                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
-                  style={{ border: '1px solid #d1d5db' }}
+                  className="block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 >
                   <option value="">Select Tar</option>
                   {tarOptions.map((v) => (
@@ -1063,7 +1115,7 @@ const Products = () => {
                   ))}
                 </select>
                 {errors.tar?.message && (
-                  <p className="mt-1 text-sm text-red-500">
+                  <p className="mt-1 text-xs text-red-500">
                     {String(errors.tar.message)}
                   </p>
                 )}
@@ -1079,8 +1131,7 @@ const Products = () => {
                   onChange={(e) =>
                     setValue('nicotine', e.target.value, { shouldValidate: true })
                   }
-                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
-                  style={{ border: '1px solid #d1d5db' }}
+                  className="block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 >
                   <option value="">Select Nicotine</option>
                   {nicotineOptions.map((v) => (
@@ -1090,7 +1141,7 @@ const Products = () => {
                   ))}
                 </select>
                 {errors.nicotine?.message && (
-                  <p className="mt-1 text-sm text-red-500">
+                  <p className="mt-1 text-xs text-red-500">
                     {String(errors.nicotine.message)}
                   </p>
                 )}
@@ -1135,19 +1186,18 @@ const Products = () => {
                 </label>
                 <select
                   {...register('fsp', { required: 'FSP selection is required' })}
-                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                   value={watch('fsp') ?? ''}
                   onChange={(e) =>
                     setValue('fsp', e.target.value, { shouldValidate: true })
                   }
-                  style={{ border: '1px solid #d1d5db' }}
                 >
                   <option value="">Select FSP</option>
                   <option value="true">Yes</option>
                   <option value="false">No</option>
                 </select>
                 {errors.fsp?.message && (
-                  <p className="mt-1 text-sm text-red-500">
+                  <p className="mt-1 text-xs text-red-500">
                     {String(errors.fsp.message)}
                   </p>
                 )}
@@ -1160,12 +1210,11 @@ const Products = () => {
                 </label>
                 <select
                   {...register('capsules', { required: 'Select number of capsules' })}
-                  className="block w-full rounded-lg border border-zinc-300 bg-white p-2 focus:border-black focus:ring-1 focus:ring-black"
+                  className="block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                   value={watch('capsules') ?? ''}
                   onChange={(e) =>
                     setValue('capsules', e.target.value, { shouldValidate: true })
                   }
-                  style={{ border: '1px solid #d1d5db' }}
                 >
                   <option value="">Select Capsules</option>
                   <option value="0">0</option>
@@ -1174,7 +1223,7 @@ const Products = () => {
                   <option value="3">3</option>
                 </select>
                 {errors.capsules?.message && (
-                  <p className="mt-1 text-sm text-red-500">
+                  <p className="mt-1 text-xs text-red-500">
                     {String(errors.capsules.message)}
                   </p>
                 )}
@@ -1198,21 +1247,25 @@ const Products = () => {
               {/* Existing previews on EDIT */}
               {selectedProduct?.image && (
                 <div className="mb-2">
-                  <p className="mb-1 text-sm text-zinc-600">Current Image Preview:</p>
+                  <p className="mb-1 text-xs font-medium text-zinc-600">
+                    Current Image Preview
+                  </p>
                   <img
                     src={selectedProduct.image}
                     alt="Product Image"
-                    className="h-40 w-full rounded-lg border object-contain"
+                    className="h-40 w-full rounded-xl border border-zinc-200 bg-zinc-50 object-contain"
                   />
                 </div>
               )}
 
               {selectedProduct && (selectedProduct as any).pdfUrl && (
                 <div className="mb-2">
-                  <p className="mb-1 text-sm text-zinc-600">Current PDF Preview:</p>
+                  <p className="mb-1 text-xs font-medium text-zinc-600">
+                    Current PDF Preview
+                  </p>
                   <PdfPreview
                     src={(selectedProduct as any).pdfUrl}
-                    className="h-64 w-full border-t"
+                    className="h-64 w-full rounded-xl border border-zinc-200 bg-zinc-50"
                     stopClickPropagation
                   />
                 </div>
@@ -1230,9 +1283,10 @@ const Products = () => {
                   {...register('image', {
                     required: !selectedProduct ? 'Product image is required' : false,
                   })}
+                  className="rounded-xl border-zinc-300 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:uppercase file:tracking-wide file:text-white hover:file:bg-black"
                 />
                 {errors.image && (
-                  <p className="mt-1 text-sm text-red-500">
+                  <p className="mt-1 text-xs text-red-500">
                     {String((errors as any).image?.message)}
                   </p>
                 )}
@@ -1249,9 +1303,10 @@ const Products = () => {
                   {...register('pdf', {
                     required: !selectedProduct ? 'Product PDF is required' : false,
                   })}
+                  className="rounded-xl border-zinc-300 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-xs file:font-medium file:uppercase file:tracking-wide file:text-white hover:file:bg-black"
                 />
                 {errors.pdf && (
-                  <p className="mt-1 text-sm text-red-500">
+                  <p className="mt-1 text-xs text-red-500">
                     {String((errors as any).pdf?.message)}
                   </p>
                 )}
@@ -1274,117 +1329,160 @@ const Products = () => {
             setSelectedCorporateBack(null)
           }}
           title={`Step ${pdfStep}: ${pdfStep === 1
-            ? 'Select Corporate Infos'
+            ? 'Select Corporate Info'
             : pdfStep === 2
               ? 'Add Adverts & Promotions'
-              : 'Confirm & Generate'
+              : 'Review'
             }`}
         >
-          <div className="flex max-h-[85vh] flex-col">
-            <div className="flex-1 space-y-4 overflow-y-auto p-2 pr-3">
+          <div className="flex max-h-[85vh] flex-col rounded-2xl bg-gradient-to-b from-white to-zinc-50/80">
+            {/* --- STEP PILLS (all white, black text/tick, subtle borders) --- */}
+            <div className="flex items-center justify-center gap-3 border-b border-white/60 px-4 py-3">
+              {[
+                { step: 1, label: 'Corporate Info' },
+                { step: 2, label: 'Adverts & Promotions' },
+                { step: 3, label: 'Review' },
+              ].map(({ step, label }) => {
+                const active = pdfStep === step
+                const done = pdfStep > step
+
+                const pillBase =
+                  'flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-medium tracking-wide'
+                const pillState = active
+                  ? 'border-zinc-900 bg-white text-zinc-900 shadow-sm'
+                  : done
+                    ? 'border-zinc-900 bg-white text-zinc-900'
+                    : 'border-zinc-200 bg-white text-zinc-500'
+
+                const circleBase =
+                  'flex h-4 w-4 items-center justify-center rounded-full text-[10px]'
+                const circleState = active
+                  ? 'border border-zinc-900 bg-white text-zinc-900'
+                  : done
+                    ? 'border border-zinc-900 bg-white text-zinc-900'
+                    : 'border border-zinc-300 bg-white text-zinc-600'
+
+                return (
+                  <div key={step} className={`${pillBase} ${pillState}`}>
+                    <span className={`${circleBase} ${circleState}`}>
+                      {done ? '✓' : step}
+                    </span>
+                    <span>{label}</span>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="flex-1 space-y-4 overflow-y-auto p-3 pr-4">
               {pdfStep === 1 && (
                 <GlassPanel className="space-y-6 p-4">
+                  {/* CORPORATE INFO (FRONT) */}
                   <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-sm font-medium text-zinc-700">
-                        Corporate Info (Front) <span className="text-red-500">*</span>
+                    <div className="mb-1 flex items-center justify-between">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
+                        Corporate Info
                       </p>
-                      <p className="text-xs text-zinc-500">
-                        Tap a card to select
-                      </p>
+                      <p className="text-[10px] text-zinc-500">Tap a card to select</p>
                     </div>
-                    {/* STEP 1 – Corporate Info (Front) cards */}
-                    <div className="mt-4 space-y-3">
-                      {corporateFronts.map((item) => {
-                        const isSelected = selectedCorporateFront === item.id
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() =>
-                              setSelectedCorporateFront((prev) => (prev === item.id ? null : item.id))
-                            }
-                            className={`relative w-full rounded-2xl border bg-white/80 p-3 text-left transition
-  ${isSelected
-                                ? 'border-black shadow-lg ring-2 ring-black/30'
-                                : 'border-zinc-200 hover:border-zinc-400 hover:shadow-sm'
-                              }`}
-                          >
-                            <span className="mb-2 block text-sm font-medium text-zinc-900">
-                              {item.title}
-                            </span>
+                    <SectionTitle>
+                      Corporate Info (Front) <span className="text-red-500">*</span>
+                    </SectionTitle>
 
-                            <PdfPreview
-                              src={item.filePath}
-                              className="h-64 w-full rounded-md border"
-                              stopClickPropagation
-                            />
-
-                            {isSelected && (
-                              <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
-                                ✓
-                              </span>
-                            )}
-                          </button>
-                        )
-                      })}
+                    <div className="mt-3 max-h-[420px] overflow-y-auto pr-1 p-[5px]">
+                      {nonProductLoading && corporateFronts.length === 0 ? (
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          {Array.from({ length: 4 }).map((_, idx) => (
+                            <div
+                              key={idx}
+                              className="rounded-2xl border border-zinc-200/80 bg-white/60 p-3 shadow-sm"
+                            >
+                              <div className="mb-2 h-4 w-2/3 rounded-full bg-zinc-200/70" />
+                              <Skeleton className="h-56 w-full rounded-xl" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          {corporateFronts.map((item) => {
+                            const isSelected = selectedCorporateFront === item.id
+                            return (
+                              <PdfChoiceCard
+                                key={item.id}
+                                item={item}
+                                isSelected={isSelected}
+                                onClick={() =>
+                                  setSelectedCorporateFront((prev) =>
+                                    prev === item.id ? null : item.id,
+                                  )
+                                }
+                              />
+                            )
+                          })}
+                          {!nonProductLoading && corporateFronts.length === 0 && (
+                            <p className="col-span-full py-4 text-center text-xs text-zinc-500">
+                              No corporate info (front) found.
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
+                  {/* CORPORATE INFO (BACK) */}
                   <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-sm font-medium text-zinc-700">
-                        Corporate Info (Back) <span className="text-red-500">*</span>
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        Tap a card to select
-                      </p>
+                    <SectionTitle>
+                      Corporate Info (Back) <span className="text-red-500">*</span>
+                    </SectionTitle>
+                    <p className="mt-1 text-[11px] text-zinc-500">
+                      Pick the closing page for your catalogue.
+                    </p>
+
+                    <div className="mt-3 max-h-[420px] overflow-y-auto pr-1 p-[5px]">
+                      {nonProductLoading && corporateBacks.length === 0 ? (
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          {Array.from({ length: 4 }).map((_, idx) => (
+                            <div
+                              key={idx}
+                              className="rounded-2xl border border-zinc-200/80 bg-white/60 p-3 shadow-sm"
+                            >
+                              <div className="mb-2 h-4 w-2/3 rounded-full bg-zinc-200/70" />
+                              <Skeleton className="h-56 w-full rounded-xl" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          {corporateBacks.map((item) => {
+                            const isSelected = selectedCorporateBack === item.id
+                            return (
+                              <PdfChoiceCard
+                                key={item.id}
+                                item={item}
+                                isSelected={isSelected}
+                                onClick={() =>
+                                  setSelectedCorporateBack((prev) =>
+                                    prev === item.id ? null : item.id,
+                                  )
+                                }
+                              />
+                            )
+                          })}
+                          {!nonProductLoading && corporateBacks.length === 0 && (
+                            <p className="col-span-full py-4 text-center text-xs text-zinc-500">
+                              No corporate info (back) found.
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {/* STEP 1 – Corporate Info (Back) cards */}
-                    <div className="mt-4 space-y-3">
-                      {corporateBacks.map((item) => {
-                        const isSelected = selectedCorporateBack === item.id
-
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() =>
-                              setSelectedCorporateBack((prev) => (prev === item.id ? null : item.id))
-                            }
-                            className={`relative w-full rounded-2xl border bg-white/80 p-3 text-left transition
-  ${isSelected
-                                ? 'border-black shadow-lg ring-2 ring-black/30'
-                                : 'border-zinc-200 hover:border-zinc-400 hover:shadow-sm'
-                              }`}
-                          >
-                            <span className="mb-2 block text-sm font-medium text-zinc-900">
-                              {item.title}
-                            </span>
-
-                            <PdfPreview
-                              src={item.filePath}
-                              className="h-64 w-full rounded-md border"
-                              stopClickPropagation
-                            />
-
-                            {isSelected && (
-                              <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-black text-xs font-semibold text-white">
-                                ✓
-                              </span>
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-
                   </div>
                 </GlassPanel>
               )}
 
+              {/* STEP 2 ---------------------------------------------------- */}
               {pdfStep === 2 && (
                 <GlassPanel className="space-y-6 p-4">
-                  {/* STEP 2 – Adverts */}
+                  {/* Adverts */}
                   <div>
                     <div className="mb-2 flex items-center justify-between">
                       <SectionTitle>
@@ -1395,50 +1493,31 @@ const Products = () => {
                       </p>
                     </div>
 
-                    <div className="mt-4 space-y-3">
-                      {advertisements.map((advert) => {
-                        const isSelected = selectedAdverts.some((a) => a.id === advert.id)
-                        return (
-                          <button
-                            key={advert.id}
-                            type="button"
-                            onClick={() => {
-                              if (isSelected) {
-                                removeAdditionalPage('advert', advert.id)
-                              } else {
-                                addAdditionalPage('advert', advert.id)
-                              }
-                              setPdfStepError(null)
-                            }}
-                            className={[
-                              'relative w-full overflow-hidden rounded-2xl border bg-white/80 text-left transition',
-                              isSelected
-                                ? 'border-black ring-1 ring-black'
-                                : 'border-zinc-200 hover:border-zinc-400',
-                            ].join(' ')}
-                          >
-                            <div className="flex items-center justify-between p-2">
-                              <p className="line-clamp-2 text-sm font-medium text-zinc-900">
-                                {advert.title}
-                              </p>
-                              {isSelected && (
-                                <span className="rounded-full bg-black px-2 py-0.5 text-xs font-medium text-white">
-                                  Selected
-                                </span>
-                              )}
-                            </div>
-                            <PdfPreview
-                              src={advert.filePath}
-                              className="h-64 w-full border-t"
-                              stopClickPropagation
+                    <div className="mt-3 max-h-[420px] overflow-y-auto pr-1 p-[5px]">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {advertisements.map((advert) => {
+                          const isSelected = selectedAdverts.some((a) => a.id === advert.id)
+                          return (
+                            <PdfChoiceCard
+                              key={advert.id}
+                              item={advert}
+                              isSelected={isSelected}
+                              onClick={() => {
+                                if (isSelected) {
+                                  removeAdditionalPage('advert', advert.id)
+                                } else {
+                                  addAdditionalPage('advert', advert.id)
+                                }
+                                setPdfStepError(null)
+                              }}
                             />
-                          </button>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
 
-                  {/* STEP 2 – Promotions (single, full-width section) */}
+                  {/* Promotions */}
                   <div>
                     <div className="mb-2 flex items-center justify-between">
                       <SectionTitle>
@@ -1449,126 +1528,115 @@ const Products = () => {
                       </p>
                     </div>
 
-                    <div className="mt-4 space-y-3">
-                      {promotions.map((promo) => {
-                        const isSelected = selectedPromotions.some((p) => p.id === promo.id)
-                        return (
-                          <button
-                            key={promo.id}
-                            type="button"
-                            onClick={() => {
-                              if (isSelected) {
-                                removeAdditionalPage('promotion', promo.id)
-                              } else {
-                                addAdditionalPage('promotion', promo.id)
-                              }
-                              setPdfStepError(null)
-                            }}
-                            className={[
-                              'relative w-full overflow-hidden rounded-2xl border bg-white/80 text-left transition',
-                              isSelected
-                                ? 'border-black ring-1 ring-black'
-                                : 'border-zinc-200 hover:border-zinc-400',
-                            ].join(' ')}
-                          >
-                            <div className="flex items-center justify-between p-2">
-                              <p className="line-clamp-2 text-sm font-medium text-zinc-900">
-                                {promo.title}
-                              </p>
-                              {isSelected && (
-                                <span className="rounded-full bg-black px-2 py-0.5 text-xs font-medium text-white">
-                                  Selected
-                                </span>
-                              )}
-                            </div>
-                            <PdfPreview
-                              src={promo.filePath}
-                              className="h-64 w-full border-t"
-                              stopClickPropagation
+                    <div className="mt-3 max-h-[420px] overflow-y-auto pr-1 p-[5px]">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {promotions.map((promo) => {
+                          const isSelected = selectedPromotions.some((p) => p.id === promo.id)
+                          return (
+                            <PdfChoiceCard
+                              key={promo.id}
+                              item={promo}
+                              isSelected={isSelected}
+                              onClick={() => {
+                                if (isSelected) {
+                                  removeAdditionalPage('promotion', promo.id)
+                                } else {
+                                  addAdditionalPage('promotion', promo.id)
+                                }
+                                setPdfStepError(null)
+                              }}
                             />
-                          </button>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
                 </GlassPanel>
               )}
 
+              {/* STEP 3 – unchanged from your last version */}
               {pdfStep === 3 && (
                 <GlassPanel className="space-y-4 p-4">
-                  <div className="rounded-lg border border-white/30 bg-white/40 p-3">
-                    <h4 className="mb-1 font-semibold text-zinc-900">
-                      What are you doing here?
+                  <div className="rounded-xl border border-zinc-200/60 bg-gradient-to-br from-white via-zinc-50 to-zinc-100 p-3 shadow-sm">
+                    <h4 className="mb-1 text-sm font-semibold text-zinc-900">
+                      Arrange your catalogue flow
                     </h4>
-                    <p className="text-sm text-zinc-700">
-                      Arrange where your selected Adverts and Promotions will
-                      appear in the final PDF. Corporate Info goes first,
-                      followed by the selected products.
+                    <p className="text-xs text-zinc-700">
+                      Corporate Info appears first, followed by your selected products.
+                      Use the positions below to decide where Adverts and Promotions
+                      should appear in between.
                     </p>
                   </div>
 
                   {selectedAdverts.length > 0 && (
                     <div className="space-y-2">
                       <SectionTitle>Selected Adverts</SectionTitle>
-                      {selectedAdverts.map((advert) => (
-                        <div
-                          key={advert.id}
-                          className="flex items-center justify-between"
-                        >
-                          <p>
-                            {
-                              advertisements.find((a) => a.id === advert.id)
-                                ?.title
-                            }
-                          </p>
-                          {renderPositionDropdown('advert', advert)}
-                        </div>
-                      ))}
+                      <div className="space-y-2 rounded-xl border border-zinc-100 bg-white/80 p-2">
+                        {selectedAdverts.map((advert) => (
+                          <div
+                            key={advert.id}
+                            className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-xs text-zinc-800"
+                          >
+                            <p className="truncate">
+                              {advertisements.find((a) => a.id === advert.id)?.title}
+                            </p>
+                            {renderPositionDropdown('advert', advert)}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {selectedPromotions.length > 0 && (
                     <div className="space-y-2">
                       <SectionTitle>Selected Promotions</SectionTitle>
-                      {selectedPromotions.map((promo) => (
-                        <div
-                          key={promo.id}
-                          className="flex items-center justify-between"
-                        >
-                          <p>
-                            {
-                              promotions.find((p) => p.id === promo.id)
-                                ?.title
-                            }
-                          </p>
-                          {renderPositionDropdown('promotion', promo)}
-                        </div>
-                      ))}
+                      <div className="space-y-2 rounded-xl border border-zinc-100 bg-white/80 p-2">
+                        {selectedPromotions.map((promo) => (
+                          <div
+                            key={promo.id}
+                            className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-xs text-zinc-800"
+                          >
+                            <p className="truncate">
+                              {promotions.find((p) => p.id === promo.id)?.title}
+                            </p>
+                            {renderPositionDropdown('promotion', promo)}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
-                  {/* Always render the header + button; show Select when you have clients */}
+                  {/* Client selection */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <SectionTitle>Select Client (Optional)</SectionTitle>
-                      <Button variant="outline" onClick={openClientDialog}>
+                      <Button
+                        variant="outline"
+                        onClick={openClientDialog}
+                        className="rounded-lg border-zinc-300 px-3 py-1 text-xs font-medium"
+                      >
                         Add Client
                       </Button>
                     </div>
 
-                    {clients.length > 0 ? (
+                    {clientsLoading && clients.length === 0 ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-9 w-full rounded-xl" />
+                        <Skeleton className="h-4 w-1/3 rounded-full" />
+                      </div>
+                    ) : clients.length > 0 ? (
                       <Select
                         value={selectedClient ?? undefined}
                         onValueChange={(v) =>
                           setSelectedClient(v === 'none' ? undefined : v)
                         }
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full rounded-xl border-zinc-300 text-sm">
                           <SelectValue placeholder="Select a client" />
                         </SelectTrigger>
 
                         <SelectContent
-                          className="z-[9999] max-h-[300px] overflow-y-auto bg-white"
+                          className="z-[9999] max-h-[300px] overflow-y-auto rounded-xl bg-white shadow-lg"
                           sideOffset={4}
                         >
                           <SelectItem value="none">No Client</SelectItem>
@@ -1580,17 +1648,17 @@ const Products = () => {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <p className="text-sm text-zinc-600">
-                        No clients yet. Click &quot;Add Client&quot;.
+                      <p className="text-xs text-zinc-600">
+                        No clients yet. Click &quot;Add Client&quot; to save one for this
+                        PDF.
                       </p>
                     )}
                   </div>
                 </GlassPanel>
               )}
-
             </div>
 
-            <div className="mt-2 flex shrink-0 items-center justify-end gap-3 border-t border-white/30 bg-white/60 px-3 py-3">
+            <div className="mt-2 flex shrink-0 items-center justify-end gap-3 border-t border-white/60 bg-white/80 px-4 py-3">
               {pdfStep > 1 && (
                 <Button
                   variant="outline"
@@ -1598,6 +1666,7 @@ const Products = () => {
                     setPdfStep((s) => Math.max(1, s - 1))
                     setPdfStepError(null)
                   }}
+                  className="rounded-xl border-zinc-300 px-4 py-2 text-xs font-medium"
                 >
                   Back
                 </Button>
@@ -1606,14 +1675,15 @@ const Products = () => {
                 variant="black"
                 onClick={pdfStep < 3 ? handlePdfNext : handleGeneratePDF}
                 disabled={pdfStep === 3 && buttonLoading}
+                className="rounded-xl px-4 py-2 text-xs font-semibold tracking-wide"
               >
-                {pdfStep < 3 ? 'Next' : buttonLoading ? 'Generating...' : 'Generate PDF'}
+                {pdfStep < 3 ? 'Next' : buttonLoading ? 'Generating…' : 'Generate PDF'}
               </Button>
             </div>
           </div>
         </Dialog>
 
-        {/* QUICK ADD CLIENT DIALOG */}
+        {/* QUICK ADD CLIENT DIALOG, Delete dialog, Share dialog, Cart dialog */}
         <Dialog
           isOpen={isClientDialogOpen}
           onClose={() => setIsClientDialogOpen(false)}
@@ -1702,12 +1772,12 @@ const Products = () => {
                         {...field}
                         defaultCountry="AE"
                         international
-                        className="w-full rounded-lg border border-zinc-300 bg-white p-2"
+                        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
                       />
                     )}
                   />
                   {clientErrors.primaryNumber && (
-                    <p className="mt-1 text-sm text-red-500">
+                    <p className="mt-1 text-xs text-red-500">
                       {String(clientErrors.primaryNumber.message)}
                     </p>
                   )}
@@ -1725,12 +1795,12 @@ const Products = () => {
                         {...field}
                         defaultCountry="AE"
                         international
-                        className="w-full rounded-lg border border-zinc-300 bg-white p-2"
+                        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm"
                       />
                     )}
                   />
                   {clientErrors.secondaryNumber && (
-                    <p className="mt-1 text-sm text-red-500">
+                    <p className="mt-1 text-xs text-red-500">
                       {String(clientErrors.secondaryNumber.message)}
                     </p>
                   )}
@@ -1750,10 +1820,10 @@ const Products = () => {
                         value={field.value || 'United Arab Emirates'}
                         onValueChange={field.onChange}
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full rounded-xl border-zinc-300 text-sm">
                           <SelectValue placeholder="Select country" />
                         </SelectTrigger>
-                        <SelectContent className="z-[9999] max-h-60 overflow-y-auto bg-white">
+                        <SelectContent className="z-[9999] max-h-60 overflow-y-auto rounded-xl bg-white shadow-lg">
                           {countryData.map((c) => (
                             <SelectItem key={c.name} value={c.name}>
                               {c.name}
@@ -1762,7 +1832,7 @@ const Products = () => {
                         </SelectContent>
                       </Select>
                       {clientErrors.country && (
-                        <p className="mt-1 text-sm text-red-500">
+                        <p className="mt-1 text-xs text-red-500">
                           {String(clientErrors.country.message)}
                         </p>
                       )}
@@ -1781,7 +1851,9 @@ const Products = () => {
           title="Confirm Delete"
           onSubmit={handleDeleteProduct}
         >
-          <p>Are you sure you want to delete this product?</p>
+          <p className="text-sm text-zinc-800">
+            Are you sure you want to delete this product?
+          </p>
         </Dialog>
 
         {/* Share dialog */}
@@ -1791,17 +1863,20 @@ const Products = () => {
           title="PDF Generated"
         >
           <div className="space-y-4 p-4">
-            <p className="text-zinc-700">
+            <p className="text-sm text-zinc-700">
               Your PDF has been generated successfully.
             </p>
-            <div className="flex items-center space-x-2 rounded-md border border-white/30 bg-white/50 p-2">
-              <span className="truncate">{shareableUrl}</span>
+            <div className="flex items-center space-x-2 rounded-xl border border-zinc-200 bg-white/70 p-2">
+              <span className="truncate text-xs text-zinc-700">
+                {shareableUrl}
+              </span>
               <Button
                 variant="outline"
                 onClick={() => {
                   navigator.clipboard.writeText(shareableUrl)
                   toast.success('Link copied to clipboard!')
                 }}
+                className="rounded-lg border-zinc-300 px-3 py-1 text-xs font-medium"
               >
                 Copy Link
               </Button>
@@ -1810,48 +1885,139 @@ const Products = () => {
         </Dialog>
 
         {/* 🛒 Cart preview dialog */}
+
+        {/* 🛒 Cart preview dialog - Full Table View */}
         <Dialog
           isOpen={isCartDialogOpen}
           onClose={() => setIsCartDialogOpen(false)}
-          title="Selected Products"
+          title={`Selected Products (${cartItems.length})`}
+          maxWidth="full"
         >
-          <div className="max-h-[70vh] space-y-3 overflow-y-auto p-3">
+          <div className="max-h-[80vh] overflow-auto p-4">
             {cartItems.length === 0 ? (
-              <p className="text-sm text-zinc-600">
-                No products in cart yet.
-              </p>
+              <div className="flex flex-col items-center justify-center py-12">
+                <ShoppingCart className="h-16 w-16 text-zinc-300 mb-4" />
+                <p className="text-sm text-zinc-600">No products in cart yet.</p>
+              </div>
             ) : (
-              cartItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white/80 p-2"
-                >
-                  <div className="flex items-center gap-3">
-                    {item.image && (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="h-12 w-12 rounded object-cover"
-                      />
-                    )}
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium text-zinc-900">
-                        {item.name}
-                      </p>
-                      <p className="text-xs text-zinc-600">
-                        {item.brand?.name} • {item.size} • {item.flavor}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="small"
-                    onClick={() => handleRemoveFromCart(item.id)}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ))
+              <div className="w-full overflow-hidden rounded-lg bg-white shadow-sm">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="h-8 bg-zinc-50">
+                      <TableHead className="px-3 py-1 text-xs font-medium">Brand</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Product Name</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Image</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Stick Format</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Tar (mg)</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Nicotine (mg)</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">CO (mg)</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Flavour</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium text-center">FSP</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Pack Format</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Color</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Capsules</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cartItems.map((item) => {
+                      const isFsp =
+                        item.fsp === true ||
+                        item.fsp === 1 ||
+                        (typeof item.fsp === 'string' &&
+                          ['yes', 'true', '1'].includes(item.fsp.trim().toLowerCase()))
+
+                      return (
+                        <TableRow key={item.id} className="h-9 hover:bg-zinc-50/50">
+                          {/* Brand */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.brand?.name || '-'}
+                          </TableCell>
+
+                          {/* Product Name */}
+                          <TableCell className="px-3 py-1 text-xs align-middle font-medium">
+                            {item.name}
+                          </TableCell>
+
+                          {/* Image */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="h-12 w-12 rounded object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-200 text-[10px] text-gray-700">
+                                No Image
+                              </div>
+                            )}
+                          </TableCell>
+
+                          {/* Stick Format */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.size || '-'}
+                          </TableCell>
+
+                          {/* Tar */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.tar || '-'}
+                          </TableCell>
+
+                          {/* Nicotine */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.nicotine || '-'}
+                          </TableCell>
+
+                          {/* CO */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.co || '-'}
+                          </TableCell>
+
+                          {/* Flavour */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.flavor || '-'}
+                          </TableCell>
+
+                          {/* FSP */}
+                          <TableCell className="px-3 py-1 text-xs align-middle text-center">
+                            {isFsp ? 'Yes' : 'No'}
+                          </TableCell>
+
+                          {/* Pack Format */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.packetStyle || '-'}
+                          </TableCell>
+
+                          {/* Color */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.color || '-'}
+                          </TableCell>
+
+                          {/* Capsules */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.capsules ?? '-'}
+                          </TableCell>
+
+                         
+
+                          {/* Actions */}
+                          <TableCell className="px-3 py-1 text-xs align-middle text-center">
+                            <Button
+                              variant="outline"
+                              size="small"
+                              onClick={() => handleRemoveFromCart(item.id)}
+                              className="rounded-lg border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 hover:border-red-300"
+                            >
+                              <Trash className="h-3.5 w-3.5 mr-1 inline" />
+                              Remove
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
         </Dialog>

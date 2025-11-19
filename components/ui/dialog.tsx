@@ -13,6 +13,7 @@ interface DialogProps {
     children: React.ReactNode
     onSubmit?: () => void
     buttonLoading?: boolean
+    maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '6xl' | 'full' // Add maxWidth prop
 }
 
 export function Dialog({
@@ -23,7 +24,20 @@ export function Dialog({
     children,
     onSubmit,
     buttonLoading = false,
+    maxWidth = 'lg', // Default to 'lg' (original behavior)
 }: DialogProps) {
+    // Map maxWidth values to Tailwind classes
+    const maxWidthClasses = {
+        sm: 'max-w-sm',
+        md: 'max-w-md',
+        lg: 'max-w-lg',
+        xl: 'max-w-xl',
+        '2xl': 'max-w-2xl',
+        '4xl': 'max-w-4xl',
+        '6xl': 'max-w-6xl',
+        full: 'max-w-[98vw]',
+    }
+
     return (
         <DialogPrimitive.Root
             open={isOpen}
@@ -39,7 +53,8 @@ export function Dialog({
                 />
                 <DialogPrimitive.Content
                     className={cn(
-                        'fixed left-1/2 top-1/2 z-[1010] w-full max-w-lg',
+                        'fixed left-1/2 top-1/2 z-[1010] w-full',
+                        maxWidthClasses[maxWidth],
                         '-translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-8 shadow-2xl focus:outline-none',
                         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95'
                     )}

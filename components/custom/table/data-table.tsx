@@ -112,7 +112,11 @@ export function DataTable<TData extends { id: string; status?: string }>({
                 isProgrammaticUpdate.current = true
                 setRowSelection(newSelectionState)
             }
-        } else if (selectedRowIds && selectedRowIds.length === 0 && Object.keys(rowSelection).length > 0) {
+        } else if (
+            selectedRowIds &&
+            selectedRowIds.length === 0 &&
+            Object.keys(rowSelection).length > 0
+        ) {
             isProgrammaticUpdate.current = true
             setRowSelection({})
         }
@@ -131,7 +135,7 @@ export function DataTable<TData extends { id: string; status?: string }>({
             return
         }
 
-        const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id])
+        const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id])
         console.log('Row selection updated. Selected IDs:', selectedIds)
         if (rowSelectionCallback) {
             rowSelectionCallback(selectedIds)
@@ -148,14 +152,10 @@ export function DataTable<TData extends { id: string; status?: string }>({
                             <InputSearch
                                 placeholder={`Search ${filterField || ''}`}
                                 value={
-                                    (table
-                                        .getColumn(filterField)
-                                        ?.getFilterValue() as string) ?? ''
+                                    (table.getColumn(filterField)?.getFilterValue() as string) ?? ''
                                 }
                                 onChange={(event) =>
-                                    table
-                                        .getColumn(filterField)
-                                        ?.setFilterValue(event.target.value)
+                                    table.getColumn(filterField)?.setFilterValue(event.target.value)
                                 }
                             />,
                             document.getElementById('search-table')!,
@@ -164,10 +164,13 @@ export function DataTable<TData extends { id: string; status?: string }>({
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
+                            <TableRow key={headerGroup.id} className="h-8">
                                 {headerGroup.headers.map((header) => {
                                     return (
-                                        <TableHead key={header.id} className="last:w-0">
+                                        <TableHead
+                                            key={header.id}
+                                            className="last:w-0 px-3 py-1 text-xs font-medium"
+                                        >
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
@@ -183,10 +186,10 @@ export function DataTable<TData extends { id: string; status?: string }>({
                     <TableBody>
                         {loading ? (
                             Array.from({ length: 5 }).map((_, index) => (
-                                <TableRow key={index}>
+                                <TableRow key={index} className="h-9">
                                     {columns.map((_, cellIndex) => (
-                                        <TableCell key={cellIndex}>
-                                            <Skeleton className="h-4 w-full" />
+                                        <TableCell key={cellIndex} className="px-3 py-1">
+                                            <Skeleton className="h-3 w-full" />
                                         </TableCell>
                                     ))}
                                 </TableRow>
@@ -197,9 +200,13 @@ export function DataTable<TData extends { id: string; status?: string }>({
                                     <TableRow
                                         key={row.id}
                                         data-state={row.getIsSelected() && 'selected'}
+                                        className="h-9"
                                     >
                                         {row.getVisibleCells().map((cell) => (
-                                            <TableCell key={cell.id}>
+                                            <TableCell
+                                                key={cell.id}
+                                                className="px-3 py-1 text-xs align-middle"
+                                            >
                                                 {flexRender(
                                                     cell.column.columnDef.cell,
                                                     cell.getContext(),
@@ -210,10 +217,10 @@ export function DataTable<TData extends { id: string; status?: string }>({
                                 )
                             })
                         ) : (
-                            <TableRow>
+                            <TableRow className="h-12">
                                 <TableCell
                                     colSpan={columns.length}
-                                    className="h-24 !text-center text-lg font-semibold"
+                                    className="h-12 !text-center text-sm font-semibold"
                                 >
                                     No results.
                                 </TableCell>
