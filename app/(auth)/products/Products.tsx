@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import api from '@/lib/api'
 import routes from '@/lib/routes'
 import toast from 'react-hot-toast'
-import { Plus, ShoppingCart } from 'lucide-react'
+import { Plus, ShoppingCart, Trash } from 'lucide-react'
 import { Dialog } from '@/components/ui/dialog'
 import PageHeading from '@/components/layout/page-heading'
 import { FloatingLabelInput } from '@/components/ui/floating-label-input'
@@ -38,6 +38,14 @@ import { isValidPhoneNumber } from 'react-phone-number-input'
 import * as yup from 'yup'
 import { yupResolver } from '@hookform/resolvers/yup'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 /* -------------------- types -------------------- */
 interface IBrand {
@@ -216,7 +224,6 @@ const Products = () => {
 
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false)
   const [isClientSubmitting, setIsClientSubmitting] = useState(false)
-  const [tableResetKey, setTableResetKey] = useState(0)
 
   const [page, setPage] = useState(1)
   const [pageSize] = useState(10)
@@ -519,30 +526,17 @@ const Products = () => {
   // merge base text products + media and hide cart items from table
   const tableData: ITable[] = useMemo(
     () =>
-      products
-        .filter((p) => !selectedRows.includes(p.id))
-        .map((p) => {
-          const media = mediaMap[p.id] || {}
-          return {
-            ...p,
-            image: media.image ?? (p as any).image,
-            pdfUrl: media.pdfUrl ?? (p as any).pdfUrl,
-          }
-        }),
-    [products, mediaMap, selectedRows],
+      products.map((p) => {
+        const media = mediaMap[p.id] || {}
+        return {
+          ...p,
+          image: media.image ?? (p as any).image,
+          pdfUrl: media.pdfUrl ?? (p as any).pdfUrl,
+        }
+      }),
+    [products, mediaMap],
   )
 
-  useEffect(() => {
-    if (loading) return
-
-    if (products.length > 0 && tableData.length === 0) {
-      setPage((prev) => {
-        if (prev < totalPages) return prev + 1
-        if (prev > 1) return prev - 1
-        return prev
-      })
-    }
-  }, [loading, products.length, tableData.length, totalPages, setPage])
 
   const _columns = useMemo(
     () =>
@@ -642,7 +636,6 @@ const Products = () => {
         setSelectedClient(undefined)
         setSelectedCorporateFront(null)
         setSelectedCorporateBack(null)
-        setTableResetKey((k) => k + 1)
 
         if ((isPWA() || isMobile()) && navigator.share) {
           const blob = await fetch(pdfUrl).then((res) => res.blob())
@@ -1003,7 +996,6 @@ const Products = () => {
         {/* Table */}
         <GlassPanel className="p-3">
           <DataTable<ITable>
-            key={tableResetKey}
             columns={_columns}
             data={tableData}
             filterField="product"
@@ -1893,49 +1885,139 @@ const Products = () => {
         </Dialog>
 
         {/* 🛒 Cart preview dialog */}
+
+        {/* 🛒 Cart preview dialog - Full Table View */}
         <Dialog
           isOpen={isCartDialogOpen}
           onClose={() => setIsCartDialogOpen(false)}
-          title="Selected Products"
+          title={`Selected Products (${cartItems.length})`}
+          maxWidth="full"
         >
-          <div className="max-h-[70vh] space-y-3 overflow-y-auto p-3">
+          <div className="max-h-[80vh] overflow-auto p-4">
             {cartItems.length === 0 ? (
-              <p className="text-sm text-zinc-600">
-                No products in cart yet.
-              </p>
+              <div className="flex flex-col items-center justify-center py-12">
+                <ShoppingCart className="h-16 w-16 text-zinc-300 mb-4" />
+                <p className="text-sm text-zinc-600">No products in cart yet.</p>
+              </div>
             ) : (
-              cartItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white/80 p-2 shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    {item.image && (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="h-12 w-12 rounded-lg border border-zinc-200 object-cover"
-                      />
-                    )}
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium text-zinc-900">
-                        {item.name}
-                      </p>
-                      <p className="text-xs text-zinc-600">
-                        {item.brand?.name} • {item.size} • {item.flavor}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="small"
-                    onClick={() => handleRemoveFromCart(item.id)}
-                    className="rounded-lg border-zinc-300 px-3 py-1 text-xs"
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ))
+              <div className="w-full overflow-hidden rounded-lg bg-white shadow-sm">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="h-8 bg-zinc-50">
+                      <TableHead className="px-3 py-1 text-xs font-medium">Brand</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Product Name</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Image</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Stick Format</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Tar (mg)</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Nicotine (mg)</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">CO (mg)</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Flavour</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium text-center">FSP</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Pack Format</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Color</TableHead>
+                      <TableHead className="px-3 py-1 text-xs font-medium">Capsules</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cartItems.map((item) => {
+                      const isFsp =
+                        item.fsp === true ||
+                        item.fsp === 1 ||
+                        (typeof item.fsp === 'string' &&
+                          ['yes', 'true', '1'].includes(item.fsp.trim().toLowerCase()))
+
+                      return (
+                        <TableRow key={item.id} className="h-9 hover:bg-zinc-50/50">
+                          {/* Brand */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.brand?.name || '-'}
+                          </TableCell>
+
+                          {/* Product Name */}
+                          <TableCell className="px-3 py-1 text-xs align-middle font-medium">
+                            {item.name}
+                          </TableCell>
+
+                          {/* Image */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="h-12 w-12 rounded object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-200 text-[10px] text-gray-700">
+                                No Image
+                              </div>
+                            )}
+                          </TableCell>
+
+                          {/* Stick Format */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.size || '-'}
+                          </TableCell>
+
+                          {/* Tar */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.tar || '-'}
+                          </TableCell>
+
+                          {/* Nicotine */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.nicotine || '-'}
+                          </TableCell>
+
+                          {/* CO */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.co || '-'}
+                          </TableCell>
+
+                          {/* Flavour */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.flavor || '-'}
+                          </TableCell>
+
+                          {/* FSP */}
+                          <TableCell className="px-3 py-1 text-xs align-middle text-center">
+                            {isFsp ? 'Yes' : 'No'}
+                          </TableCell>
+
+                          {/* Pack Format */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.packetStyle || '-'}
+                          </TableCell>
+
+                          {/* Color */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.color || '-'}
+                          </TableCell>
+
+                          {/* Capsules */}
+                          <TableCell className="px-3 py-1 text-xs align-middle">
+                            {item.capsules ?? '-'}
+                          </TableCell>
+
+                         
+
+                          {/* Actions */}
+                          <TableCell className="px-3 py-1 text-xs align-middle text-center">
+                            <Button
+                              variant="outline"
+                              size="small"
+                              onClick={() => handleRemoveFromCart(item.id)}
+                              className="rounded-lg border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 hover:border-red-300"
+                            >
+                              <Trash className="h-3.5 w-3.5 mr-1 inline" />
+                              Remove
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
         </Dialog>
