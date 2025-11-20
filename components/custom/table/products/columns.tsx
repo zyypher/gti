@@ -137,7 +137,7 @@ export const columns = (
                         ['yes', 'true', '1'].includes(raw.trim().toLowerCase()))
 
                 return (
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-start">
                         {isFsp ? 'Yes' : 'No'}
                     </div>
                 )
