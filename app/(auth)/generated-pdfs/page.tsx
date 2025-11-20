@@ -252,7 +252,7 @@ export default function GeneratedPDFs() {
                         <div className="flex items-center gap-2">
                             <Input
                                 className="w-[240px] rounded-xl border-white/40 bg-white/70 text-black placeholder:text-black placeholder:opacity-100"
-                                placeholder="Filter by product…"
+                                placeholder="Search by Products"
                                 value={productQuery}
                                 onChange={onProductChange}
                             />
