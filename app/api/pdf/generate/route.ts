@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { PDFDocument, rgb } from 'pdf-lib'
 import { prisma } from '@/lib/prisma'
+import fs from 'fs/promises'
+import path from 'path'
+import fontkit from '@pdf-lib/fontkit'
+
+export const runtime = 'nodejs'
 
 type ProductWithPDF = { id: string; pdfUrl: string }
 type AdditionalPage = { id: string; position: number }
@@ -25,6 +30,41 @@ type ClientInfo = {
     primaryNumber: string | null
 } | null
 
+// ---------------- Gotham font helpers ----------------
+
+const GOTHAM_MEDIUM_PATH = path.join(
+    process.cwd(),
+    'public',
+    'fonts',
+    'Gotham-Medium.otf',
+)
+
+const GOTHAM_LIGHT_PATH = path.join(
+    process.cwd(),
+    'public',
+    'fonts',
+    'Gotham-ExtraLight.otf',
+)
+
+let gothamMediumCache: Uint8Array | null = null
+let gothamLightCache: Uint8Array | null = null
+
+async function getGothamMediumBytes(): Promise<Uint8Array> {
+    if (!gothamMediumCache) {
+        const buf = await fs.readFile(GOTHAM_MEDIUM_PATH)
+        gothamMediumCache = new Uint8Array(buf)
+    }
+    return gothamMediumCache
+}
+
+async function getGothamLightBytes(): Promise<Uint8Array> {
+    if (!gothamLightCache) {
+        const buf = await fs.readFile(GOTHAM_LIGHT_PATH)
+        gothamLightCache = new Uint8Array(buf)
+    }
+    return gothamLightCache
+}
+
 /** Fetch a PDF by URL and append all its pages into pdfDoc */
 async function addPdfToDocument(pdfDoc: PDFDocument, pdfUrl: string): Promise<void> {
     try {
@@ -44,89 +84,121 @@ const buildName = (first?: string | null, last?: string | null) => {
     return parts.join(' ').trim()
 }
 
+// ---------------- overlay front page ----------------
+
+type SimpleClient = {
+    firstName: string | null
+    lastName: string | null
+    company?: string | null
+} | null
+
 /**
- * Draw:
- *   Created by: <user name>
- *   Created for: <client name>
- *
- * Labels ("Created by:", "Created for:") are bold, values normal.
- * Columns are vertically aligned and the whole block is right-aligned
- * with some padding from the right edge.
+ * Draw front-page meta:
+ *   No. 0250001
+ *   Created for: ...
+ *   Created by: ...
+ *   Date: DD/MM/YYYY
  */
 async function overlayClientPanelOnFirstPage(
     pdfBytes: ArrayBuffer,
-    client?: { firstName: string | null; lastName: string | null } | null,
-    createdBy?: { firstName: string | null; lastName: string | null } | null
+    client?: SimpleClient,
+    createdBy?: { firstName: string | null; lastName: string | null } | null,
+    opts?: {
+        proposalNumber?: string
+        createdDate?: Date
+    },
 ): Promise<Uint8Array> {
     const donor = await PDFDocument.load(pdfBytes)
+    donor.registerFontkit(fontkit)
 
-    const font = await donor.embedFont(StandardFonts.Helvetica)
-    const fontBold = await donor.embedFont(StandardFonts.HelveticaBold)
+    const [gothamMediumBytes, gothamLightBytes] = await Promise.all([
+        getGothamMediumBytes(),
+        getGothamLightBytes(),
+    ])
+
+    const gothamMedium = await donor.embedFont(gothamMediumBytes)
+    const gothamLight = await donor.embedFont(gothamLightBytes)
 
     const page = donor.getPages()[0]
-    const { width } = page.getSize()
+    const { width, height } = page.getSize()
 
     const fullCreator = buildName(createdBy?.firstName, createdBy?.lastName)
     const fullClient = buildName(client?.firstName, client?.lastName)
 
-    // Nothing to draw → just return original
-    if (!fullCreator && !fullClient) {
-        return donor.save()
+    const proposalNumberLabel = opts?.proposalNumber
+        ? `No. ${opts.proposalNumber.toString().padStart(6, '0')}`
+        : ''
+
+    const createdDate = opts?.createdDate ?? new Date()
+    const dateText = [
+        createdDate.getDate().toString().padStart(2, '0'),
+        (createdDate.getMonth() + 1).toString().padStart(2, '0'),
+        createdDate.getFullYear(),
+    ].join('/')
+
+    // Black box geometry
+    const BLACK_BOX_LEFT = width * 0.10
+    const BLACK_BOX_RIGHT = width * 0.90
+    const BLACK_BOX_TOP = height * 0.72
+    const BLACK_BOX_BOTTOM = height * 0.13
+
+    // === NEW: Shift right by 100px ===
+    const rightShift = 70
+
+    const leftPadding = BLACK_BOX_LEFT + 38 + rightShift
+
+    const headingBottomY = BLACK_BOX_TOP - 180
+
+    // ---------------- PROPOSAL NUMBER (100px right) ----------------
+    if (proposalNumberLabel) {
+        const proposalFontSize = 22
+        const proposalY = headingBottomY - 52
+
+        page.drawText(proposalNumberLabel, {
+            x: leftPadding,
+            y: proposalY,
+            size: proposalFontSize,
+            font: gothamMedium,
+            color: rgb(1, 1, 1),
+        })
     }
 
-    // Build rows explicitly so we can align label/value columns
-    const rows: { label: string; value: string }[] = []
-    if (fullCreator) rows.push({ label: 'Created by:', value: fullCreator })
-    if (fullClient) rows.push({ label: 'Created for:', value: fullClient })
-
-    const fontSizeLabel = 12
-    const fontSizeValue = 12
-    const paddingRight = 60 // distance from right edge
+    // ---------------- META BLOCK (100px right + 100px up) ----------------
+    const metaFontSize = 12
     const lineHeight = 18
-    const gap = 10 // space between label and value columns
 
-    // Measure max label width and total width for right-alignment
-    let maxLabelWidth = 0
-    let maxTotalWidth = 0
+    const metaStartX = BLACK_BOX_LEFT + 38 + rightShift
+    const metaStartY = BLACK_BOX_BOTTOM + 28 + 100  // +100px up
 
-    rows.forEach(({ label, value }) => {
-        const labelWidth = fontBold.widthOfTextAtSize(label, fontSizeLabel)
-        const valueWidth = font.widthOfTextAtSize(value, fontSizeValue)
-        const totalWidth = labelWidth + gap + valueWidth
+    const metaLines: string[] = []
 
-        if (labelWidth > maxLabelWidth) maxLabelWidth = labelWidth
-        if (totalWidth > maxTotalWidth) maxTotalWidth = totalWidth
-    })
+    if (fullClient) {
+        const companySuffix = client?.company ? ` / ${client.company}` : ''
+        metaLines.push(`Created for: ${fullClient}${companySuffix}`)
+    }
+    if (fullCreator) {
+        metaLines.push(`Created by: ${fullCreator} / GTI`)
+    }
+    metaLines.push(`Date: ${dateText}`)
 
-    // Right-align whole block
-    const xLabel = width - paddingRight - maxTotalWidth
-    const xValue = xLabel + maxLabelWidth + gap
-    let y = 90 // vertical position from bottom
-
-    rows.forEach(({ label, value }) => {
-        // label (bold)
-        page.drawText(label, {
-            x: xLabel,
+    let y = metaStartY
+    for (const line of metaLines) {
+        page.drawText(line, {
+            x: metaStartX,
             y,
-            size: fontSizeLabel,
-            font: fontBold,
-            color: rgb(0, 0, 0),
+            size: metaFontSize,
+            font: gothamLight,
+            color: rgb(1, 1, 1),
         })
-
-        // value (normal) – guaranteed space between colon and value via `gap`
-        page.drawText(value, {
-            x: xValue,
-            y,
-            size: fontSizeValue,
-            font,
-            color: rgb(0, 0, 0),
-        })
-
         y -= lineHeight
-    })
+    }
 
     return donor.save()
 }
+
+
+
+// ---------------- route handler ----------------
 
 export async function POST(req: Request) {
     let payload: GeneratePayload
@@ -136,15 +208,28 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
     }
 
-    const { frontCorporateId, backCorporateId, productIds, additionalPages, clientId } = payload
+    const { frontCorporateId, backCorporateId, productIds, additionalPages, clientId } =
+        payload
     if (!frontCorporateId || !backCorporateId) {
         return NextResponse.json(
             { error: 'frontCorporateId and backCorporateId are required' },
-            { status: 400 }
+            { status: 400 },
         )
     }
 
     try {
+        // Get next proposal number
+        const lastWithNumber = await prisma.sharedPDF.findFirst({
+            where: { proposalNumber: { not: null } },
+            orderBy: { proposalNumber: 'desc' },
+            select: { proposalNumber: true },
+        })
+
+        let proposalNumber = 25001
+        if (lastWithNumber?.proposalNumber && lastWithNumber.proposalNumber >= 25001) {
+            proposalNumber = lastWithNumber.proposalNumber + 1
+        }
+
         // current user (for "Created by")
         let creator: CreatorUser = null
         try {
@@ -190,28 +275,38 @@ export async function POST(req: Request) {
         if (!front?.filePath) {
             return NextResponse.json({ error: 'Front corporate info missing' }, { status: 400 })
         }
-        const frontUrl = front.filePath as string
-        const frontRes = await fetch(frontUrl)
+        const frontRes = await fetch(front.filePath as string)
         if (!frontRes.ok) {
-            return NextResponse.json({ error: 'Cannot fetch corporate front PDF' }, { status: 400 })
+            return NextResponse.json(
+                { error: 'Cannot fetch corporate front PDF' },
+                { status: 400 },
+            )
         }
         const frontBytes = await frontRes.arrayBuffer()
 
-        // simplify client object to only first/last name for overlay
-        const simpleClient = client
-            ? { firstName: client.firstName, lastName: client.lastName }
+        const simpleClient: SimpleClient = client
+            ? {
+                firstName: client.firstName,
+                lastName: client.lastName,
+                company: client.company,
+            }
             : null
 
         const frontWithOverlay = await overlayClientPanelOnFirstPage(
             frontBytes,
             simpleClient,
-            creator ?? undefined
+            creator ?? null,
+            {
+                proposalNumber: proposalNumber.toString(),
+                createdDate: new Date(),
+            },
         )
+
         const donorFront = await PDFDocument.load(frontWithOverlay)
         const frontPages = await main.copyPages(donorFront, donorFront.getPageIndices())
         frontPages.forEach((p) => main.addPage(p))
 
-        // Build queue (positions unchanged)
+        // Build queue for products + additional pages
         const products = await prisma.product.findMany({
             where: { id: { in: productIds } },
             select: { id: true, pdfUrl: true },
@@ -226,8 +321,9 @@ export async function POST(req: Request) {
             where: { id: { in: addlIds } },
             select: { id: true, filePath: true },
         })
+
         const addlById = new Map(
-            addl.filter((x) => x.filePath).map((x) => [x.id, x.filePath as string])
+            addl.filter((x) => x.filePath).map((x) => [x.id, x.filePath as string]),
         )
 
         type QueueItem = { position: number; url: string; kind: 'extra' | 'product' }
@@ -243,7 +339,11 @@ export async function POST(req: Request) {
         })
 
         queue.sort((a, b) =>
-            a.position === b.position ? (a.kind === 'extra' ? -1 : 1) : a.position - b.position
+            a.position === b.position
+                ? a.kind === 'extra'
+                    ? -1
+                    : 1
+                : a.position - b.position,
         )
 
         for (const item of queue) {
@@ -258,12 +358,13 @@ export async function POST(req: Request) {
         if (!back?.filePath) {
             return NextResponse.json({ error: 'Back corporate info missing' }, { status: 400 })
         }
-        const backUrl = back.filePath as string
-        await addPdfToDocument(main, backUrl)
+        await addPdfToDocument(main, back.filePath as string)
 
         const merged = await main.save()
-        const pdfUrl = `data:application/pdf;base64,${Buffer.from(merged).toString('base64')}`
-        return NextResponse.json({ url: pdfUrl })
+        const base64 = Buffer.from(merged).toString('base64')
+        const pdfUrl = `data:application/pdf;base64,${base64}`
+
+        return NextResponse.json({ url: pdfUrl, proposalNumber })
     } catch (e) {
         console.error('Failed to generate PDF:', e)
         return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 })
