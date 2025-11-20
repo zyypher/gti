@@ -147,13 +147,13 @@ const Header = () => {
                             </PopoverTrigger>
                             <PopoverContent
                                 sideOffset={12}
-                                className="mr-4 w-full max-w-80 divide-y divide-gray-200 p-0"
+                                className="mr-4 flex w-full max-w-80 max-h-[60vh] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white p-0 shadow-lg"
                                 onOpenAutoFocus={markNotificationsAsRead}
                             >
-                                <div className="rounded-t-lg bg-gray-50 p-3 text-black">
+                                <div className="bg-gray-50 p-3 text-black">
                                     <h2 className="font-semibold leading-5">Notifications</h2>
                                 </div>
-                                <div className="p-4">
+                                <div className="flex-1 overflow-y-auto p-4">
                                     {loadingNotifications ? (
                                         <Skeleton className="h-10 w-full rounded-md" />
                                     ) : notifications.length === 0 ? (
@@ -166,7 +166,8 @@ const Header = () => {
                                             {notifications.map(n => (
                                                 <li
                                                     key={n.id}
-                                                    className={`rounded p-2 ${n.isRead ? 'bg-gray-100' : 'bg-white'}`}
+                                                    className={`rounded p-2 ${n.isRead ? 'bg-gray-100' : 'bg-white'
+                                                        }`}
                                                 >
                                                     <p className="text-sm text-gray-800">{n.message}</p>
                                                     <p className="text-xs text-gray-500">
@@ -202,13 +203,20 @@ const Header = () => {
                                             </>
                                         ) : (
                                             <>
-                                                <h5 className="line-clamp-1 text-[10px]/3 font-semibold">Welcome back 👋</h5>
-                                                <h2 className="line-clamp-1 text-xs font-bold text-black">{displayName}</h2>
+                                                <h5 className="line-clamp-1 text-[10px]/3 font-semibold">
+                                                    Welcome back 👋
+                                                </h5>
+                                                <h2 className="line-clamp-1 text-xs font-bold text-black">
+                                                    {displayName}
+                                                </h2>
                                             </>
                                         )}
                                     </div>
 
-                                    <button type="button" className="-ml-1 mt-auto text-black transition group-hover:opacity-70">
+                                    <button
+                                        type="button"
+                                        className="-ml-1 mt-auto text-black transition group-hover:opacity-70"
+                                    >
                                         <ChevronDown className="h-4 w-4 shrink-0 duration-300" />
                                     </button>
                                 </div>
@@ -226,7 +234,11 @@ const Header = () => {
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem className="p-0">
-                                    <Link href="/login" onClick={handleLogout} className="flex items-center gap-1.5 rounded-lg px-3 py-2">
+                                    <Link
+                                        href="/login"
+                                        onClick={handleLogout}
+                                        className="flex items-center gap-1.5 rounded-lg px-3 py-2"
+                                    >
                                         <LogOut className="size-[18px] shrink-0" />
                                         Sign out
                                     </Link>
