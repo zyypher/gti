@@ -762,6 +762,12 @@ const Products = () => {
     // filters clear, cart stays
   }
 
+  const handleRemoveAll = () => {
+    setCartItems([])          // empty cart list
+    setSelectedRows([])       // unselect all icons
+    window.localStorage.removeItem(CART_KEY)  // clear saved cart
+  }
+
   const addAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
     if (!id) return
     if (type === 'advert') {
@@ -1895,8 +1901,6 @@ const Products = () => {
           </div>
         </Dialog>
 
-        {/* 🛒 Cart preview dialog */}
-
         {/* 🛒 Cart preview dialog - Full Table View */}
         <Dialog
           isOpen={isCartDialogOpen}
@@ -1911,124 +1915,136 @@ const Products = () => {
                 <p className="text-sm text-zinc-600">No products in cart yet.</p>
               </div>
             ) : (
-              <div className="w-full overflow-hidden rounded-lg bg-white shadow-sm">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="h-8 bg-zinc-50">
-                      <TableHead className="px-3 py-1 text-xs font-medium">Brand</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Product Name</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Image</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Stick Format</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Tar (mg)</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Nicotine (mg)</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">CO (mg)</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Flavour</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium text-center">FSP</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Pack Format</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Color</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Capsules</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {cartItems.map((item) => {
-                      const isFsp =
-                        item.fsp === true ||
-                        item.fsp === 1 ||
-                        (typeof item.fsp === 'string' &&
-                          ['yes', 'true', '1'].includes(item.fsp.trim().toLowerCase()))
+              <>
+                <div className="flex justify-end mb-3">
+                  <Button
+                    // variant="destructive"
+                    className="rounded-lg px-4 py-2 text-sm"
+                    onClick={handleRemoveAll}
+                  >
+                    <Trash className="h-4 w-4 mr-1" />
+                    Remove All
+                  </Button>
+                </div>
+                <div className="w-full overflow-hidden rounded-lg bg-white shadow-sm">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="h-8 bg-zinc-50">
+                        <TableHead className="px-3 py-1 text-xs font-medium">Brand</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Product Name</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Image</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Stick Format</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Tar (mg)</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Nicotine (mg)</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">CO (mg)</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Flavour</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium text-center">FSP</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Pack Format</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Color</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Capsules</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cartItems.map((item) => {
+                        const isFsp =
+                          item.fsp === true ||
+                          item.fsp === 1 ||
+                          (typeof item.fsp === 'string' &&
+                            ['yes', 'true', '1'].includes(item.fsp.trim().toLowerCase()))
 
-                      return (
-                        <TableRow key={item.id} className="h-9 hover:bg-zinc-50/50">
-                          {/* Brand */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.brand?.name || '-'}
-                          </TableCell>
+                        return (
+                          <TableRow key={item.id} className="h-9 hover:bg-zinc-50/50">
+                            {/* Brand */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.brand?.name || '-'}
+                            </TableCell>
 
-                          {/* Product Name */}
-                          <TableCell className="px-3 py-1 text-xs align-middle font-medium">
-                            {item.name}
-                          </TableCell>
+                            {/* Product Name */}
+                            <TableCell className="px-3 py-1 text-xs align-middle font-medium">
+                              {item.name}
+                            </TableCell>
 
-                          {/* Image */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.image ? (
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="h-12 w-12 rounded object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-200 text-[10px] text-gray-700">
-                                No Image
-                              </div>
-                            )}
-                          </TableCell>
+                            {/* Image */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="h-12 w-12 rounded object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-200 text-[10px] text-gray-700">
+                                  No Image
+                                </div>
+                              )}
+                            </TableCell>
 
-                          {/* Stick Format */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.size || '-'}
-                          </TableCell>
+                            {/* Stick Format */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.size || '-'}
+                            </TableCell>
 
-                          {/* Tar */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.tar || '-'}
-                          </TableCell>
+                            {/* Tar */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.tar || '-'}
+                            </TableCell>
 
-                          {/* Nicotine */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.nicotine || '-'}
-                          </TableCell>
+                            {/* Nicotine */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.nicotine || '-'}
+                            </TableCell>
 
-                          {/* CO */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.co || '-'}
-                          </TableCell>
+                            {/* CO */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.co || '-'}
+                            </TableCell>
 
-                          {/* Flavour */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.flavor || '-'}
-                          </TableCell>
+                            {/* Flavour */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.flavor || '-'}
+                            </TableCell>
 
-                          {/* FSP */}
-                          <TableCell className="px-3 py-1 text-xs align-middle text-center">
-                            {isFsp ? 'Yes' : 'No'}
-                          </TableCell>
+                            {/* FSP */}
+                            <TableCell className="px-3 py-1 text-xs align-middle text-center">
+                              {isFsp ? 'Yes' : 'No'}
+                            </TableCell>
 
-                          {/* Pack Format */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.packetStyle || '-'}
-                          </TableCell>
+                            {/* Pack Format */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.packetStyle || '-'}
+                            </TableCell>
 
-                          {/* Color */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.color || '-'}
-                          </TableCell>
+                            {/* Color */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.color || '-'}
+                            </TableCell>
 
-                          {/* Capsules */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.capsules ?? '-'}
-                          </TableCell>
+                            {/* Capsules */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.capsules ?? '-'}
+                            </TableCell>
 
 
 
-                          {/* Actions */}
-                          <TableCell className="px-3 py-1 text-xs align-middle text-center">
-                            <Button
-                              variant="outline"
-                              size="small"
-                              onClick={() => handleRemoveFromCart(item.id)}
-                              className="rounded-lg border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 hover:border-red-300"
-                            >
-                              <Trash className="h-3.5 w-3.5 mr-1 inline" />
-                              Remove
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                            {/* Actions */}
+                            <TableCell className="px-3 py-1 text-xs align-middle text-center">
+                              <Button
+                                variant="outline"
+                                size="small"
+                                onClick={() => handleRemoveFromCart(item.id)}
+                                className="rounded-lg border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 hover:border-red-300"
+                              >
+                                <Trash className="h-3.5 w-3.5 mr-1 inline" />
+                                Remove
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </div>
         </Dialog>
