@@ -159,7 +159,7 @@ export async function GET(req: Request) {
 // ✅ POST Method: Create a New Shared PDF & Assign Creator & Proposal Number
 export async function POST(req: Request) {
     try {
-        // expiresAt from the body is no longer used – Prisma default handles the column.
+        // expiresAt from the body is no longer used – Prisma still needs *some* value.
         let { productIds, clientId } = await req.json()
 
         const userId = await getUserIdFromToken(req)
@@ -218,7 +218,9 @@ export async function POST(req: Request) {
                 createdById: userId,
                 proposalNumber: nextProposalNumber,
                 ...(clientId && { clientId }),
-                // expiresAt omitted → Prisma uses default(now())
+                // 🔹 REQUIRED: Prisma schema says expiresAt is non-nullable
+                //   We don't use it anymore, so set a dummy value (now).
+                expiresAt: new Date(),
             },
         })
 

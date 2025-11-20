@@ -21,6 +21,20 @@ interface OrderHistoryItem {
     message: string;
 }
 
+interface OrderCreatedBy {
+    firstName: string;
+    lastName: string;
+    email: string | null;
+}
+
+interface OrderClient {
+    firstName: string;
+    lastName: string;
+    email: string | null;
+    phone?: string | null;
+    company?: string | null;
+}
+
 interface Order {
     id: string;
     company: string;
@@ -32,7 +46,10 @@ interface Order {
     status: string;
     createdAt: string;
     history: OrderHistoryItem[];
-    proposalNumber?: number | null; // 🔹 new field from API
+    proposalNumber?: number | null;      // 🔹 from API
+    createdBy?: OrderCreatedBy | null;   // 🔹 GTI staff
+    client?: OrderClient | null;         // 🔹 client info
+    createdDate?: string | null;         // 🔹 proposal creation date (from sharedPdf)
 }
 
 /* ------------------ purely presentational helper (style only) ------------------ */
@@ -199,6 +216,46 @@ export default function OrderDetailPage() {
                                 <p className="text-sm text-zinc-700">{order.email}</p>
                                 <p className="text-sm text-zinc-700">{order.phone}</p>
 
+                                {/* Created By / For */}
+                                <div className="mt-4 space-y-3">
+                                    <div className="p-3 rounded-xl bg-white/60 border border-white/40 backdrop-blur">
+                                        <h4 className="text-sm font-semibold text-zinc-900">
+                                            Created By
+                                        </h4>
+                                        <p className="text-sm text-zinc-700">
+                                            {order.createdBy
+                                                ? `${order.createdBy.firstName} ${order.createdBy.lastName}`
+                                                : "-"}
+                                        </p>
+                                        <p className="text-xs text-zinc-600">
+                                            {order.createdDate
+                                                ? format(new Date(order.createdDate), "dd/MM/yyyy")
+                                                : "-"}
+                                        </p>
+                                    </div>
+
+                                    <div className="p-3 rounded-xl bg-white/60 border border-white/40 backdrop-blur">
+                                        <h4 className="text-sm font-semibold text-zinc-900">
+                                            Client
+                                        </h4>
+                                        <p className="text-sm text-zinc-700">
+                                            {order.client
+                                                ? `${order.client.firstName} ${order.client.lastName}`
+                                                : "-"}
+                                        </p>
+                                        {order.client?.company && (
+                                            <p className="text-xs text-zinc-600">
+                                                {order.client.company}
+                                            </p>
+                                        )}
+                                        {order.client?.phone && (
+                                            <p className="text-xs text-zinc-600">
+                                                {order.client.phone}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
                                 <div className="mt-5">
                                     <h4 className="text-sm font-semibold uppercase tracking-wide text-zinc-900">
                                         Products Ordered
@@ -235,7 +292,8 @@ export default function OrderDetailPage() {
                                                     onChange={(e) =>
                                                         setUpdatedQuantities({
                                                             ...updatedQuantities,
-                                                            [product.id]: parseInt(e.target.value, 10) || 0,
+                                                            [product.id]:
+                                                                parseInt(e.target.value, 10) || 0,
                                                         })
                                                     }
                                                     className="w-24 rounded-xl border border-white/40 bg-white/70 px-2 py-1 text-center text-zinc-900 placeholder:text-zinc-500 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
@@ -303,7 +361,9 @@ export default function OrderDetailPage() {
                                             <div className="rounded-xl border border-white/50 bg-white/90 p-4 shadow-sm">
                                                 <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-zinc-500">
                                                     <Icon className="h-3.5 w-3.5" />
-                                                    <span>{format(new Date(event.createdAt), "PP, p")}</span>
+                                                    <span>
+                                                        {format(new Date(event.createdAt), "PP, p")}
+                                                    </span>
                                                     <span className={`ml-2 rounded-full px-2 py-0.5 ${badge}`}>
                                                         {label}
                                                     </span>

@@ -119,6 +119,8 @@ model Order {
   status     OrderStatus    @default(CREATED)
   history    OrderHistory[]
   createdAt  DateTime       @default(now())
+  clientId   String?
+  client     Client?        @relation(fields: [clientId], references: [id])
 }
 
 model OrderHistory {
@@ -144,8 +146,9 @@ model Client {
   secondaryNumber String?
   country         String
   nickname        String
-  email           String?  // make it optional for now, no unique yet
+  email           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   sharedPDFs      SharedPDF[]
+  orders          Order[]
 }

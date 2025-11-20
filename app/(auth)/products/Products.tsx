@@ -658,6 +658,13 @@ const Products = () => {
       return
     }
 
+    // 🔴 NEW: client is mandatory
+    if (!selectedClient) {
+      setPdfStep(3)
+      toast.error('Please select or add a client before generating the PDF.')
+      return
+    }
+
     setButtonLoading(true)
     try {
       const additionalPages = [
@@ -1636,7 +1643,10 @@ const Products = () => {
                   {/* Client selection */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <SectionTitle>Select Client (Optional)</SectionTitle>
+                      <SectionTitle>
+                        Select Client <span className="text-red-500">*</span>
+                      </SectionTitle>
+
                       <Button
                         variant="outline"
                         onClick={openClientDialog}

@@ -28,22 +28,52 @@ export async function GET(
         // 🔹 Try to find the related SharedPDF by slug
         const sharedPdf = await prisma.sharedPDF.findFirst({
             where: { uniqueSlug: order.slug },
-            select: { proposalNumber: true },
+            select: {
+                proposalNumber: true,
+                createdAt: true,
+                createdBy: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                client: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        primaryNumber: true,
+                        company: true,
+                    },
+                },
+            },
         });
 
         const proposalNumber = sharedPdf?.proposalNumber ?? null;
+
+        // map client → shape we want in JSON (with `phone`)
+        const clientFromPdf = sharedPdf?.client
+            ? {
+                firstName: sharedPdf.client.firstName,
+                lastName: sharedPdf.client.lastName,
+                email: sharedPdf.client.email,
+                phone: sharedPdf.client.primaryNumber,
+                company: sharedPdf.client.company,
+            }
+            : null;
 
         // ✅ Ensure proper JSON parsing & type safety
         let productIds: string[] = [];
         let productQuantities: Record<string, number> = {};
 
         // 🛠 Fix: Ensure productIds is a valid string array
-        if (Array.isArray(order.products) && order.products.every(id => typeof id === "string")) {
+        if (Array.isArray(order.products) && order.products.every((id) => typeof id === "string")) {
             productIds = order.products as string[];
         } else if (typeof order.products === "string") {
             try {
                 const parsedProducts = JSON.parse(order.products as unknown as string);
-                if (Array.isArray(parsedProducts) && parsedProducts.every(id => typeof id === "string")) {
+                if (Array.isArray(parsedProducts) && parsedProducts.every((id) => typeof id === "string")) {
                     productIds = parsedProducts;
                 } else {
                     throw new Error("Invalid format");
@@ -88,7 +118,10 @@ export async function GET(
             ...order,
             products,
             quantities: productQuantities,
-            proposalNumber, // 🔹 include proposal number in API response
+            proposalNumber,                     // 🔹 proposal number in response
+            createdBy: sharedPdf?.createdBy ?? null, // 🔹 GTI staff
+            client: clientFromPdf,              // 🔹 client (with phone)
+            createdDate: sharedPdf?.createdAt ?? null, // 🔹 when proposal was created
         };
 
         return NextResponse.json(formattedOrder);
