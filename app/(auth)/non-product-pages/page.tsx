@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import toast from 'react-hot-toast'
@@ -19,13 +20,36 @@ type NonProductPageItem = {
     id: string
     filePath: string
     title: string
-    type: RawType
+    type: UiType
+    createdAt: string
 }
 
 type FilterType = 'all' | UiType
 
 /** ---- Helpers ---- */
 const normalizeType = (t: RawType): UiType => (t === 'banner' ? 'banner_front' : t)
+
+// priority: which group comes first in "All"
+const TYPE_PRIORITY: Record<UiType, number> = {
+    banner_front: 1,
+    banner_back: 2,
+    advertisement: 3,
+    promotion: 4,
+}
+
+// sort helper: first by type group (above), then by createdAt DESC (latest first)
+const sortNonProductItems = (list: NonProductPageItem[]): NonProductPageItem[] => {
+    return [...list].sort((a, b) => {
+        const pa = TYPE_PRIORITY[a.type]
+        const pb = TYPE_PRIORITY[b.type]
+
+        if (pa !== pb) return pa - pb
+
+        const da = new Date(a.createdAt).getTime()
+        const db = new Date(b.createdAt).getTime()
+        return db - da // latest first
+    })
+}
 
 const labelForType: Record<UiType, string> = {
     banner_front: 'Corporate Info (Front)',
@@ -113,12 +137,21 @@ export default function NonProductPages() {
         setLoading(true)
         try {
             const res = await api.get('/api/non-product-pages')
-            const data: NonProductPageItem[] = (res.data || []).map((row: NonProductPageItem) => ({
-                ...row,
-                type: normalizeType(row.type),
+            const rows: any[] = res.data || []
+
+            // normalize + keep createdAt
+            const data: NonProductPageItem[] = rows.map((row) => ({
+                id: row.id,
+                filePath: row.filePath,
+                title: row.title,
+                type: normalizeType(row.type as RawType),
+                createdAt: row.createdAt,
             }))
-            setItems(data)
-            setFilteredItems(data)
+
+            const sorted = sortNonProductItems(data)
+
+            setItems(sorted)
+            setFilteredItems(sorted)
         } catch {
             toast.error('Failed to load items')
         } finally {
@@ -128,13 +161,15 @@ export default function NonProductPages() {
 
     useEffect(() => {
         fetchItems()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+    // re-filter but keep the global sort order (type group + createdAt desc)
     useEffect(() => {
         if (filter === 'all') {
             setFilteredItems(items)
         } else {
-            setFilteredItems(items.filter((i) => normalizeType(i.type) === filter))
+            setFilteredItems(items.filter((i) => i.type === filter))
         }
     }, [filter, items])
 
@@ -162,6 +197,7 @@ export default function NonProductPages() {
                 toast.success('Item added successfully')
                 setIsDialogOpen(false)
                 setFile(null)
+                // refetch to re-apply ordering
                 fetchItems()
             } else {
                 toast.error('Failed to add item')
@@ -181,6 +217,7 @@ export default function NonProductPages() {
             const res = await api.delete(`/api/non-product-pages?id=${deleteId}`)
             if (res.status === 200) {
                 toast.success('Item deleted successfully')
+                // remove and keep ordering intact
                 setItems((prev) => prev.filter((i) => i.id !== deleteId))
             } else {
                 toast.error('Failed to delete item')
@@ -281,7 +318,7 @@ export default function NonProductPages() {
                 ) : (
                     <div className="mx-auto grid max-w-6xl grid-cols-1 justify-center gap-4 px-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                         {filteredItems.map((item) => {
-                            const t = normalizeType(item.type)
+                            const t = item.type
                             return (
                                 <Glass key={item.id} className="overflow-hidden">
                                     <div
@@ -336,7 +373,7 @@ export default function NonProductPages() {
                 {/* Add Item */}
                 <Dialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} title="Add Item">
                     <div className="space-y-4 p-1">
-                        <Glass className="p-4 space-y-4">
+                        <Glass className="space-y-4 p-4">
                             <Input type="file" accept="application/pdf" onChange={handleFileChange} />
 
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
