@@ -14,6 +14,13 @@ import { Client, columns } from '@/components/custom/table/clients/columns'
 import PhoneInput from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import { countryData } from '@/lib/country-data'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
 
 type FormData = {
     firstName: string
@@ -167,7 +174,9 @@ const ClientsPage = () => {
                     <div className="rounded-2xl border border-zinc-200 bg-white/80 p-4 backdrop-blur">
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-zinc-700">First Name</label>
+                                <label className="text-xs font-semibold text-zinc-700">
+                                    First Name
+                                </label>
                                 <Input
                                     placeholder="First Name"
                                     className="rounded-xl border border-zinc-300 bg-white text-black placeholder:text-black/70 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10"
@@ -179,7 +188,9 @@ const ClientsPage = () => {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-zinc-700">Last Name</label>
+                                <label className="text-xs font-semibold text-zinc-700">
+                                    Last Name
+                                </label>
                                 <Input
                                     placeholder="Last Name"
                                     className="rounded-xl border border-zinc-300 bg-white text-black placeholder:text-black/70 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10"
@@ -191,7 +202,9 @@ const ClientsPage = () => {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-zinc-700">Company</label>
+                                <label className="text-xs font-semibold text-zinc-700">
+                                    Company
+                                </label>
                                 <Input
                                     placeholder="Company"
                                     className="rounded-xl border border-zinc-300 bg-white text-black placeholder:text-black/70 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10"
@@ -203,7 +216,9 @@ const ClientsPage = () => {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-zinc-700">Nickname</label>
+                                <label className="text-xs font-semibold text-zinc-700">
+                                    Nickname
+                                </label>
                                 <Input
                                     placeholder="Nickname"
                                     className="rounded-xl border border-zinc-300 bg-white text-black placeholder:text-black/70 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10"
@@ -213,9 +228,13 @@ const ClientsPage = () => {
                                     <p className="text-sm text-red-500">{errors.nickname.message}</p>
                                 )}
                             </div>
+                        </div>
 
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mt-4">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-zinc-700">Primary Number</label>
+                                <label className="text-xs font-semibold text-zinc-700">
+                                    Primary Number
+                                </label>
                                 <Controller
                                     name="primaryNumber"
                                     control={control}
@@ -229,23 +248,28 @@ const ClientsPage = () => {
                                             onChange={field.onChange}
                                             onCountryChange={(country) => {
                                                 if (country) {
-                                                    const countryInfo = countryData.find((c) => c.code === country)
+                                                    const countryInfo = countryData.find(
+                                                        (c) => c.code === country,
+                                                    )
                                                     if (countryInfo) setValue('country', countryInfo.name)
                                                 }
                                             }}
                                             inputComponent={Input as any}
-                                            /* visual polish */
                                             className="rounded-xl"
                                         />
                                     )}
                                 />
                                 {errors.primaryNumber && (
-                                    <p className="text-sm text-red-500">{errors.primaryNumber.message}</p>
+                                    <p className="text-sm text-red-500">
+                                        {errors.primaryNumber.message}
+                                    </p>
                                 )}
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-zinc-700">Secondary Number (Optional)</label>
+                                <label className="text-xs font-semibold text-zinc-700">
+                                    Secondary Number (Optional)
+                                </label>
                                 <Controller
                                     name="secondaryNumber"
                                     control={control}
@@ -261,7 +285,47 @@ const ClientsPage = () => {
                                         />
                                     )}
                                 />
+                                {errors.secondaryNumber && (
+                                    <p className="text-sm text-red-500">
+                                        {errors.secondaryNumber.message}
+                                    </p>
+                                )}
                             </div>
+                        </div>
+
+                        {/* Country selector */}
+                        <div className="mt-4">
+                            <Controller
+                                control={control}
+                                name="country"
+                                render={({ field }) => (
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-zinc-700">
+                                            Country
+                                        </label>
+                                        <Select
+                                            value={field.value || 'United Arab Emirates'}
+                                            onValueChange={field.onChange}
+                                        >
+                                            <SelectTrigger className="w-full rounded-xl border-zinc-300 text-sm">
+                                                <SelectValue placeholder="Select country" />
+                                            </SelectTrigger>
+                                            <SelectContent className="z-[9999] max-h-60 overflow-y-auto rounded-xl bg-white shadow-lg">
+                                                {countryData.map((c) => (
+                                                    <SelectItem key={c.name} value={c.name}>
+                                                        {c.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {errors.country && (
+                                            <p className="mt-1 text-xs text-red-500">
+                                                {errors.country.message}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            />
                         </div>
                     </div>
 
@@ -297,7 +361,11 @@ const ClientsPage = () => {
                         Are you sure you want to delete this client? This action cannot be undone.
                     </p>
                     <div className="flex justify-end gap-3">
-                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="rounded-xl">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsDeleteDialogOpen(false)}
+                            className="rounded-xl"
+                        >
                             Cancel
                         </Button>
                         <Button
