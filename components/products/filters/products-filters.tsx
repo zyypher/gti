@@ -174,7 +174,7 @@ export default function ProductsFilters({
     }
   }
 
-  // Fire the name search only when button is clicked
+  // Fire the name search only when button is clicked / Enter pressed
   const applyNameSearch = () => {
     const trimmed = nameInput.trim()
     const updated = { ...filters }
@@ -303,6 +303,12 @@ export default function ProductsFilters({
               value={nameInput}
               onChange={(value) => handleChangeText('name', value)}
               iconLeft={<Search className="h-4 w-4" />}
+              onKeyDown={(event: any) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  applyNameSearch()
+                }
+              }}
             />
           </div>
           <Button
