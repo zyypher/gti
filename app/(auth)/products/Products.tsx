@@ -166,6 +166,92 @@ const EMPTY_DEFAULTS: ProductFormValues = {
   color: '',
 }
 
+/* ---------- PDF preview & card helpers (TOP-LEVEL) ---------- */
+
+// clean preview, remove browser blue outline
+const PdfPreview = ({
+  src,
+  className,
+  stopClickPropagation = false, // still used in edit dialog
+  disableInteractions = false, // when true, PDF won't capture scroll/click
+}: {
+  src?: string
+  className?: string
+  stopClickPropagation?: boolean
+  disableInteractions?: boolean
+}) => {
+  if (!src) return null
+  const url = `${src}${src.includes('#') ? '' : '#'}toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
+
+  // For tiles: render PDF with pointer-events: none so the button click works
+  if (disableInteractions) {
+    const wrapperClass =
+      className ??
+      'w-full aspect-square rounded-xl border border-zinc-200 bg-zinc-50 overflow-hidden relative'
+
+    return (
+      <div className={wrapperClass} style={{ outline: 'none' }}>
+        <embed
+          src={url}
+          type="application/pdf"
+          className="h-full w-full"
+          style={{ pointerEvents: 'none', border: 'none' }}
+        />
+      </div>
+    )
+  }
+
+  // For edit dialog etc. – keep interactive behaviour
+  return (
+    <embed
+      src={url}
+      type="application/pdf"
+      onClick={stopClickPropagation ? (e) => e.stopPropagation() : undefined}
+      className={
+        className ??
+        'w-full aspect-square rounded-xl border border-zinc-200 bg-zinc-50 overflow-hidden'
+      }
+      style={{ outline: 'none' }}
+    />
+  )
+}
+
+// Single card for corporate/adverts/promotions
+const PdfChoiceCard = React.memo(
+  ({
+    item,
+    isSelected,
+    onClick,
+  }: {
+    item: INonProductPageItem
+    isSelected: boolean
+    onClick: () => void
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-3 text-left shadow-sm transition-all',
+        'hover:-translate-y-[1px] hover:shadow-md',
+        isSelected
+          ? 'border-zinc-900 ring-2 ring-zinc-900/60'
+          : 'border-zinc-200 hover:border-zinc-400',
+      ].join(' ')}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="line-clamp-2 text-xs font-semibold tracking-tight text-zinc-900">
+          {item.title}
+        </p>
+      </div>
+
+      {/* whole PDF is now static thumbnail; click handled by parent button */}
+      <PdfPreview src={item.filePath} disableInteractions />
+    </button>
+  ),
+  (prev, next) =>
+    prev.item.id === next.item.id && prev.isSelected === next.isSelected,
+)
+
 /* ===================== PAGE ===================== */
 const Products = () => {
   const [products, setProducts] = useState<ITable[]>([])
@@ -510,18 +596,18 @@ const Products = () => {
   // 🔹 Toggle product in cart (add on first click, remove on second)
   const handleAddToCart = (product: ITable) => {
     // Toggle in selectedRows
-    setSelectedRows(prev =>
+    setSelectedRows((prev) =>
       prev.includes(product.id)
-        ? prev.filter(id => id !== product.id)
+        ? prev.filter((id) => id !== product.id)
         : [...prev, product.id],
     )
 
     // Toggle in cartItems
-    setCartItems(prev => {
-      const exists = prev.some(p => p.id === product.id)
+    setCartItems((prev) => {
+      const exists = prev.some((p) => p.id === product.id)
       if (exists) {
         // remove from cart
-        return prev.filter(p => p.id !== product.id)
+        return prev.filter((p) => p.id !== product.id)
       }
       // add to cart
       return [...prev, product]
@@ -534,7 +620,7 @@ const Products = () => {
     setCartItems((prev) => prev.filter((p) => p.id !== id))
   }
 
-  // merge base text products + media and hide cart items from table
+  // merge base text products + media
   const tableData: ITable[] = useMemo(
     () =>
       products.map((p) => {
@@ -547,7 +633,6 @@ const Products = () => {
       }),
     [products, mediaMap],
   )
-
 
   const _columns = useMemo(
     () =>
@@ -567,13 +652,6 @@ const Products = () => {
       toast.error('Please select both Corporate Info (Front and Back) before generating the PDF.')
       setPdfStep(1)
       toast.error('Please select both Corporate Info (Front and Back) before generating the PDF.')
-      return
-    }
-
-    if (selectedAdverts.length === 0 || selectedPromotions.length === 0) {
-      toast.error('Please select at least one Advert and one Promotion before generating the PDF.')
-      setPdfStep(2)
-      toast.error('Please select at least one Advert and one Promotion before generating the PDF.')
       return
     }
 
@@ -599,8 +677,7 @@ const Products = () => {
 
         const selectedClientObj = clients.find((c) => c.id === selectedClient)
         const rawClientName = selectedClientObj
-          ? `${selectedClientObj.firstName ?? ''} ${selectedClientObj.lastName ?? ''
-            }`.trim()
+          ? `${selectedClientObj.firstName ?? ''} ${selectedClientObj.lastName ?? ''}`.trim()
           : ''
 
         const clientNameForFile = rawClientName
@@ -838,71 +915,6 @@ const Products = () => {
 
   const tableLoading = loading
 
-  /* ---------- PDF preview & card helpers ---------- */
-
-  // clean preview, remove browser blue outline
-  const PdfPreview = ({
-    src,
-    className,
-    stopClickPropagation = false,
-  }: {
-    src?: string
-    className?: string
-    stopClickPropagation?: boolean
-  }) => {
-    if (!src) return null
-    const url = `${src}${src.includes('#') ? '' : '#'
-      }toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
-
-    return (
-      <embed
-        src={url}
-        type="application/pdf"
-        onClick={stopClickPropagation ? (e) => e.stopPropagation() : undefined}
-        className={
-          className ??
-          'h-56 w-full rounded-xl border border-zinc-200 bg-zinc-50 overflow-hidden'
-        }
-        style={{ outline: 'none' }}
-      />
-    )
-  }
-
-  // Single card for corporate/adverts/promotions
-  const PdfChoiceCard = ({
-    item,
-    isSelected,
-    onClick,
-  }: {
-    item: INonProductPageItem
-    isSelected: boolean
-    onClick: () => void
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        'relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-3 text-left shadow-sm transition-all',
-        'hover:-translate-y-[1px] hover:shadow-md',
-        isSelected
-          ? 'border-zinc-900 ring-2 ring-zinc-900/60'   // ⬅️ STRONG, DARK BORDER WHEN SELECTED
-          : 'border-zinc-200 hover:border-zinc-400',
-      ].join(' ')}
-    >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="line-clamp-2 text-xs font-semibold tracking-tight text-zinc-900">
-          {item.title}
-        </p>
-      </div>
-
-      <PdfPreview
-        src={item.filePath}
-        className="h-56 w-full rounded-xl border border-zinc-200 bg-zinc-50"
-        stopClickPropagation
-      />
-    </button>
-  )
-
   const openPdfDialog = async () => {
     setIsPdfDialogOpen(true)
     setPdfStep(1)
@@ -926,24 +938,17 @@ const Products = () => {
     if (pdfStep === 2) {
       const hasAdvert = selectedAdverts.length > 0
       const hasPromo = selectedPromotions.length > 0
-      if (!hasAdvert || !hasPromo) {
-        toast.error(
-          'Please select at least one Advert and one Promotion before continuing.',
-        )
-        return
-      }
+      // if (!hasAdvert || !hasPromo) {
+      //   toast.error(
+      //     'Please select at least one Advert and one Promotion before continuing.',
+      //   )
+      //   return
+      // }
     }
 
     setPdfStepError(null)
     setPdfStep((s) => s + 1)
   }
-
-  const renderPdfCardSkeleton = () => (
-    <div className="rounded-2xl border border-zinc-200/80 bg-white/60 p-3 shadow-sm">
-      <div className="mb-2 h-4 w-2/3 rounded-full bg-zinc-200/70" />
-      <Skeleton className="h-56 w-full rounded-xl" />
-    </div>
-  )
 
   /* ----------------------- JSX ----------------------- */
 
@@ -1353,7 +1358,7 @@ const Products = () => {
             }`}
         >
           <div className="flex max-h-[85vh] flex-col rounded-2xl bg-gradient-to-b from-white to-zinc-50/80">
-            {/* --- STEP PILLS (all white, black text/tick, subtle borders) --- */}
+            {/* --- STEP PILLS --- */}
             <div className="flex items-center justify-center gap-3 border-b border-white/60 px-4 py-3">
               {[
                 { step: 1, label: 'Corporate Info' },
@@ -1414,7 +1419,7 @@ const Products = () => {
                               className="rounded-2xl border border-zinc-200/80 bg-white/60 p-3 shadow-sm"
                             >
                               <div className="mb-2 h-4 w-2/3 rounded-full bg-zinc-200/70" />
-                              <Skeleton className="h-56 w-full rounded-xl" />
+                              <Skeleton className="w-full aspect-square rounded-xl" />
                             </div>
                           ))}
                         </div>
@@ -1463,7 +1468,8 @@ const Products = () => {
                               className="rounded-2xl border border-zinc-200/80 bg-white/60 p-3 shadow-sm"
                             >
                               <div className="mb-2 h-4 w-2/3 rounded-full bg-zinc-200/70" />
-                              <Skeleton className="h-56 w-full rounded-xl" />
+                              {/* BACK skeletons */}
+                              <Skeleton className="w-full aspect-square rounded-xl" />
                             </div>
                           ))}
                         </div>
@@ -1502,9 +1508,7 @@ const Products = () => {
                   {/* Adverts */}
                   <div>
                     <div className="mb-2 flex items-center justify-between">
-                      <SectionTitle>
-                        Adverts <span className="text-red-500">*</span>
-                      </SectionTitle>
+                      <SectionTitle>Adverts</SectionTitle>
                       <p className="text-xs text-zinc-500">
                         Tap cards to select / unselect
                       </p>
@@ -1537,9 +1541,7 @@ const Products = () => {
                   {/* Promotions */}
                   <div>
                     <div className="mb-2 flex items-center justify-between">
-                      <SectionTitle>
-                        Promotions <span className="text-red-500">*</span>
-                      </SectionTitle>
+                      <SectionTitle>Promotions</SectionTitle>
                       <p className="text-xs text-zinc-500">
                         Tap cards to select / unselect
                       </p>
@@ -1571,7 +1573,7 @@ const Products = () => {
                 </GlassPanel>
               )}
 
-              {/* STEP 3 – unchanged from your last version */}
+              {/* STEP 3 – unchanged */}
               {pdfStep === 3 && (
                 <GlassPanel className="space-y-4 p-4">
                   <div className="rounded-xl border border-zinc-200/60 bg-gradient-to-br from-white via-zinc-50 to-zinc-100 p-3 shadow-sm">
@@ -1918,7 +1920,6 @@ const Products = () => {
               <>
                 <div className="flex justify-end mb-3">
                   <Button
-                    // variant="destructive"
                     className="rounded-lg px-4 py-2 text-sm"
                     onClick={handleRemoveAll}
                   >
@@ -2023,8 +2024,6 @@ const Products = () => {
                             <TableCell className="px-3 py-1 text-xs align-middle">
                               {item.capsules ?? '-'}
                             </TableCell>
-
-
 
                             {/* Actions */}
                             <TableCell className="px-3 py-1 text-xs align-middle text-center">
