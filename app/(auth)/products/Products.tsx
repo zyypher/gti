@@ -507,14 +507,25 @@ const Products = () => {
     setIsDeleteDialogOpen(true)
   }
 
-  // 🔹 Add product to cart
+  // 🔹 Toggle product in cart (add on first click, remove on second)
   const handleAddToCart = (product: ITable) => {
-    setSelectedRows((prev) =>
-      prev.includes(product.id) ? prev : [...prev, product.id],
+    // Toggle in selectedRows
+    setSelectedRows(prev =>
+      prev.includes(product.id)
+        ? prev.filter(id => id !== product.id)
+        : [...prev, product.id],
     )
-    setCartItems((prev) =>
-      prev.some((p) => p.id === product.id) ? prev : [...prev, product],
-    )
+
+    // Toggle in cartItems
+    setCartItems(prev => {
+      const exists = prev.some(p => p.id === product.id)
+      if (exists) {
+        // remove from cart
+        return prev.filter(p => p.id !== product.id)
+      }
+      // add to cart
+      return [...prev, product]
+    })
   }
 
   // 🔹 Remove from cart
@@ -1998,7 +2009,7 @@ const Products = () => {
                             {item.capsules ?? '-'}
                           </TableCell>
 
-                         
+
 
                           {/* Actions */}
                           <TableCell className="px-3 py-1 text-xs align-middle text-center">
