@@ -18,13 +18,13 @@ type SharedPdfRow = {
         id: string
         firstName: string
         lastName: string
-        email: string | null   // 👈 allow null here
+        email: string | null
     } | null
 }
 
 const BASE_PROPOSAL_NUMBER = 25001
 
-// ✅ Get userId from JWT cookie
+// ✅ Middleware to Extract User ID (Example - Adjust for Auth System)
 async function getUserIdFromToken(req: Request): Promise<string | null> {
     try {
         const token = cookies().get('token')?.value
@@ -45,8 +45,7 @@ async function getUserIdFromToken(req: Request): Promise<string | null> {
             return null
         }
 
-        const userId =
-            (payload as any).userId || (payload as any).id || (payload as any).sub
+        const userId = (payload as any).userId || (payload as any).id || (payload as any).sub
 
         if (!userId) {
             console.error('🚨 No userId found in payload:', payload)
@@ -61,16 +60,18 @@ async function getUserIdFromToken(req: Request): Promise<string | null> {
     }
 }
 
-// ✅ GET: list shared PDFs
+// ✅ GET Method: Fetch PDFs (you can later restrict by user if needed)
 export async function GET(req: Request) {
     try {
         const url = new URL(req.url)
 
+        // Filters
         const dateStr = url.searchParams.get('date') // yyyy-MM-dd
         const clientId = url.searchParams.get('clientId') || undefined
         const productId = url.searchParams.get('productId') || undefined
-        const productName = url.searchParams.get('product') || undefined
+        const productName = url.searchParams.get('product') || undefined // free-text product name
 
+        // Base where (can be extended safely)
         const where: any = {}
         if (clientId) where.clientId = clientId
         if (dateStr) {
@@ -78,23 +79,20 @@ export async function GET(req: Request) {
             where.createdAt = { gte: startOfDay(d), lte: endOfDay(d) }
         }
 
+        // Pull PDFs (without products first)
         const rows: SharedPdfRow[] = await prisma.sharedPDF.findMany({
             where,
             orderBy: { createdAt: 'desc' },
             include: {
                 client: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true,
-                        email: true,
-                    },
+                    select: { id: true, firstName: true, lastName: true, email: true },
                 },
             },
         })
 
         if (!rows.length) return NextResponse.json([])
 
+        // Parse all product ids used across these PDFs and fetch them once
         const allIds = new Set<string>()
         const parsedIdsByPdf = new Map<string, string[]>()
 
@@ -115,6 +113,7 @@ export async function GET(req: Request) {
         })
         const productMap = new Map(allProducts.map((p) => [p.id, p]))
 
+        // Optional product filtering
         const matchesProduct = (ids: string[]) => {
             if (productId) return ids.includes(productId)
 
@@ -129,6 +128,7 @@ export async function GET(req: Request) {
             return true
         }
 
+        // Build final response with products attached and product filter applied
         const result = rows
             .filter((r) => matchesProduct(parsedIdsByPdf.get(r.id) ?? []))
             .map((r) => {
@@ -142,11 +142,7 @@ export async function GET(req: Request) {
                     proposalNumber: r.proposalNumber,
                     products: ids
                         .map((id) => productMap.get(id))
-                        .filter(Boolean) as {
-                            id: string
-                            name: string
-                            pdfUrl: string
-                        }[],
+                        .filter(Boolean) as { id: string; name: string; pdfUrl: string }[],
                 }
             })
 
@@ -160,10 +156,12 @@ export async function GET(req: Request) {
     }
 }
 
-// ✅ POST: create shared PDF + proposal number
+// ✅ POST Method: Create a New Shared PDF & Assign Creator & Proposal Number
 export async function POST(req: Request) {
     try {
-        let { productIds, expiresAt, clientId } = await req.json()
+        // expiresAt from the body is no longer used – Prisma default handles the column.
+        let { productIds, clientId } = await req.json()
+
         const userId = await getUserIdFromToken(req)
 
         if (!userId) {
@@ -197,7 +195,6 @@ export async function POST(req: Request) {
             )
         }
 
-        // next proposal number, starting from 25001
         const lastWithNumber = await prisma.sharedPDF.findFirst({
             where: { proposalNumber: { not: null } },
             orderBy: { proposalNumber: 'desc' },
@@ -218,10 +215,10 @@ export async function POST(req: Request) {
             data: {
                 uniqueSlug,
                 productIds: productIds.join(','),
-                expiresAt: new Date(expiresAt),
                 createdById: userId,
                 proposalNumber: nextProposalNumber,
                 ...(clientId && { clientId }),
+                // expiresAt omitted → Prisma uses default(now())
             },
         })
 
