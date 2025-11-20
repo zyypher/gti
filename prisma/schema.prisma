@@ -94,6 +94,7 @@ model SharedPDF {
   createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
   client      Client?  @relation(fields: [clientId], references: [id])
   clientId    String?
+  proposalNumber Int?     @unique
 }
 
 model Notification {

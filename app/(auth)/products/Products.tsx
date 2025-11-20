@@ -662,6 +662,7 @@ const Products = () => {
         ...selectedPromotions.map((p) => ({ id: p.id, position: p.position })),
       ]
 
+      // 1) Generate merged PDF content
       const response = await api.post('/api/pdf/generate', {
         frontCorporateId: selectedCorporateFront,
         backCorporateId: selectedCorporateBack,
@@ -670,77 +671,80 @@ const Products = () => {
         clientId: selectedClient,
       })
 
-      if (response.status === 200) {
-        toast.success('PDF generated successfully!')
-        const pdfUrl = response.data.url
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000)
+      if (response.status !== 200) {
+        toast.error(`Error: ${response.data?.error || 'Failed to generate PDF'}`)
+        return
+      }
 
-        const selectedClientObj = clients.find((c) => c.id === selectedClient)
-        const rawClientName = selectedClientObj
-          ? `${selectedClientObj.firstName ?? ''} ${selectedClientObj.lastName ?? ''}`.trim()
-          : ''
+      const pdfUrl: string = response.data.url
 
-        const clientNameForFile = rawClientName
-          ? `_${rawClientName.replace(/\s+/g, '-')} `
-          : ''
+      // 2) Create SharedPDF record → get proposalNumber + fileName
+      const expirationDate = new Date()
+      expirationDate.setDate(expirationDate.getDate() + 30)
 
-        const fileName = `GTI_Catalogue${clientNameForFile}_${randomSuffix}.pdf`
+      const shared = await api
+        .post('/api/shared-pdf', {
+          productIds: selectedRows.join(','),
+          expiresAt: expirationDate.toISOString(),
+          clientId: selectedClient,
+        })
+        .then((res) => res.data as { slug: string; proposalNumber: number; fileName?: string })
 
+      const shareSlug = shared.slug
+      const proposalNumber = shared.proposalNumber
+      const fileName =
+        shared.fileName ||
+        `GTI_PROPOSAL_${String(proposalNumber ?? 250001)}.pdf`
+
+      const shareableUrl = `${process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL}/${shareSlug}`
+
+      toast.success('PDF generated successfully!')
+
+      // 3) Download PDF with final GTI_PROPOSAL_XXXXXX.pdf name
+      try {
+        const blob = await fetch(pdfUrl).then((res) => res.blob())
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+      } catch (err) {
+        console.error('Failed to auto-download PDF:', err)
+      }
+
+      // 4) Reset state
+      setIsPdfDialogOpen(false)
+      setPdfStep(1)
+      setPdfStepError(null)
+      setSelectedBanner(null)
+      setSelectedAdverts([])
+      setSelectedPromotions([])
+      reset()
+      setSelectedRows([])
+      setCartItems([])
+      setSelectedClient(undefined)
+      setSelectedCorporateFront(null)
+      setSelectedCorporateBack(null)
+
+      // 5) Mobile / PWA share
+      if ((isPWA() || isMobile()) && navigator.share) {
         try {
           const blob = await fetch(pdfUrl).then((res) => res.blob())
-          const url = window.URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = fileName
-          document.body.appendChild(a)
-          a.click()
-          a.remove()
-          window.URL.revokeObjectURL(url)
-        } catch (err) {
-          console.error('Failed to auto-download PDF:', err)
-        }
-
-        const expirationDate = new Date()
-        expirationDate.setDate(expirationDate.getDate() + 30)
-        const { slug } = await api
-          .post('/api/shared-pdf', {
-            productIds: selectedRows.join(','),
-            expiresAt: expirationDate.toISOString(),
-            clientId: selectedClient,
-          })
-          .then((res) => res.data)
-
-        const shareableUrl = `${process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL}/${slug}`
-
-        setIsPdfDialogOpen(false)
-        setPdfStep(1)
-        setPdfStepError(null)
-        setSelectedBanner(null)
-        setSelectedAdverts([])
-        setSelectedPromotions([])
-        reset()
-        setSelectedRows([])
-        setCartItems([])
-        setSelectedClient(undefined)
-        setSelectedCorporateFront(null)
-        setSelectedCorporateBack(null)
-
-        if ((isPWA() || isMobile()) && navigator.share) {
-          const blob = await fetch(pdfUrl).then((res) => res.blob())
           const file = new File([blob], fileName, { type: 'application/pdf' })
-          navigator
-            .share({
-              title: 'Shared PDF',
-              text: `View the products here: ${shareableUrl}`,
-              files: [file],
-            })
-            .catch((err) => console.error('Error sharing:', err))
-        } else {
-          setShareableUrl(shareableUrl)
-          setIsShareDialogOpen(true)
+          await navigator.share({
+            title: 'Shared PDF',
+            text: `View the products here: ${shareableUrl}`,
+            files: [file],
+          })
+        } catch (err) {
+          console.error('Error sharing:', err)
         }
       } else {
-        toast.error(`Error: ${response.data.error || 'Failed to generate PDF'}`)
+        setShareableUrl(shareableUrl)
+        setIsShareDialogOpen(true)
       }
     } catch (error) {
       console.error('Failed to generate PDF:', error)
@@ -749,6 +753,7 @@ const Products = () => {
       setButtonLoading(false)
     }
   }
+
 
   const handleAddOrUpdateProduct = async (data: ProductFormValues) => {
     if (role !== 'ADMIN') {
