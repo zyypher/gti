@@ -21,10 +21,6 @@ export const columns = (
     role: Role | null,
 ): ColumnDef<Client>[] => [
     {
-        accessorKey: 'email',
-        header: 'Email',
-    },
-    {
         accessorKey: 'firstName',
         header: 'First Name',
     },
@@ -35,6 +31,10 @@ export const columns = (
     {
         accessorKey: 'company',
         header: 'Company',
+    },
+     {
+        accessorKey: 'email',
+        header: 'Email',
     },
     {
         accessorKey: 'primaryNumber',
