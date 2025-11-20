@@ -26,7 +26,7 @@ import toast from 'react-hot-toast'
 const ORDER_HUB_BASE_URL = process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL
 
 type TProduct = { id: string; name: string; pdfUrl: string }
-type TClient = { id: string; firstName: string; lastName: string; nickname: string }
+type TClient = { id: string; firstName: string; lastName: string; email: string }
 type TListClient = { id: string; firstName: string; lastName: string }
 
 interface IGeneratedPDF {

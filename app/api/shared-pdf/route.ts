@@ -18,13 +18,13 @@ type SharedPdfRow = {
         id: string
         firstName: string
         lastName: string
-        nickname: string
+        email: string | null   // 👈 allow null here
     } | null
 }
 
 const BASE_PROPOSAL_NUMBER = 25001
 
-// ✅ Middleware to Extract User ID (Example - Adjust for Auth System)
+// ✅ Get userId from JWT cookie
 async function getUserIdFromToken(req: Request): Promise<string | null> {
     try {
         const token = cookies().get('token')?.value
@@ -38,16 +38,15 @@ async function getUserIdFromToken(req: Request): Promise<string | null> {
         const secret = new TextEncoder().encode(process.env.JWT_SECRET)
         const { payload } = await jwtVerify(token, secret)
 
-        console.log('✅ Extracted JWT Payload:', payload) // ✅ Log full payload
+        console.log('✅ Extracted JWT Payload:', payload)
 
-        // Ensure we're extracting the correct field from the payload
         if (!payload || typeof payload !== 'object') {
             console.error('🚨 Invalid JWT payload format:', payload)
             return null
         }
 
-        // Try different possible field names based on how the JWT was created
-        const userId = (payload as any).userId || (payload as any).id || (payload as any).sub
+        const userId =
+            (payload as any).userId || (payload as any).id || (payload as any).sub
 
         if (!userId) {
             console.error('🚨 No userId found in payload:', payload)
@@ -62,18 +61,16 @@ async function getUserIdFromToken(req: Request): Promise<string | null> {
     }
 }
 
-// ✅ GET Method: Fetch PDFs (you can later restrict by user if needed)
+// ✅ GET: list shared PDFs
 export async function GET(req: Request) {
     try {
         const url = new URL(req.url)
 
-        // Filters
         const dateStr = url.searchParams.get('date') // yyyy-MM-dd
         const clientId = url.searchParams.get('clientId') || undefined
         const productId = url.searchParams.get('productId') || undefined
-        const productName = url.searchParams.get('product') || undefined // free-text product name
+        const productName = url.searchParams.get('product') || undefined
 
-        // Base where (can be extended safely)
         const where: any = {}
         if (clientId) where.clientId = clientId
         if (dateStr) {
@@ -81,20 +78,23 @@ export async function GET(req: Request) {
             where.createdAt = { gte: startOfDay(d), lte: endOfDay(d) }
         }
 
-        // Pull PDFs (without products first)
         const rows: SharedPdfRow[] = await prisma.sharedPDF.findMany({
             where,
             orderBy: { createdAt: 'desc' },
             include: {
                 client: {
-                    select: { id: true, firstName: true, lastName: true, nickname: true },
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
                 },
             },
         })
 
         if (!rows.length) return NextResponse.json([])
 
-        // Parse all product ids used across these PDFs and fetch them once
         const allIds = new Set<string>()
         const parsedIdsByPdf = new Map<string, string[]>()
 
@@ -115,12 +115,9 @@ export async function GET(req: Request) {
         })
         const productMap = new Map(allProducts.map((p) => [p.id, p]))
 
-        // Optional product filtering
         const matchesProduct = (ids: string[]) => {
-            // productId wins (exact match)
             if (productId) return ids.includes(productId)
 
-            // productName (case-insensitive "contains" on product.name)
             if (productName && productName.trim()) {
                 const q = productName.trim().toLowerCase()
                 return ids.some((id) => {
@@ -129,11 +126,9 @@ export async function GET(req: Request) {
                 })
             }
 
-            // no product filter
             return true
         }
 
-        // Build final response with products attached and product filter applied
         const result = rows
             .filter((r) => matchesProduct(parsedIdsByPdf.get(r.id) ?? []))
             .map((r) => {
@@ -147,7 +142,11 @@ export async function GET(req: Request) {
                     proposalNumber: r.proposalNumber,
                     products: ids
                         .map((id) => productMap.get(id))
-                        .filter(Boolean) as { id: string; name: string; pdfUrl: string }[],
+                        .filter(Boolean) as {
+                            id: string
+                            name: string
+                            pdfUrl: string
+                        }[],
                 }
             })
 
@@ -161,7 +160,7 @@ export async function GET(req: Request) {
     }
 }
 
-// ✅ POST Method: Create a New Shared PDF & Assign Creator & Proposal Number
+// ✅ POST: create shared PDF + proposal number
 export async function POST(req: Request) {
     try {
         let { productIds, expiresAt, clientId } = await req.json()
@@ -174,7 +173,6 @@ export async function POST(req: Request) {
 
         console.log('✅ Extracted User ID:', userId)
 
-        // ✅ Step 1: Ensure `createdById` exists in `User` table
         const userExists = await prisma.user.findUnique({
             where: { id: userId },
         })
@@ -187,7 +185,6 @@ export async function POST(req: Request) {
             )
         }
 
-        // ✅ Convert `productIds` from string to array (if necessary)
         if (typeof productIds === 'string') {
             productIds = productIds.split(',').map((id: string) => id.trim())
         }
@@ -200,7 +197,7 @@ export async function POST(req: Request) {
             )
         }
 
-        // ✅ Compute next proposalNumber (starts at 250001, always)
+        // next proposal number, starting from 25001
         const lastWithNumber = await prisma.sharedPDF.findFirst({
             where: { proposalNumber: { not: null } },
             orderBy: { proposalNumber: 'desc' },
@@ -217,7 +214,6 @@ export async function POST(req: Request) {
 
         const uniqueSlug = nanoid(10)
 
-        // ✅ Step 2: Create SharedPdf Entry
         const sharedPdf = await prisma.sharedPDF.create({
             data: {
                 uniqueSlug,
@@ -225,7 +221,7 @@ export async function POST(req: Request) {
                 expiresAt: new Date(expiresAt),
                 createdById: userId,
                 proposalNumber: nextProposalNumber,
-                ...(clientId && { clientId }), // Conditionally add clientId
+                ...(clientId && { clientId }),
             },
         })
 

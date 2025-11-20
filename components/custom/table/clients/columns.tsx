@@ -10,8 +10,9 @@ export type Client = {
     lastName: string
     company: string
     primaryNumber: string
+    secondaryNumber: string
     country: string
-    nickname: string
+    email: string
 }
 
 export const columns = (
@@ -20,8 +21,8 @@ export const columns = (
     role: Role | null,
 ): ColumnDef<Client>[] => [
     {
-        accessorKey: 'nickname',
-        header: 'Nickname',
+        accessorKey: 'email',
+        header: 'Email',
     },
     {
         accessorKey: 'firstName',

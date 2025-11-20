@@ -75,7 +75,7 @@ type NonProductPageItem = {
 
 type Client = {
   id: string
-  nickname: string
+  email: string
   firstName: string
   lastName: string
 }
@@ -87,14 +87,17 @@ type QuickClientForm = {
   primaryNumber: string
   secondaryNumber?: string
   country: string
-  nickname: string
+  email: string
 }
 
 const clientSchema = yup.object({
   firstName: yup.string().required('First name is required'),
   lastName: yup.string().required('Last name is required'),
   company: yup.string().required('Company is required'),
-  nickname: yup.string().required('Nickname is required'),
+  email: yup
+    .string()
+    .email('Enter a valid email address')
+    .required('Email is required'),
   primaryNumber: yup
     .string()
     .required('Primary number is required')
@@ -352,7 +355,7 @@ const Products = () => {
       primaryNumber: '',
       secondaryNumber: '',
       country: 'United Arab Emirates',
-      nickname: '',
+      email: '',
     },
   })
 
@@ -1769,14 +1772,14 @@ const Products = () => {
                 <div>
                   <Controller
                     control={clientControl}
-                    name="nickname"
+                    name="email"
                     render={({ field }) => (
                       <FloatingLabelInput
-                        label="Nickname"
+                        label="Email"
                         name={field.name}
                         value={field.value ?? ''}
                         onChange={field.onChange}
-                        error={clientErrors.nickname?.message as string | undefined}
+                        error={clientErrors.email?.message as string | undefined}
                       />
                     )}
                   />

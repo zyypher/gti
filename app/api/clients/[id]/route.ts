@@ -21,7 +21,7 @@ export async function PUT(
             primaryNumber,
             secondaryNumber,
             country,
-            nickname,
+            email,
         } = body
 
         if (
@@ -30,7 +30,7 @@ export async function PUT(
             !company ||
             !primaryNumber ||
             !country ||
-            !nickname
+            !email
         ) {
             return NextResponse.json(
                 { error: 'Missing required fields' },
@@ -47,7 +47,7 @@ export async function PUT(
                 primaryNumber,
                 secondaryNumber,
                 country,
-                nickname,
+                email,
             },
         })
 

@@ -29,8 +29,10 @@ type FormData = {
     primaryNumber: string
     secondaryNumber?: string
     country: string
-    nickname: string
+    email: string
 }
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const ClientsPage = () => {
     const [clients, setClients] = useState<Client[]>([])
@@ -57,8 +59,9 @@ const ClientsPage = () => {
             primaryNumber: '',
             secondaryNumber: '',
             country: 'United Arab Emirates',
-            nickname: '',
+            email: '',
         },
+        mode: 'onSubmit',
     })
 
     const fetchClients = async () => {
@@ -80,7 +83,15 @@ const ClientsPage = () => {
     const handleOpenDialog = (client: Client | null = null) => {
         setSelectedClient(client)
         if (client) {
-            reset(client)
+            reset({
+                firstName: client.firstName,
+                lastName: client.lastName,
+                company: client.company,
+                primaryNumber: client.primaryNumber,
+                secondaryNumber: client.secondaryNumber ?? '',
+                country: client.country,
+                email: client.email,
+            })
         } else {
             reset({
                 firstName: '',
@@ -89,7 +100,7 @@ const ClientsPage = () => {
                 primaryNumber: '',
                 secondaryNumber: '',
                 country: 'United Arab Emirates',
-                nickname: '',
+                email: '',
             })
         }
         setIsDialogOpen(true)
@@ -112,8 +123,12 @@ const ClientsPage = () => {
             }
             setIsDialogOpen(false)
             fetchClients()
-        } catch (error) {
-            toast.error('An error occurred')
+        } catch (error: any) {
+            if (error?.response?.status === 409) {
+                toast.error('Email already exists')
+            } else {
+                toast.error('An error occurred')
+            }
             console.error(error)
         } finally {
             setIsSubmitting(false)
@@ -159,7 +174,7 @@ const ClientsPage = () => {
                 <DataTable<Client>
                     columns={tableColumns}
                     data={clients}
-                    filterField="nickname"
+                    filterField="email"
                     loading={loading}
                 />
             </div>
@@ -183,7 +198,9 @@ const ClientsPage = () => {
                                     {...register('firstName', { required: 'First name is required' })}
                                 />
                                 {errors.firstName && (
-                                    <p className="text-sm text-red-500">{errors.firstName.message}</p>
+                                    <p className="text-sm text-red-500">
+                                        {errors.firstName.message}
+                                    </p>
                                 )}
                             </div>
 
@@ -197,7 +214,9 @@ const ClientsPage = () => {
                                     {...register('lastName', { required: 'Last name is required' })}
                                 />
                                 {errors.lastName && (
-                                    <p className="text-sm text-red-500">{errors.lastName.message}</p>
+                                    <p className="text-sm text-red-500">
+                                        {errors.lastName.message}
+                                    </p>
                                 )}
                             </div>
 
@@ -211,21 +230,32 @@ const ClientsPage = () => {
                                     {...register('company', { required: 'Company is required' })}
                                 />
                                 {errors.company && (
-                                    <p className="text-sm text-red-500">{errors.company.message}</p>
+                                    <p className="text-sm text-red-500">
+                                        {errors.company.message}
+                                    </p>
                                 )}
                             </div>
 
                             <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-zinc-700">
-                                    Nickname
+                                    Email
                                 </label>
                                 <Input
-                                    placeholder="Nickname"
+                                    type="email"
+                                    placeholder="Email"
                                     className="rounded-xl border border-zinc-300 bg-white text-black placeholder:text-black/70 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10"
-                                    {...register('nickname', { required: 'Nickname is required' })}
+                                    {...register('email', {
+                                        required: 'Email is required',
+                                        pattern: {
+                                            value: EMAIL_REGEX,
+                                            message: 'Enter a valid email address',
+                                        },
+                                    })}
                                 />
-                                {errors.nickname && (
-                                    <p className="text-sm text-red-500">{errors.nickname.message}</p>
+                                {errors.email && (
+                                    <p className="text-sm text-red-500">
+                                        {errors.email.message}
+                                    </p>
                                 )}
                             </div>
                         </div>
