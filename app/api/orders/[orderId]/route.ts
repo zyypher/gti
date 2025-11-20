@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from '@/lib/prisma'
 
-export async function GET(req: Request, { params }: { params: { orderId: string } }) {
+export async function GET(
+    req: Request,
+    { params }: { params: { orderId: string } }
+) {
     try {
         const order = await prisma.order.findUnique({
             where: { id: params.orderId },
@@ -22,17 +25,55 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
             return NextResponse.json({ error: "Order not found" }, { status: 404 });
         }
 
+        // 🔹 Try to find the related SharedPDF by slug
+        const sharedPdf = await prisma.sharedPDF.findFirst({
+            where: { uniqueSlug: order.slug },
+            select: {
+                proposalNumber: true,
+                createdAt: true,
+                createdBy: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                client: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        primaryNumber: true,
+                        company: true,
+                    },
+                },
+            },
+        });
+
+        const proposalNumber = sharedPdf?.proposalNumber ?? null;
+
+        // map client → shape we want in JSON (with `phone`)
+        const clientFromPdf = sharedPdf?.client
+            ? {
+                firstName: sharedPdf.client.firstName,
+                lastName: sharedPdf.client.lastName,
+                email: sharedPdf.client.email,
+                phone: sharedPdf.client.primaryNumber,
+                company: sharedPdf.client.company,
+            }
+            : null;
+
         // ✅ Ensure proper JSON parsing & type safety
         let productIds: string[] = [];
         let productQuantities: Record<string, number> = {};
 
         // 🛠 Fix: Ensure productIds is a valid string array
-        if (Array.isArray(order.products) && order.products.every(id => typeof id === "string")) {
+        if (Array.isArray(order.products) && order.products.every((id) => typeof id === "string")) {
             productIds = order.products as string[];
         } else if (typeof order.products === "string") {
             try {
-                const parsedProducts = JSON.parse(order.products);
-                if (Array.isArray(parsedProducts) && parsedProducts.every(id => typeof id === "string")) {
+                const parsedProducts = JSON.parse(order.products as unknown as string);
+                if (Array.isArray(parsedProducts) && parsedProducts.every((id) => typeof id === "string")) {
                     productIds = parsedProducts;
                 } else {
                     throw new Error("Invalid format");
@@ -47,12 +88,12 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
 
         // 🛠 Fix: Ensure productQuantities is a valid object
         if (order.quantities && typeof order.quantities === "object" && !Array.isArray(order.quantities)) {
-            productQuantities = order.quantities as Record<string, number>;
+            productQuantities = order.quantities as unknown as Record<string, number>;
         } else if (typeof order.quantities === "string") {
             try {
-                const parsedQuantities = JSON.parse(order.quantities);
+                const parsedQuantities = JSON.parse(order.quantities as unknown as string);
                 if (typeof parsedQuantities === "object" && !Array.isArray(parsedQuantities)) {
-                    productQuantities = parsedQuantities;
+                    productQuantities = parsedQuantities as Record<string, number>;
                 } else {
                     throw new Error("Invalid format");
                 }
@@ -77,6 +118,10 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
             ...order,
             products,
             quantities: productQuantities,
+            proposalNumber,                     // 🔹 proposal number in response
+            createdBy: sharedPdf?.createdBy ?? null, // 🔹 GTI staff
+            client: clientFromPdf,              // 🔹 client (with phone)
+            createdDate: sharedPdf?.createdAt ?? null, // 🔹 when proposal was created
         };
 
         return NextResponse.json(formattedOrder);
@@ -87,7 +132,10 @@ export async function GET(req: Request, { params }: { params: { orderId: string 
 }
 
 // ✅ Update Order Status or Quantities
-export async function PATCH(req: Request, { params }: { params: { orderId: string } }) {
+export async function PATCH(
+    req: Request,
+    { params }: { params: { orderId: string } }
+) {
     try {
         const { status, updatedQuantities } = await req.json();
 

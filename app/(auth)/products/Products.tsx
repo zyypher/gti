@@ -75,7 +75,7 @@ type NonProductPageItem = {
 
 type Client = {
   id: string
-  nickname: string
+  email: string
   firstName: string
   lastName: string
 }
@@ -87,14 +87,17 @@ type QuickClientForm = {
   primaryNumber: string
   secondaryNumber?: string
   country: string
-  nickname: string
+  email: string
 }
 
 const clientSchema = yup.object({
   firstName: yup.string().required('First name is required'),
   lastName: yup.string().required('Last name is required'),
   company: yup.string().required('Company is required'),
-  nickname: yup.string().required('Nickname is required'),
+  email: yup
+    .string()
+    .email('Enter a valid email address')
+    .required('Email is required'),
   primaryNumber: yup
     .string()
     .required('Primary number is required')
@@ -165,6 +168,92 @@ const EMPTY_DEFAULTS: ProductFormValues = {
   capsules: '',
   color: '',
 }
+
+/* ---------- PDF preview & card helpers (TOP-LEVEL) ---------- */
+
+// clean preview, remove browser blue outline
+const PdfPreview = ({
+  src,
+  className,
+  stopClickPropagation = false, // still used in edit dialog
+  disableInteractions = false, // when true, PDF won't capture scroll/click
+}: {
+  src?: string
+  className?: string
+  stopClickPropagation?: boolean
+  disableInteractions?: boolean
+}) => {
+  if (!src) return null
+  const url = `${src}${src.includes('#') ? '' : '#'}toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
+
+  // For tiles: render PDF with pointer-events: none so the button click works
+  if (disableInteractions) {
+    const wrapperClass =
+      className ??
+      'w-full aspect-square rounded-xl border border-zinc-200 bg-zinc-50 overflow-hidden relative'
+
+    return (
+      <div className={wrapperClass} style={{ outline: 'none' }}>
+        <embed
+          src={url}
+          type="application/pdf"
+          className="h-full w-full"
+          style={{ pointerEvents: 'none', border: 'none' }}
+        />
+      </div>
+    )
+  }
+
+  // For edit dialog etc. – keep interactive behaviour
+  return (
+    <embed
+      src={url}
+      type="application/pdf"
+      onClick={stopClickPropagation ? (e) => e.stopPropagation() : undefined}
+      className={
+        className ??
+        'w-full aspect-square rounded-xl border border-zinc-200 bg-zinc-50 overflow-hidden'
+      }
+      style={{ outline: 'none' }}
+    />
+  )
+}
+
+// Single card for corporate/adverts/promotions
+const PdfChoiceCard = React.memo(
+  ({
+    item,
+    isSelected,
+    onClick,
+  }: {
+    item: INonProductPageItem
+    isSelected: boolean
+    onClick: () => void
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-3 text-left shadow-sm transition-all',
+        'hover:-translate-y-[1px] hover:shadow-md',
+        isSelected
+          ? 'border-zinc-900 ring-2 ring-zinc-900/60'
+          : 'border-zinc-200 hover:border-zinc-400',
+      ].join(' ')}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="line-clamp-2 text-xs font-semibold tracking-tight text-zinc-900">
+          {item.title}
+        </p>
+      </div>
+
+      {/* whole PDF is now static thumbnail; click handled by parent button */}
+      <PdfPreview src={item.filePath} disableInteractions />
+    </button>
+  ),
+  (prev, next) =>
+    prev.item.id === next.item.id && prev.isSelected === next.isSelected,
+)
 
 /* ===================== PAGE ===================== */
 const Products = () => {
@@ -266,7 +355,7 @@ const Products = () => {
       primaryNumber: '',
       secondaryNumber: '',
       country: 'United Arab Emirates',
-      nickname: '',
+      email: '',
     },
   })
 
@@ -507,14 +596,25 @@ const Products = () => {
     setIsDeleteDialogOpen(true)
   }
 
-  // 🔹 Add product to cart
+  // 🔹 Toggle product in cart (add on first click, remove on second)
   const handleAddToCart = (product: ITable) => {
+    // Toggle in selectedRows
     setSelectedRows((prev) =>
-      prev.includes(product.id) ? prev : [...prev, product.id],
+      prev.includes(product.id)
+        ? prev.filter((id) => id !== product.id)
+        : [...prev, product.id],
     )
-    setCartItems((prev) =>
-      prev.some((p) => p.id === product.id) ? prev : [...prev, product],
-    )
+
+    // Toggle in cartItems
+    setCartItems((prev) => {
+      const exists = prev.some((p) => p.id === product.id)
+      if (exists) {
+        // remove from cart
+        return prev.filter((p) => p.id !== product.id)
+      }
+      // add to cart
+      return [...prev, product]
+    })
   }
 
   // 🔹 Remove from cart
@@ -523,7 +623,7 @@ const Products = () => {
     setCartItems((prev) => prev.filter((p) => p.id !== id))
   }
 
-  // merge base text products + media and hide cart items from table
+  // merge base text products + media
   const tableData: ITable[] = useMemo(
     () =>
       products.map((p) => {
@@ -536,7 +636,6 @@ const Products = () => {
       }),
     [products, mediaMap],
   )
-
 
   const _columns = useMemo(
     () =>
@@ -559,10 +658,10 @@ const Products = () => {
       return
     }
 
-    if (selectedAdverts.length === 0 || selectedPromotions.length === 0) {
-      toast.error('Please select at least one Advert and one Promotion before generating the PDF.')
-      setPdfStep(2)
-      toast.error('Please select at least one Advert and one Promotion before generating the PDF.')
+    // 🔴 NEW: client is mandatory
+    if (!selectedClient) {
+      setPdfStep(3)
+      toast.error('Please select or add a client before generating the PDF.')
       return
     }
 
@@ -573,6 +672,7 @@ const Products = () => {
         ...selectedPromotions.map((p) => ({ id: p.id, position: p.position })),
       ]
 
+      // 1) Generate merged PDF content
       const response = await api.post('/api/pdf/generate', {
         frontCorporateId: selectedCorporateFront,
         backCorporateId: selectedCorporateBack,
@@ -581,78 +681,80 @@ const Products = () => {
         clientId: selectedClient,
       })
 
-      if (response.status === 200) {
-        toast.success('PDF generated successfully!')
-        const pdfUrl = response.data.url
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000)
+      if (response.status !== 200) {
+        toast.error(`Error: ${response.data?.error || 'Failed to generate PDF'}`)
+        return
+      }
 
-        const selectedClientObj = clients.find((c) => c.id === selectedClient)
-        const rawClientName = selectedClientObj
-          ? `${selectedClientObj.firstName ?? ''} ${selectedClientObj.lastName ?? ''
-            }`.trim()
-          : ''
+      const pdfUrl: string = response.data.url
 
-        const clientNameForFile = rawClientName
-          ? `_${rawClientName.replace(/\s+/g, '-')} `
-          : ''
+      // 2) Create SharedPDF record → get proposalNumber + fileName
+      const expirationDate = new Date()
+      expirationDate.setDate(expirationDate.getDate() + 30)
 
-        const fileName = `GTI_Catalogue${clientNameForFile}_${randomSuffix}.pdf`
+      const shared = await api
+        .post('/api/shared-pdf', {
+          productIds: selectedRows.join(','),
+          expiresAt: expirationDate.toISOString(),
+          clientId: selectedClient,
+        })
+        .then((res) => res.data as { slug: string; proposalNumber: number; fileName?: string })
 
+      const shareSlug = shared.slug
+      const proposalNumber = shared.proposalNumber
+      const fileName =
+        shared.fileName ||
+        `GTI_PROPOSAL_${String(proposalNumber ?? 250001)}.pdf`
+
+      const shareableUrl = `${process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL}/${shareSlug}`
+
+      toast.success('PDF generated successfully!')
+
+      // 3) Download PDF with final GTI_PROPOSAL_XXXXXX.pdf name
+      try {
+        const blob = await fetch(pdfUrl).then((res) => res.blob())
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+      } catch (err) {
+        console.error('Failed to auto-download PDF:', err)
+      }
+
+      // 4) Reset state
+      setIsPdfDialogOpen(false)
+      setPdfStep(1)
+      setPdfStepError(null)
+      setSelectedBanner(null)
+      setSelectedAdverts([])
+      setSelectedPromotions([])
+      reset()
+      setSelectedRows([])
+      setCartItems([])
+      setSelectedClient(undefined)
+      setSelectedCorporateFront(null)
+      setSelectedCorporateBack(null)
+
+      // 5) Mobile / PWA share
+      if ((isPWA() || isMobile()) && navigator.share) {
         try {
           const blob = await fetch(pdfUrl).then((res) => res.blob())
-          const url = window.URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = fileName
-          document.body.appendChild(a)
-          a.click()
-          a.remove()
-          window.URL.revokeObjectURL(url)
-        } catch (err) {
-          console.error('Failed to auto-download PDF:', err)
-        }
-
-        const expirationDate = new Date()
-        expirationDate.setDate(expirationDate.getDate() + 30)
-        const { slug } = await api
-          .post('/api/shared-pdf', {
-            productIds: selectedRows.join(','),
-            expiresAt: expirationDate.toISOString(),
-            clientId: selectedClient,
-          })
-          .then((res) => res.data)
-
-        const shareableUrl = `${process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL}/${slug}`
-
-        setIsPdfDialogOpen(false)
-        setPdfStep(1)
-        setPdfStepError(null)
-        setSelectedBanner(null)
-        setSelectedAdverts([])
-        setSelectedPromotions([])
-        reset()
-        setSelectedRows([])
-        setCartItems([])
-        setSelectedClient(undefined)
-        setSelectedCorporateFront(null)
-        setSelectedCorporateBack(null)
-
-        if ((isPWA() || isMobile()) && navigator.share) {
-          const blob = await fetch(pdfUrl).then((res) => res.blob())
           const file = new File([blob], fileName, { type: 'application/pdf' })
-          navigator
-            .share({
-              title: 'Shared PDF',
-              text: `View the products here: ${shareableUrl}`,
-              files: [file],
-            })
-            .catch((err) => console.error('Error sharing:', err))
-        } else {
-          setShareableUrl(shareableUrl)
-          setIsShareDialogOpen(true)
+          await navigator.share({
+            title: 'Shared PDF',
+            text: `View the products here: ${shareableUrl}`,
+            files: [file],
+          })
+        } catch (err) {
+          console.error('Error sharing:', err)
         }
       } else {
-        toast.error(`Error: ${response.data.error || 'Failed to generate PDF'}`)
+        setShareableUrl(shareableUrl)
+        setIsShareDialogOpen(true)
       }
     } catch (error) {
       console.error('Failed to generate PDF:', error)
@@ -661,6 +763,7 @@ const Products = () => {
       setButtonLoading(false)
     }
   }
+
 
   const handleAddOrUpdateProduct = async (data: ProductFormValues) => {
     if (role !== 'ADMIN') {
@@ -751,6 +854,12 @@ const Products = () => {
     // filters clear, cart stays
   }
 
+  const handleRemoveAll = () => {
+    setCartItems([])          // empty cart list
+    setSelectedRows([])       // unselect all icons
+    window.localStorage.removeItem(CART_KEY)  // clear saved cart
+  }
+
   const addAdditionalPage = (type: 'advert' | 'promotion', id: string) => {
     if (!id) return
     if (type === 'advert') {
@@ -821,71 +930,6 @@ const Products = () => {
 
   const tableLoading = loading
 
-  /* ---------- PDF preview & card helpers ---------- */
-
-  // clean preview, remove browser blue outline
-  const PdfPreview = ({
-    src,
-    className,
-    stopClickPropagation = false,
-  }: {
-    src?: string
-    className?: string
-    stopClickPropagation?: boolean
-  }) => {
-    if (!src) return null
-    const url = `${src}${src.includes('#') ? '' : '#'
-      }toolbar=0&navpanes=0&scrollbar=0&zoom=page-fit`
-
-    return (
-      <embed
-        src={url}
-        type="application/pdf"
-        onClick={stopClickPropagation ? (e) => e.stopPropagation() : undefined}
-        className={
-          className ??
-          'h-56 w-full rounded-xl border border-zinc-200 bg-zinc-50 overflow-hidden'
-        }
-        style={{ outline: 'none' }}
-      />
-    )
-  }
-
-  // Single card for corporate/adverts/promotions
-  const PdfChoiceCard = ({
-    item,
-    isSelected,
-    onClick,
-  }: {
-    item: INonProductPageItem
-    isSelected: boolean
-    onClick: () => void
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        'relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-3 text-left shadow-sm transition-all',
-        'hover:-translate-y-[1px] hover:shadow-md',
-        isSelected
-          ? 'border-zinc-900 ring-2 ring-zinc-900/60'   // ⬅️ STRONG, DARK BORDER WHEN SELECTED
-          : 'border-zinc-200 hover:border-zinc-400',
-      ].join(' ')}
-    >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="line-clamp-2 text-xs font-semibold tracking-tight text-zinc-900">
-          {item.title}
-        </p>
-      </div>
-
-      <PdfPreview
-        src={item.filePath}
-        className="h-56 w-full rounded-xl border border-zinc-200 bg-zinc-50"
-        stopClickPropagation
-      />
-    </button>
-  )
-
   const openPdfDialog = async () => {
     setIsPdfDialogOpen(true)
     setPdfStep(1)
@@ -909,24 +953,17 @@ const Products = () => {
     if (pdfStep === 2) {
       const hasAdvert = selectedAdverts.length > 0
       const hasPromo = selectedPromotions.length > 0
-      if (!hasAdvert || !hasPromo) {
-        toast.error(
-          'Please select at least one Advert and one Promotion before continuing.',
-        )
-        return
-      }
+      // if (!hasAdvert || !hasPromo) {
+      //   toast.error(
+      //     'Please select at least one Advert and one Promotion before continuing.',
+      //   )
+      //   return
+      // }
     }
 
     setPdfStepError(null)
     setPdfStep((s) => s + 1)
   }
-
-  const renderPdfCardSkeleton = () => (
-    <div className="rounded-2xl border border-zinc-200/80 bg-white/60 p-3 shadow-sm">
-      <div className="mb-2 h-4 w-2/3 rounded-full bg-zinc-200/70" />
-      <Skeleton className="h-56 w-full rounded-xl" />
-    </div>
-  )
 
   /* ----------------------- JSX ----------------------- */
 
@@ -1336,7 +1373,7 @@ const Products = () => {
             }`}
         >
           <div className="flex max-h-[85vh] flex-col rounded-2xl bg-gradient-to-b from-white to-zinc-50/80">
-            {/* --- STEP PILLS (all white, black text/tick, subtle borders) --- */}
+            {/* --- STEP PILLS --- */}
             <div className="flex items-center justify-center gap-3 border-b border-white/60 px-4 py-3">
               {[
                 { step: 1, label: 'Corporate Info' },
@@ -1397,7 +1434,7 @@ const Products = () => {
                               className="rounded-2xl border border-zinc-200/80 bg-white/60 p-3 shadow-sm"
                             >
                               <div className="mb-2 h-4 w-2/3 rounded-full bg-zinc-200/70" />
-                              <Skeleton className="h-56 w-full rounded-xl" />
+                              <Skeleton className="w-full aspect-square rounded-xl" />
                             </div>
                           ))}
                         </div>
@@ -1446,7 +1483,8 @@ const Products = () => {
                               className="rounded-2xl border border-zinc-200/80 bg-white/60 p-3 shadow-sm"
                             >
                               <div className="mb-2 h-4 w-2/3 rounded-full bg-zinc-200/70" />
-                              <Skeleton className="h-56 w-full rounded-xl" />
+                              {/* BACK skeletons */}
+                              <Skeleton className="w-full aspect-square rounded-xl" />
                             </div>
                           ))}
                         </div>
@@ -1485,9 +1523,7 @@ const Products = () => {
                   {/* Adverts */}
                   <div>
                     <div className="mb-2 flex items-center justify-between">
-                      <SectionTitle>
-                        Adverts <span className="text-red-500">*</span>
-                      </SectionTitle>
+                      <SectionTitle>Adverts</SectionTitle>
                       <p className="text-xs text-zinc-500">
                         Tap cards to select / unselect
                       </p>
@@ -1520,9 +1556,7 @@ const Products = () => {
                   {/* Promotions */}
                   <div>
                     <div className="mb-2 flex items-center justify-between">
-                      <SectionTitle>
-                        Promotions <span className="text-red-500">*</span>
-                      </SectionTitle>
+                      <SectionTitle>Promotions</SectionTitle>
                       <p className="text-xs text-zinc-500">
                         Tap cards to select / unselect
                       </p>
@@ -1554,7 +1588,7 @@ const Products = () => {
                 </GlassPanel>
               )}
 
-              {/* STEP 3 – unchanged from your last version */}
+              {/* STEP 3 – unchanged */}
               {pdfStep === 3 && (
                 <GlassPanel className="space-y-4 p-4">
                   <div className="rounded-xl border border-zinc-200/60 bg-gradient-to-br from-white via-zinc-50 to-zinc-100 p-3 shadow-sm">
@@ -1609,7 +1643,10 @@ const Products = () => {
                   {/* Client selection */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <SectionTitle>Select Client (Optional)</SectionTitle>
+                      <SectionTitle>
+                        Select Client <span className="text-red-500">*</span>
+                      </SectionTitle>
+
                       <Button
                         variant="outline"
                         onClick={openClientDialog}
@@ -1745,14 +1782,14 @@ const Products = () => {
                 <div>
                   <Controller
                     control={clientControl}
-                    name="nickname"
+                    name="email"
                     render={({ field }) => (
                       <FloatingLabelInput
-                        label="Nickname"
+                        label="Email"
                         name={field.name}
                         value={field.value ?? ''}
                         onChange={field.onChange}
-                        error={clientErrors.nickname?.message as string | undefined}
+                        error={clientErrors.email?.message as string | undefined}
                       />
                     )}
                   />
@@ -1884,8 +1921,6 @@ const Products = () => {
           </div>
         </Dialog>
 
-        {/* 🛒 Cart preview dialog */}
-
         {/* 🛒 Cart preview dialog - Full Table View */}
         <Dialog
           isOpen={isCartDialogOpen}
@@ -1900,124 +1935,133 @@ const Products = () => {
                 <p className="text-sm text-zinc-600">No products in cart yet.</p>
               </div>
             ) : (
-              <div className="w-full overflow-hidden rounded-lg bg-white shadow-sm">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="h-8 bg-zinc-50">
-                      <TableHead className="px-3 py-1 text-xs font-medium">Brand</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Product Name</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Image</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Stick Format</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Tar (mg)</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Nicotine (mg)</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">CO (mg)</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Flavour</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium text-center">FSP</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Pack Format</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Color</TableHead>
-                      <TableHead className="px-3 py-1 text-xs font-medium">Capsules</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {cartItems.map((item) => {
-                      const isFsp =
-                        item.fsp === true ||
-                        item.fsp === 1 ||
-                        (typeof item.fsp === 'string' &&
-                          ['yes', 'true', '1'].includes(item.fsp.trim().toLowerCase()))
+              <>
+                <div className="flex justify-end mb-3">
+                  <Button
+                    className="rounded-lg px-4 py-2 text-sm"
+                    onClick={handleRemoveAll}
+                  >
+                    <Trash className="h-4 w-4 mr-1" />
+                    Remove All
+                  </Button>
+                </div>
+                <div className="w-full overflow-hidden rounded-lg bg-white shadow-sm">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="h-8 bg-zinc-50">
+                        <TableHead className="px-3 py-1 text-xs font-medium">Brand</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Product Name</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Image</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Stick Format</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Tar (mg)</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Nicotine (mg)</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">CO (mg)</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Flavour</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium text-center">FSP</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Pack Format</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Color</TableHead>
+                        <TableHead className="px-3 py-1 text-xs font-medium">Capsules</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cartItems.map((item) => {
+                        const isFsp =
+                          item.fsp === true ||
+                          item.fsp === 1 ||
+                          (typeof item.fsp === 'string' &&
+                            ['yes', 'true', '1'].includes(item.fsp.trim().toLowerCase()))
 
-                      return (
-                        <TableRow key={item.id} className="h-9 hover:bg-zinc-50/50">
-                          {/* Brand */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.brand?.name || '-'}
-                          </TableCell>
+                        return (
+                          <TableRow key={item.id} className="h-9 hover:bg-zinc-50/50">
+                            {/* Brand */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.brand?.name || '-'}
+                            </TableCell>
 
-                          {/* Product Name */}
-                          <TableCell className="px-3 py-1 text-xs align-middle font-medium">
-                            {item.name}
-                          </TableCell>
+                            {/* Product Name */}
+                            <TableCell className="px-3 py-1 text-xs align-middle font-medium">
+                              {item.name}
+                            </TableCell>
 
-                          {/* Image */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.image ? (
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="h-12 w-12 rounded object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-200 text-[10px] text-gray-700">
-                                No Image
-                              </div>
-                            )}
-                          </TableCell>
+                            {/* Image */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="h-12 w-12 rounded object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-200 text-[10px] text-gray-700">
+                                  No Image
+                                </div>
+                              )}
+                            </TableCell>
 
-                          {/* Stick Format */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.size || '-'}
-                          </TableCell>
+                            {/* Stick Format */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.size || '-'}
+                            </TableCell>
 
-                          {/* Tar */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.tar || '-'}
-                          </TableCell>
+                            {/* Tar */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.tar || '-'}
+                            </TableCell>
 
-                          {/* Nicotine */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.nicotine || '-'}
-                          </TableCell>
+                            {/* Nicotine */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.nicotine || '-'}
+                            </TableCell>
 
-                          {/* CO */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.co || '-'}
-                          </TableCell>
+                            {/* CO */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.co || '-'}
+                            </TableCell>
 
-                          {/* Flavour */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.flavor || '-'}
-                          </TableCell>
+                            {/* Flavour */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.flavor || '-'}
+                            </TableCell>
 
-                          {/* FSP */}
-                          <TableCell className="px-3 py-1 text-xs align-middle text-center">
-                            {isFsp ? 'Yes' : 'No'}
-                          </TableCell>
+                            {/* FSP */}
+                            <TableCell className="px-3 py-1 text-xs align-middle text-center">
+                              {isFsp ? 'Yes' : 'No'}
+                            </TableCell>
 
-                          {/* Pack Format */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.packetStyle || '-'}
-                          </TableCell>
+                            {/* Pack Format */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.packetStyle || '-'}
+                            </TableCell>
 
-                          {/* Color */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.color || '-'}
-                          </TableCell>
+                            {/* Color */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.color || '-'}
+                            </TableCell>
 
-                          {/* Capsules */}
-                          <TableCell className="px-3 py-1 text-xs align-middle">
-                            {item.capsules ?? '-'}
-                          </TableCell>
+                            {/* Capsules */}
+                            <TableCell className="px-3 py-1 text-xs align-middle">
+                              {item.capsules ?? '-'}
+                            </TableCell>
 
-                         
-
-                          {/* Actions */}
-                          <TableCell className="px-3 py-1 text-xs align-middle text-center">
-                            <Button
-                              variant="outline"
-                              size="small"
-                              onClick={() => handleRemoveFromCart(item.id)}
-                              className="rounded-lg border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 hover:border-red-300"
-                            >
-                              <Trash className="h-3.5 w-3.5 mr-1 inline" />
-                              Remove
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                            {/* Actions */}
+                            <TableCell className="px-3 py-1 text-xs align-middle text-center">
+                              <Button
+                                variant="outline"
+                                size="small"
+                                onClick={() => handleRemoveFromCart(item.id)}
+                                className="rounded-lg border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 hover:border-red-300"
+                              >
+                                <Trash className="h-3.5 w-3.5 mr-1 inline" />
+                                Remove
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </div>
         </Dialog>

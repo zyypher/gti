@@ -10,8 +10,9 @@ export type Client = {
     lastName: string
     company: string
     primaryNumber: string
+    secondaryNumber: string
     country: string
-    nickname: string
+    email: string
 }
 
 export const columns = (
@@ -19,10 +20,6 @@ export const columns = (
     onDelete: (id: string) => void,
     role: Role | null,
 ): ColumnDef<Client>[] => [
-    {
-        accessorKey: 'nickname',
-        header: 'Nickname',
-    },
     {
         accessorKey: 'firstName',
         header: 'First Name',
@@ -34,6 +31,10 @@ export const columns = (
     {
         accessorKey: 'company',
         header: 'Company',
+    },
+     {
+        accessorKey: 'email',
+        header: 'Email',
     },
     {
         accessorKey: 'primaryNumber',

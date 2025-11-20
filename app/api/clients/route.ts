@@ -17,7 +17,7 @@ export async function POST(request: Request) {
             primaryNumber,
             secondaryNumber,
             country,
-            nickname,
+            email,
         } = body
 
         if (
@@ -26,10 +26,19 @@ export async function POST(request: Request) {
             !company ||
             !primaryNumber ||
             !country ||
-            !nickname
+            !email
         ) {
             return NextResponse.json(
                 { error: 'Missing required fields' },
+                { status: 400 },
+            )
+        }
+
+        // Basic email format check (optional but nice to have)
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailPattern.test(email)) {
+            return NextResponse.json(
+                { error: 'Invalid email format' },
                 { status: 400 },
             )
         }
@@ -42,7 +51,9 @@ export async function POST(request: Request) {
                 primaryNumber,
                 secondaryNumber,
                 country,
-                nickname,
+                email,
+                // 👇 required by current Prisma schema – reuse email for now
+                nickname: email,
             },
         })
 
@@ -76,4 +87,4 @@ export async function GET(request: Request) {
             { status: 500 },
         )
     }
-} 
+}

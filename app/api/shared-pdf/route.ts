@@ -13,53 +13,54 @@ type SharedPdfRow = {
     expiresAt: Date
     createdById: string
     clientId: string | null
+    proposalNumber: number | null
     client?: {
         id: string
         firstName: string
         lastName: string
-        nickname: string
+        email: string | null
     } | null
 }
+
+const BASE_PROPOSAL_NUMBER = 25001
 
 // ✅ Middleware to Extract User ID (Example - Adjust for Auth System)
 async function getUserIdFromToken(req: Request): Promise<string | null> {
     try {
-        const token = cookies().get('token')?.value;
+        const token = cookies().get('token')?.value
         if (!token) {
-            console.error("🚨 No token found in cookies.");
-            return null;
+            console.error('🚨 No token found in cookies.')
+            return null
         }
 
-        console.log("✅ Found token:", token);
+        console.log('✅ Found token:', token)
 
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-        const { payload } = await jwtVerify(token, secret);
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET)
+        const { payload } = await jwtVerify(token, secret)
 
-        console.log("✅ Extracted JWT Payload:", payload); // ✅ Log full payload
+        console.log('✅ Extracted JWT Payload:', payload)
 
-        // Ensure we're extracting the correct field from the payload
-        if (!payload || typeof payload !== "object") {
-            console.error("🚨 Invalid JWT payload format:", payload);
-            return null;
+        if (!payload || typeof payload !== 'object') {
+            console.error('🚨 Invalid JWT payload format:', payload)
+            return null
         }
 
-        // Try different possible field names based on how the JWT was created
-        const userId = payload.userId || payload.id || payload.sub;
+        const userId = (payload as any).userId || (payload as any).id || (payload as any).sub
 
         if (!userId) {
-            console.error("🚨 No userId found in payload:", payload);
-            return null;
+            console.error('🚨 No userId found in payload:', payload)
+            return null
         }
 
-        console.log("✅ Extracted User ID:", userId);
-        return userId as string;
+        console.log('✅ Extracted User ID:', userId)
+        return userId as string
     } catch (error) {
-        console.error("🚨 Error verifying token:", error);
-        return null;
+        console.error('🚨 Error verifying token:', error)
+        return null
     }
 }
 
-// ✅ GET Method: Fetch Only PDFs Created by the Current User
+// ✅ GET Method: Fetch PDFs (you can later restrict by user if needed)
 export async function GET(req: Request) {
     try {
         const url = new URL(req.url)
@@ -84,7 +85,7 @@ export async function GET(req: Request) {
             orderBy: { createdAt: 'desc' },
             include: {
                 client: {
-                    select: { id: true, firstName: true, lastName: true, nickname: true },
+                    select: { id: true, firstName: true, lastName: true, email: true },
                 },
             },
         })
@@ -97,7 +98,10 @@ export async function GET(req: Request) {
 
         for (const r of rows) {
             const ids = r.productIds
-                ? r.productIds.split(',').map((s) => s.trim()).filter(Boolean)
+                ? r.productIds
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
                 : []
             parsedIdsByPdf.set(r.id, ids)
             ids.forEach((id) => allIds.add(id))
@@ -111,10 +115,8 @@ export async function GET(req: Request) {
 
         // Optional product filtering
         const matchesProduct = (ids: string[]) => {
-            // productId wins (exact match)
             if (productId) return ids.includes(productId)
 
-            // productName (case-insensitive "contains" on product.name)
             if (productName && productName.trim()) {
                 const q = productName.trim().toLowerCase()
                 return ids.some((id) => {
@@ -123,7 +125,6 @@ export async function GET(req: Request) {
                 })
             }
 
-            // no product filter
             return true
         }
 
@@ -138,6 +139,7 @@ export async function GET(req: Request) {
                     createdAt: r.createdAt,
                     expiresAt: r.expiresAt,
                     client: r.client ?? null,
+                    proposalNumber: r.proposalNumber,
                     products: ids
                         .map((id) => productMap.get(id))
                         .filter(Boolean) as { id: string; name: string; pdfUrl: string }[],
@@ -154,10 +156,12 @@ export async function GET(req: Request) {
     }
 }
 
-// ✅ POST Method: Create a New Shared PDF & Assign Creator
+// ✅ POST Method: Create a New Shared PDF & Assign Creator & Proposal Number
 export async function POST(req: Request) {
     try {
-        let { productIds, expiresAt, clientId } = await req.json()
+        // expiresAt from the body is no longer used – Prisma still needs *some* value.
+        let { productIds, clientId } = await req.json()
+
         const userId = await getUserIdFromToken(req)
 
         if (!userId) {
@@ -167,25 +171,20 @@ export async function POST(req: Request) {
 
         console.log('✅ Extracted User ID:', userId)
 
-        // ✅ Step 1: Ensure `createdById` exists in `User` table
         const userExists = await prisma.user.findUnique({
             where: { id: userId },
         })
 
         if (!userExists) {
-            console.error(
-                '🚨 Invalid createdById, user does not exist:',
-                userId,
-            )
+            console.error('🚨 Invalid createdById, user does not exist:', userId)
             return NextResponse.json(
                 { error: 'User does not exist' },
                 { status: 400 },
             )
         }
 
-        // ✅ Convert `productIds` from string to array (if necessary)
         if (typeof productIds === 'string') {
-            productIds = productIds.split(',').map((id) => id.trim())
+            productIds = productIds.split(',').map((id: string) => id.trim())
         }
 
         if (!Array.isArray(productIds) || productIds.length === 0) {
@@ -196,24 +195,44 @@ export async function POST(req: Request) {
             )
         }
 
+        const lastWithNumber = await prisma.sharedPDF.findFirst({
+            where: { proposalNumber: { not: null } },
+            orderBy: { proposalNumber: 'desc' },
+            select: { proposalNumber: true },
+        })
+
+        let nextProposalNumber = BASE_PROPOSAL_NUMBER
+        if (
+            lastWithNumber?.proposalNumber &&
+            lastWithNumber.proposalNumber >= BASE_PROPOSAL_NUMBER
+        ) {
+            nextProposalNumber = lastWithNumber.proposalNumber + 1
+        }
+
         const uniqueSlug = nanoid(10)
 
-        // ✅ Step 2: Create SharedPdf Entry
         const sharedPdf = await prisma.sharedPDF.create({
             data: {
                 uniqueSlug,
                 productIds: productIds.join(','),
-                expiresAt: new Date(expiresAt),
-                createdById: userId, // ✅ Assign creator ID
-                ...(clientId && { clientId }), // Conditionally add clientId
+                createdById: userId,
+                proposalNumber: nextProposalNumber,
+                ...(clientId && { clientId }),
+                // 🔹 REQUIRED: Prisma schema says expiresAt is non-nullable
+                //   We don't use it anymore, so set a dummy value (now).
+                expiresAt: new Date(),
             },
         })
 
         console.log('✅ Shared PDF Created Successfully:', sharedPdf)
 
+        const fileName = `GTI_PROPOSAL_${sharedPdf.proposalNumber ?? nextProposalNumber}.pdf`
+
         return NextResponse.json({
             slug: sharedPdf.uniqueSlug,
             url: `/shared/${sharedPdf.uniqueSlug}`,
+            proposalNumber: sharedPdf.proposalNumber,
+            fileName,
         })
     } catch (error) {
         console.error('🚨 Error creating shared PDF:', error)

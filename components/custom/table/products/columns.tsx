@@ -41,17 +41,19 @@ export const columns = (
                 return (
                     <button
                         type="button"
+                        // 🔹 keep using the same handler – now it will toggle add/remove
                         onClick={() => onAddToCart?.(row.original)}
-                        disabled={inCart}
+                        // 🔹 REMOVE disabled so it can be clicked again
                         className={`
-            inline-flex h-8 w-8 items-center justify-center rounded-full border 
-            transition-all duration-200
-            ${inCart
-                                ? 'border-red-500 bg-red-500 text-white cursor-not-allowed'
+          inline-flex h-8 w-8 items-center justify-center rounded-full border 
+          transition-all duration-200
+          ${inCart
+                                // 🔹 still show red state, but keep it clickable (no cursor-not-allowed)
+                                ? 'border-red-500 bg-red-500 text-white hover:bg-red-600 hover:border-red-600'
                                 : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300'
                             }
-          `}
-                        aria-label={inCart ? 'Product in cart' : 'Add product to cart'}
+        `}
+                        aria-label={inCart ? 'Remove product from cart' : 'Add product to cart'}
                     >
                         <ShoppingCart className="h-4 w-4" />
                     </button>
@@ -60,7 +62,6 @@ export const columns = (
             enableSorting: false,
             enableHiding: false,
         },
-
         {
             accessorKey: 'brand.name',
             header: 'Brand',
@@ -136,7 +137,7 @@ export const columns = (
                         ['yes', 'true', '1'].includes(raw.trim().toLowerCase()))
 
                 return (
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-start">
                         {isFsp ? 'Yes' : 'No'}
                     </div>
                 )

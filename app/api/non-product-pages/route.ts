@@ -57,7 +57,10 @@ const uploadToS3 = async (file: File, folder: string): Promise<string> => {
 // ✅ GET All Promotions
 export async function GET() {
     try {
-        const items = await prisma.promotion.findMany()
+        // still returns all types; just make sure newest rows are first
+        const items = await prisma.promotion.findMany({
+            orderBy: { createdAt: 'desc' },
+        })
         return NextResponse.json(items)
     } catch (e) {
         return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 })
@@ -100,7 +103,6 @@ export async function POST(req: NextRequest) {
 }
 
 // ✅ DELETE - Remove Promotion
-
 export async function DELETE(req: NextRequest) {
     try {
         const id = req.nextUrl.searchParams.get('id')

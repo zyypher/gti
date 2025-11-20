@@ -26,14 +26,14 @@ import toast from 'react-hot-toast'
 const ORDER_HUB_BASE_URL = process.env.NEXT_PUBLIC_GTI_ORDER_HUB_BASE_URL
 
 type TProduct = { id: string; name: string; pdfUrl: string }
-type TClient = { id: string; firstName: string; lastName: string; nickname: string }
+type TClient = { id: string; firstName: string; lastName: string; email: string }
 type TListClient = { id: string; firstName: string; lastName: string }
 
 interface IGeneratedPDF {
     id: string
     uniqueSlug: string
     createdAt: string
-    expiresAt: string
+    expiresAt?: string
     products: TProduct[]
     client: TClient | null
 }
@@ -165,7 +165,9 @@ export default function GeneratedPDFs() {
 
             <div className="container mx-auto px-4 py-8 space-y-6">
                 <div className="flex items-end justify-between">
-                    <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Generated PDFs</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+                        Generated PDFs
+                    </h1>
                 </div>
 
                 {/* Filters */}
@@ -218,7 +220,12 @@ export default function GeneratedPDFs() {
                         </Popover>
 
                         {selectedDate && (
-                            <Button onClick={clearDate} aria-label="Clear date" variant="outline" className="rounded-xl">
+                            <Button
+                                onClick={clearDate}
+                                aria-label="Clear date"
+                                variant="outline"
+                                className="rounded-xl"
+                            >
                                 <X className="h-4 w-4" />
                             </Button>
                         )}
@@ -242,7 +249,12 @@ export default function GeneratedPDFs() {
                                 </SelectContent>
                             </Select>
                             {selectedClientId && (
-                                <Button onClick={clearClient} aria-label="Clear client" variant="outline" className="rounded-xl">
+                                <Button
+                                    onClick={clearClient}
+                                    aria-label="Clear client"
+                                    variant="outline"
+                                    className="rounded-xl"
+                                >
                                     <X className="h-4 w-4" />
                                 </Button>
                             )}
@@ -252,12 +264,17 @@ export default function GeneratedPDFs() {
                         <div className="flex items-center gap-2">
                             <Input
                                 className="w-[240px] rounded-xl border-white/40 bg-white/70 text-black placeholder:text-black placeholder:opacity-100"
-                                placeholder="Filter by product…"
+                                placeholder="Search by Products"
                                 value={productQuery}
                                 onChange={onProductChange}
                             />
                             {productQuery && (
-                                <Button onClick={clearProduct} aria-label="Clear product" variant="outline" className="rounded-xl">
+                                <Button
+                                    onClick={clearProduct}
+                                    aria-label="Clear product"
+                                    variant="outline"
+                                    className="rounded-xl"
+                                >
                                     <X className="h-4 w-4" />
                                 </Button>
                             )}
@@ -299,17 +316,17 @@ export default function GeneratedPDFs() {
                                         <p className="text-sm font-semibold text-zinc-900">Products:</p>
                                         <ul className="mb-2 text-sm text-zinc-700">
                                             {pdf.products.length > 0 ? (
-                                                pdf.products.map((product) => <li key={product.id}>{product.name}</li>)
+                                                pdf.products.map((product) => (
+                                                    <li key={product.id}>{product.name}</li>
+                                                ))
                                             ) : (
                                                 <li>No products available</li>
                                             )}
                                         </ul>
 
-                                        <p className="text-sm font-medium text-zinc-800">
-                                            <strong>Created:</strong> {new Date(pdf.createdAt).toLocaleString()}
-                                        </p>
-                                        <p className="mb-4 text-sm text-zinc-600">
-                                            <strong>Expires:</strong> {new Date(pdf.expiresAt).toLocaleString()}
+                                        <p className="mb-4 text-sm font-medium text-zinc-800">
+                                            <span className="font-semibold">Created:</span>{' '}
+                                            {format(new Date(pdf.createdAt), 'dd/MM/yyyy, hh:mm a')}
                                         </p>
 
                                         <div className="mt-auto">
@@ -329,7 +346,6 @@ export default function GeneratedPDFs() {
                                 </Card>
                             </Glass>
                         ))}
-
                     </div>
                 )}
 
@@ -353,7 +369,11 @@ export default function GeneratedPDFs() {
                             </div>
                         )}
                         {currentShareableUrl && (
-                            <Button onClick={handleCopyLink} variant="black" className="w-full rounded-xl">
+                            <Button
+                                onClick={handleCopyLink}
+                                variant="black"
+                                className="w-full rounded-xl"
+                            >
                                 Copy Shareable Link
                             </Button>
                         )}

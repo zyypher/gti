@@ -85,15 +85,16 @@ model Promotion {
 }
 
 model SharedPDF {
-  id          String   @id @default(uuid())
-  uniqueSlug  String   @unique
-  productIds  String
-  createdAt   DateTime @default(now())
-  expiresAt   DateTime
-  createdById String
-  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  client      Client?  @relation(fields: [clientId], references: [id])
-  clientId    String?
+  id             String   @id @default(uuid())
+  uniqueSlug     String   @unique
+  productIds     String
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+  createdById    String
+  createdBy      User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  client         Client?  @relation(fields: [clientId], references: [id])
+  clientId       String?
+  proposalNumber Int?     @unique
 }
 
 model Notification {
@@ -118,6 +119,8 @@ model Order {
   status     OrderStatus    @default(CREATED)
   history    OrderHistory[]
   createdAt  DateTime       @default(now())
+  clientId   String?
+  client     Client?        @relation(fields: [clientId], references: [id])
 }
 
 model OrderHistory {
@@ -135,7 +138,7 @@ enum OrderStatus {
 }
 
 model Client {
-  id              String      @id @default(cuid())
+  id              String  @id @default(cuid())
   firstName       String
   lastName        String
   company         String
@@ -143,7 +146,9 @@ model Client {
   secondaryNumber String?
   country         String
   nickname        String
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  email           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
   sharedPDFs      SharedPDF[]
+  orders          Order[]
 }

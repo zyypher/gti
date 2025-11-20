@@ -165,7 +165,7 @@ export default function Orders() {
                                             </p>
                                             <p className="flex items-center gap-2 text-sm text-zinc-700">
                                                 <Calendar className="size-4 text-amber-600" />
-                                                {new Date(order.createdAt).toLocaleDateString()}
+                                                {new Date(order.createdAt).toLocaleDateString('en-GB')}
                                             </p>
 
                                             <div className="my-2 h-px w-full bg-gradient-to-r from-transparent via-zinc-300/60 to-transparent" />
