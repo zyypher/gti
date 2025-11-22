@@ -1419,7 +1419,7 @@ const Products = () => {
                       <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">
                         Corporate Info
                       </p>
-                      <p className="text-[10px] text-zinc-500">Tap a card to select</p>
+                      <p className="text-[15px] text-zinc-500">Tap a card to select</p>
                     </div>
                     <SectionTitle>
                       Corporate Info (Front) <span className="text-red-500">*</span>

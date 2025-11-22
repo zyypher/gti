@@ -21,6 +21,7 @@ interface FilterProps {
   onRefresh: () => void
   onClearSelection?: () => void
   initialFilters?: Record<string, string>
+   refreshKey?: number
 }
 
 interface IBrand {
@@ -62,6 +63,7 @@ export default function ProductsFilters({
   onRefresh,
   onClearSelection,
   initialFilters = {},
+  refreshKey = 0,
 }: FilterProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -148,7 +150,7 @@ export default function ProductsFilters({
 
     fetchBrands()
     fetchFilterOptions()
-  }, [])
+  }, [refreshKey])
 
   // Ensure initial brandId (from URL/parent) is applied only once.
   const [hasAppliedInitialBrand, setHasAppliedInitialBrand] = useState(false)
@@ -290,6 +292,10 @@ export default function ProductsFilters({
     setUiSelections((u) => ({ ...u, capsules: v }))
   }
 
+  const Label = ({ children }: { children: string }) => (
+    <div className="mb-1 text-xs font-medium text-gray-500">{children}</div>
+  )
+
   return (
     <>
       {/* Desktop Filters */}
@@ -298,7 +304,7 @@ export default function ProductsFilters({
         <div className="col-span-2 flex items-center gap-2">
           <div className="relative flex-1">
             <FloatingLabelInput
-              label="Search for products"
+              label="Search by product name"
               name="searchByName"
               value={nameInput}
               onChange={(value) => handleChangeText('name', value)}
@@ -322,230 +328,266 @@ export default function ProductsFilters({
         </div>
 
         {/* Brand */}
-        <Select value={getSelectValue('brandId')} onValueChange={onSelect('brandId')}>
-          <SelectTrigger>
-            <SelectValue
-              placeholder={
-                isLoadingBrands ? (
-                  <span className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                  </span>
-                ) : (
-                  'Select Brand'
-                )
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All</SelectItem>
-            {brands.map((brand) => (
-              <SelectItem key={brand.id} value={brand.id}>
-                {brand.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Size */}
-        <Select value={getSelectValue('size')} onValueChange={onSelect('size')}>
-          <SelectTrigger>
-            <SelectValue
-              placeholder={
-                isLoadingSizes ? (
-                  <span className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                  </span>
-                ) : (
-                  'Select Stick Format'
-                )
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All</SelectItem>
-            {sizes.map((size) => (
-              <SelectItem key={size} value={size}>
-                {size}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Flavour */}
-        <Select value={getSelectValue('flavor')} onValueChange={onSelectFlavor}>
-          <SelectTrigger>
-            <SelectValue
-              placeholder={
-                isLoadingFlavors ? (
-                  <span className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                  </span>
-                ) : (
-                  'Select Flavour'
-                )
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={PLACEHOLDER}>Select Flavour</SelectItem>
-            <SelectItem value={UI_ALL_FLAVOURS}>All Flavours</SelectItem>
-            <SelectItem value="Regular">Regular</SelectItem>
-            {flavors
-              .filter((f) => f !== 'Regular')
-              .map((flavor) => (
-                <SelectItem key={flavor} value={flavor}>
-                  {flavor}
+        <div className="space-y-1">
+          <Label>Brand</Label>
+          <Select
+            value={getSelectValue('brandId')}
+            onValueChange={onSelect('brandId')}
+          >
+            <SelectTrigger>
+              <SelectValue
+                placeholder={
+                  isLoadingBrands ? (
+                    <span className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </span>
+                  ) : (
+                    'Select Brand'
+                  )
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All</SelectItem>
+              {brands.map((brand) => (
+                <SelectItem key={brand.id} value={brand.id}>
+                  {brand.name}
                 </SelectItem>
               ))}
-          </SelectContent>
-        </Select>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Size */}
+        <div className="space-y-1">
+          <Label>Stick Format</Label>
+          <Select value={getSelectValue('size')} onValueChange={onSelect('size')}>
+            <SelectTrigger>
+              <SelectValue
+                placeholder={
+                  isLoadingSizes ? (
+                    <span className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </span>
+                  ) : (
+                    'Select Stick Format'
+                  )
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All</SelectItem>
+              {sizes.map((size) => (
+                <SelectItem key={size} value={size}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Flavour */}
+        <div className="space-y-1">
+          <Label>Flavour</Label>
+          <Select value={getSelectValue('flavor')} onValueChange={onSelectFlavor}>
+            <SelectTrigger>
+              <SelectValue
+                placeholder={
+                  isLoadingFlavors ? (
+                    <span className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </span>
+                  ) : (
+                    'Select Flavour'
+                  )
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={PLACEHOLDER}>Select Flavour</SelectItem>
+              <SelectItem value={UI_ALL_FLAVOURS}>All Flavours</SelectItem>
+              <SelectItem value="Regular">Regular</SelectItem>
+              {flavors
+                .filter((f) => f !== 'Regular')
+                .map((flavor) => (
+                  <SelectItem key={flavor} value={flavor}>
+                    {flavor}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Pack Format */}
-        <Select
-          value={getSelectValue('packetStyle')}
-          onValueChange={onSelect('packetStyle')}
-        >
-          <SelectTrigger>
-            <SelectValue
-              placeholder={
-                isLoadingPackFormats ? (
-                  <span className="flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                  </span>
-                ) : (
-                  'Select Pack Format'
-                )
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All</SelectItem>
-            {packFormats.map((packFormat) => (
-              <SelectItem key={packFormat} value={packFormat}>
-                {packFormat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <Label>Pack Format</Label>
+          <Select
+            value={getSelectValue('packetStyle')}
+            onValueChange={onSelect('packetStyle')}
+          >
+            <SelectTrigger>
+              <SelectValue
+                placeholder={
+                  isLoadingPackFormats ? (
+                    <span className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </span>
+                  ) : (
+                    'Select Pack Format'
+                  )
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All</SelectItem>
+              {packFormats.map((packFormat) => (
+                <SelectItem key={packFormat} value={packFormat}>
+                  {packFormat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Extra filters */}
         {showAllFilters && (
           <>
             {/* FSP */}
-            <Select value={getSelectValue('fsp')} onValueChange={onSelect('fsp')}>
-              <SelectTrigger>
-                <SelectValue placeholder="FSP" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>All</SelectItem>
-                <SelectItem value="true">Yes</SelectItem>
-                <SelectItem value="false">No</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <Label>FSP</Label>
+              <Select value={getSelectValue('fsp')} onValueChange={onSelect('fsp')}>
+                <SelectTrigger>
+                  <SelectValue placeholder="FSP" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All</SelectItem>
+                  <SelectItem value="true">Yes</SelectItem>
+                  <SelectItem value="false">No</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Capsules */}
-            <Select value={getSelectValue('capsules')} onValueChange={onSelectCapsules}>
-              <SelectTrigger>
-                <SelectValue placeholder="Number of Capsules" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={PLACEHOLDER}>Number of Capsules</SelectItem>
-                <SelectItem value={UI_ALL_CAPS}>All Capsules</SelectItem>
-                <SelectItem value="0">0</SelectItem>
-                <SelectItem value="1">1</SelectItem>
-                <SelectItem value="2">2</SelectItem>
-                <SelectItem value="3">3</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <Label>Number of Capsules</Label>
+              <Select
+                value={getSelectValue('capsules')}
+                onValueChange={onSelectCapsules}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Number of Capsules" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={PLACEHOLDER}>Number of Capsules</SelectItem>
+                  <SelectItem value={UI_ALL_CAPS}>All Capsules</SelectItem>
+                  <SelectItem value="0">0</SelectItem>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Tar */}
-            <Select value={getSelectValue('tar')} onValueChange={onSelect('tar')}>
-              <SelectTrigger>
-                <SelectValue placeholder="Tar (mg)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>All</SelectItem>
-                {tarOptions.map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {v}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <Label>Tar (mg)</Label>
+              <Select value={getSelectValue('tar')} onValueChange={onSelect('tar')}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tar (mg)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All</SelectItem>
+                  {tarOptions.map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Nicotine */}
-            <Select
-              value={getSelectValue('nicotine')}
-              onValueChange={onSelect('nicotine')}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Nicotine (mg)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>All</SelectItem>
-                {nicotineOptions.map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {v}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <Label>Nicotine (mg)</Label>
+              <Select
+                value={getSelectValue('nicotine')}
+                onValueChange={onSelect('nicotine')}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Nicotine (mg)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All</SelectItem>
+                  {nicotineOptions.map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* CO */}
-            <Select
-              value={uiSelections.co ?? filters.co ?? undefined}
-              onValueChange={onSelect('co')}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    isLoadingCarbonMonoxides ? (
-                      <span className="flex items-center">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                      </span>
-                    ) : (
-                      'Select Carbon Monoxide (mg)'
+            <div className="space-y-1">
+              <Label>Carbon Monoxide (mg)</Label>
+              <Select value={getSelectValue('co')} onValueChange={onSelect('co')}>
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      isLoadingCarbonMonoxides ? (
+                        <span className="flex items-center">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                        </span>
+                      ) : (
+                        'Select Carbon Monoxide (mg)'
+                      )
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All</SelectItem>
+                  {carbonMonoxides.map((co) => {
+                    const coStr = String(co)
+                    return (
+                      <SelectItem key={coStr} value={coStr}>
+                        {coStr}
+                      </SelectItem>
                     )
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>All</SelectItem>
-                {carbonMonoxides.map((co) => {
-                  const coStr = String(co)
-                  return (
-                    <SelectItem key={coStr} value={coStr}>
-                      {coStr}
-                    </SelectItem>
-                  )
-                })}
-              </SelectContent>
-            </Select>
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Color */}
-            <Select value={getSelectValue('color')} onValueChange={onSelect('color')}>
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    isLoadingColors ? (
-                      <span className="flex items-center">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                      </span>
-                    ) : (
-                      'Select Color of Packet'
-                    )
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>All</SelectItem>
-                {colors.map((color) => (
-                  <SelectItem key={color} value={color}>
-                    {color}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <Label>Color of Packet</Label>
+              <Select
+                value={getSelectValue('color')}
+                onValueChange={onSelect('color')}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      isLoadingColors ? (
+                        <span className="flex items-center">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                        </span>
+                      ) : (
+                        'Select Color of Packet'
+                      )
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All</SelectItem>
+                  {colors.map((color) => (
+                    <SelectItem key={color} value={color}>
+                      {color}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </>
         )}
 
@@ -587,230 +629,266 @@ export default function ProductsFilters({
       >
         <div className="space-y-4 p-4">
           {/* Product Name (mobile uses Select per your previous code) */}
-          <div className="relative">
-            <Select value={getSelectValue('name')} onValueChange={onSelect('name')}>
+          <div className="space-y-1">
+            <Label>Product Name</Label>
+            <div className="relative">
+              <Select value={getSelectValue('name')} onValueChange={onSelect('name')}>
+                <SelectTrigger>
+                  <SelectValue placeholder={'Select Product Name'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All</SelectItem>
+                  {/* If you later add product name options, they go here */}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Brand */}
+          <div className="space-y-1">
+            <Label>Brand</Label>
+            <Select
+              value={getSelectValue('brandId')}
+              onValueChange={onSelect('brandId')}
+            >
               <SelectTrigger>
-                <SelectValue placeholder={'Select Product Name'} />
+                <SelectValue
+                  placeholder={
+                    isLoadingBrands ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                      </span>
+                    ) : (
+                      'Select Brand'
+                    )
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>All</SelectItem>
-                {/* If you later add product name options, they go here */}
+                {brands.map((brand) => (
+                  <SelectItem key={brand.id} value={brand.id}>
+                    {brand.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Brand */}
-          <Select value={getSelectValue('brandId')} onValueChange={onSelect('brandId')}>
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  isLoadingBrands ? (
-                    <span className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                    </span>
-                  ) : (
-                    'Select Brand'
-                  )
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
-              {brands.map((brand) => (
-                <SelectItem key={brand.id} value={brand.id}>
-                  {brand.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
           {/* Size */}
-          <Select value={getSelectValue('size')} onValueChange={onSelect('size')}>
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  isLoadingSizes ? (
-                    <span className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                    </span>
-                  ) : (
-                    'Select Stick Format'
-                  )
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
-              {sizes.map((size) => (
-                <SelectItem key={size} value={size}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Flavour (same behavior as desktop) */}
-          <Select value={getSelectValue('flavor')} onValueChange={onSelectFlavor}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select Flavour" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={PLACEHOLDER}>Select Flavour</SelectItem>
-              <SelectItem value={UI_ALL_FLAVOURS}>All Flavours</SelectItem>
-              <SelectItem value="Regular">Regular</SelectItem>
-              {flavors
-                .filter((f) => f !== 'Regular')
-                .map((flavor) => (
-                  <SelectItem key={flavor} value={flavor}>
-                    {flavor}
+          <div className="space-y-1">
+            <Label>Stick Format</Label>
+            <Select value={getSelectValue('size')} onValueChange={onSelect('size')}>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    isLoadingSizes ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                      </span>
+                    ) : (
+                      'Select Stick Format'
+                    )
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All</SelectItem>
+                {sizes.map((size) => (
+                  <SelectItem key={size} value={size}>
+                    {size}
                   </SelectItem>
                 ))}
-            </SelectContent>
-          </Select>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Flavour (same behavior as desktop) */}
+          <div className="space-y-1">
+            <Label>Flavour</Label>
+            <Select value={getSelectValue('flavor')} onValueChange={onSelectFlavor}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Flavour" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={PLACEHOLDER}>Select Flavour</SelectItem>
+                <SelectItem value={UI_ALL_FLAVOURS}>All Flavours</SelectItem>
+                <SelectItem value="Regular">Regular</SelectItem>
+                {flavors
+                  .filter((f) => f !== 'Regular')
+                  .map((flavor) => (
+                    <SelectItem key={flavor} value={flavor}>
+                      {flavor}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Pack Format */}
-          <Select
-            value={getSelectValue('packetStyle')}
-            onValueChange={onSelect('packetStyle')}
-          >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  isLoadingPackFormats ? (
-                    <span className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                    </span>
-                  ) : (
-                    'Select Pack Format'
-                  )
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
-              {packFormats.map((packFormat) => (
-                <SelectItem key={packFormat} value={packFormat}>
-                  {packFormat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            <Label>Pack Format</Label>
+            <Select
+              value={getSelectValue('packetStyle')}
+              onValueChange={onSelect('packetStyle')}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    isLoadingPackFormats ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                      </span>
+                    ) : (
+                      'Select Pack Format'
+                    )
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All</SelectItem>
+                {packFormats.map((packFormat) => (
+                  <SelectItem key={packFormat} value={packFormat}>
+                    {packFormat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* FSP */}
-          <Select value={getSelectValue('fsp')} onValueChange={onSelect('fsp')}>
-            <SelectTrigger>
-              <SelectValue placeholder="FSP" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
-              <SelectItem value="true">Yes</SelectItem>
-              <SelectItem value="false">No</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            <Label>FSP</Label>
+            <Select value={getSelectValue('fsp')} onValueChange={onSelect('fsp')}>
+              <SelectTrigger>
+                <SelectValue placeholder="FSP" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All</SelectItem>
+                <SelectItem value="true">Yes</SelectItem>
+                <SelectItem value="false">No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Capsules (same behavior as desktop) */}
-          <Select value={getSelectValue('capsules')} onValueChange={onSelectCapsules}>
-            <SelectTrigger>
-              <SelectValue placeholder="Number of Capsules" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={PLACEHOLDER}>Number of Capsules</SelectItem>
-              <SelectItem value={UI_ALL_CAPS}>All Capsules</SelectItem>
-              <SelectItem value="0">0</SelectItem>
-              <SelectItem value="1">1</SelectItem>
-              <SelectItem value="2">2</SelectItem>
-              <SelectItem value="3">3</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            <Label>Number of Capsules</Label>
+            <Select
+              value={getSelectValue('capsules')}
+              onValueChange={onSelectCapsules}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Number of Capsules" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={PLACEHOLDER}>Number of Capsules</SelectItem>
+                <SelectItem value={UI_ALL_CAPS}>All Capsules</SelectItem>
+                <SelectItem value="0">0</SelectItem>
+                <SelectItem value="1">1</SelectItem>
+                <SelectItem value="2">2</SelectItem>
+                <SelectItem value="3">3</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Tar */}
-          <Select value={getSelectValue('tar')} onValueChange={onSelect('tar')}>
-            <SelectTrigger>
-              <SelectValue placeholder="Tar (mg)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
-              {tarOptions.map((v) => (
-                <SelectItem key={v} value={v}>
-                  {v}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            <Label>Tar (mg)</Label>
+            <Select value={getSelectValue('tar')} onValueChange={onSelect('tar')}>
+              <SelectTrigger>
+                <SelectValue placeholder="Tar (mg)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All</SelectItem>
+                {tarOptions.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Nicotine */}
-          <Select
-            value={getSelectValue('nicotine')}
-            onValueChange={onSelect('nicotine')}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Nicotine (mg)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
-              {nicotineOptions.map((v) => (
-                <SelectItem key={v} value={v}>
-                  {v}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            <Label>Nicotine (mg)</Label>
+            <Select
+              value={getSelectValue('nicotine')}
+              onValueChange={onSelect('nicotine')}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Nicotine (mg)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All</SelectItem>
+                {nicotineOptions.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {v}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* CO (mg) — MOBILE */}
-          <Select
-            value={uiSelections.co ?? filters.co ?? undefined}
-            onValueChange={onSelect('co')}
-          >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  isLoadingCarbonMonoxides ? (
-                    <span className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                    </span>
-                  ) : (
-                    'Select Carbon Monoxide (mg)'
+          <div className="space-y-1">
+            <Label>Carbon Monoxide (mg)</Label>
+            <Select value={getSelectValue('co')} onValueChange={onSelect('co')}>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    isLoadingCarbonMonoxides ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                      </span>
+                    ) : (
+                      'Select Carbon Monoxide (mg)'
+                    )
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All</SelectItem>
+                {carbonMonoxides.map((co) => {
+                  const coStr = String(co)
+                  return (
+                    <SelectItem key={coStr} value={coStr}>
+                      {coStr}
+                    </SelectItem>
                   )
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
-              {carbonMonoxides.map((co) => {
-                const coStr = String(co)
-                return (
-                  <SelectItem key={coStr} value={coStr}>
-                    {coStr}
-                  </SelectItem>
-                )
-              })}
-            </SelectContent>
-          </Select>
+                })}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Color */}
-          <Select value={getSelectValue('color')} onValueChange={onSelect('color')}>
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  isLoadingColors ? (
-                    <span className="flex items-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                    </span>
-                  ) : (
-                    'Select Color of Packet'
-                  )
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
-              {colors.map((color) => (
-                <SelectItem key={color} value={color}>
-                  {color}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            <Label>Color of Packet</Label>
+            <Select value={getSelectValue('color')} onValueChange={onSelect('color')}>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    isLoadingColors ? (
+                      <span className="flex items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                      </span>
+                    ) : (
+                      'Select Color of Packet'
+                    )
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All</SelectItem>
+                {colors.map((color) => (
+                  <SelectItem key={color} value={color}>
+                    {color}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-2">
